@@ -6,13 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
-from pylint_ruff_sync.main import (
-    PylintExtractor,
-    PylintRule,
-    PyprojectUpdater,
-    RuffPylintExtractor,
-    _setup_argument_parser,
-)
+from pylint_ruff_sync.main import _setup_argument_parser
+from pylint_ruff_sync.pylint_extractor import PylintExtractor
+from pylint_ruff_sync.pylint_rule import PylintRule
+from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
+from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 
 if TYPE_CHECKING:
     import pytest
