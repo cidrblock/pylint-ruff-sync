@@ -7,18 +7,19 @@ to enable only those rules that haven't been implemented in ruff.
 from __future__ import annotations
 
 import argparse
+import io
 import logging
 import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
 try:
     import requests  # type: ignore[import-untyped]
     import tomli_w  # type: ignore[import-not-found]
-    import tomllib  # type: ignore[import-not-found]
     from bs4 import BeautifulSoup, Tag
 except ImportError:
     sys.exit(1)
@@ -339,8 +340,19 @@ class PyprojectUpdater:
 
         """
         try:
-            with self.config_file.open("wb") as f:
-                tomli_w.dump(config, f)
+            # First, write to a string buffer
+            buffer = io.BytesIO()
+            tomli_w.dump(config, buffer, indent=2)
+            toml_content = buffer.getvalue().decode("utf-8")
+
+            # Remove trailing commas from arrays
+            # This regex matches trailing commas followed by optional whitespace and
+            # newline within arrays
+            toml_content = re.sub(r",(\s*\n\s*])", r"\1", toml_content)
+
+            # Write the processed content to file
+            with self.config_file.open("w", encoding="utf-8") as f:
+                f.write(toml_content)
             logger.info("Updated configuration written to %s", self.config_file)
         except Exception:
             logger.exception("Failed to write configuration file")
@@ -503,7 +515,7 @@ def main() -> int:
             _handle_dry_run(rules_to_enable, existing_disabled)
             return 0
 
-        # Store original enable list for comparison
+        # Check if changes are needed before updating
         original_enable = set(
             config.get("tool", {})
             .get("pylint", {})
@@ -511,12 +523,14 @@ def main() -> int:
             .get("enable", []),
         )
 
-        updated_config = updater.update_pylint_config(config, rules_to_enable)
-        updater.write_config(updated_config)
-
-        # Check if there were changes
+        # Calculate what the final enable list would be
         final_enable = rules_to_enable - existing_disabled
+
+        # Only update and write if there are changes
         if original_enable != final_enable:
+            updated_config = updater.update_pylint_config(config, rules_to_enable)
+            updater.write_config(updated_config)
+
             logger.info("Pylint configuration updated successfully")
             logger.info("Enabled %d total rules", len(final_enable))
             if existing_disabled:
