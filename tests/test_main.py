@@ -23,7 +23,7 @@ EXPECTED_RULES_COUNT = 2
 
 def test_pylint_rule_init() -> None:
     """Test PylintRule initialization."""
-    rule = PylintRule("C0103", "invalid-name", "Invalid name")
+    rule = PylintRule(code="C0103", name="invalid-name", description="Invalid name")
     assert rule.code == "C0103"
     assert rule.name == "invalid-name"
     assert rule.description == "Invalid name"
@@ -31,7 +31,7 @@ def test_pylint_rule_init() -> None:
 
 def test_pylint_rule_repr() -> None:
     """Test PylintRule string representation."""
-    rule = PylintRule("C0103", "invalid-name", "Invalid name")
+    rule = PylintRule(code="C0103", name="invalid-name", description="Invalid name")
     assert repr(rule) == "PylintRule(code='C0103', name='invalid-name')"
 
 
@@ -132,11 +132,16 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_update_pylint_config() -> None:
     """Test updating pylint configuration."""
-    updater = PyprojectUpdater(Path("test.toml"))
+    updater = PyprojectUpdater(config_file=Path("test.toml"))
     config: dict[str, object] = {}
     rules_to_enable = {"C0103", "C0111"}
+    existing_disabled: set[str] = set()
 
-    result = updater.update_pylint_config(config, rules_to_enable)
+    result = updater.update_pylint_config(
+        config=config,
+        rules_to_enable=rules_to_enable,
+        existing_disabled=existing_disabled,
+    )
 
     assert "tool" in result
     assert "pylint" in result["tool"]
@@ -170,33 +175,45 @@ def test_resolve_rule_identifiers() -> None:
     """Test resolving rule identifiers by code and name."""
     extractor = PylintExtractor()
     rules = [
-        PylintRule("C0103", "invalid-name", "Invalid name"),
-        PylintRule("C0111", "missing-docstring", "Missing docstring"),
-        PylintRule("R0903", "too-few-public-methods", "Too few public methods"),
+        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            code="C0111", name="missing-docstring", description="Missing docstring"
+        ),
+        PylintRule(
+            code="R0903",
+            name="too-few-public-methods",
+            description="Too few public methods",
+        ),
     ]
 
     # Test resolving by code
-    result = extractor.resolve_rule_identifiers(["C0103", "R0903"], rules)
+    result = extractor.resolve_rule_identifiers(
+        rule_identifiers=["C0103", "R0903"], all_rules=rules
+    )
     assert result == {"C0103", "R0903"}
 
     # Test resolving by name
     result = extractor.resolve_rule_identifiers(
-        ["invalid-name", "missing-docstring"], rules
+        rule_identifiers=["invalid-name", "missing-docstring"], all_rules=rules
     )
     assert result == {"C0103", "C0111"}
 
     # Test mixed codes and names
-    result = extractor.resolve_rule_identifiers(["C0103", "missing-docstring"], rules)
+    result = extractor.resolve_rule_identifiers(
+        rule_identifiers=["C0103", "missing-docstring"], all_rules=rules
+    )
     assert result == {"C0103", "C0111"}
 
     # Test unknown rule
-    result = extractor.resolve_rule_identifiers(["unknown-rule"], rules)
+    result = extractor.resolve_rule_identifiers(
+        rule_identifiers=["unknown-rule"], all_rules=rules
+    )
     assert result == set()
 
 
 def test_update_pylint_config_with_existing_disabled_rules() -> None:
     """Test updating pylint configuration respecting existing disabled rules."""
-    updater = PyprojectUpdater(Path("test.toml"))
+    updater = PyprojectUpdater(config_file=Path("test.toml"))
 
     # Config with some rules already disabled
     config: dict[str, object] = {
@@ -205,8 +222,14 @@ def test_update_pylint_config_with_existing_disabled_rules() -> None:
 
     # Rules that would normally be enabled (not implemented in ruff)
     rules_to_enable = {"C0103", "C0111", "R0124"}
+    # Existing disabled rules resolved to codes
+    existing_disabled = {"R0903", "C0103"}
 
-    result = updater.update_pylint_config(config, rules_to_enable)
+    result = updater.update_pylint_config(
+        config=config,
+        rules_to_enable=rules_to_enable,
+        existing_disabled=existing_disabled,
+    )
 
     # Should only enable rules that are not disabled in config
     # C0103 is disabled, so should not be enabled
@@ -215,8 +238,46 @@ def test_update_pylint_config_with_existing_disabled_rules() -> None:
     assert (
         set(result["tool"]["pylint"]["messages_control"]["enable"]) == expected_enable
     )
-    # Should preserve existing disabled rules
+    # Should preserve existing disabled rules in original format
     assert set(result["tool"]["pylint"]["messages_control"]["disable"]) == {
         "R0903",
         "C0103",
     }
+
+
+def test_disabled_rule_by_name_not_enabled() -> None:
+    """Test that rules disabled by name are not enabled by code.
+
+    This verifies that suppressed-message (disabled by name) prevents
+    I0020 (its code) from being enabled.
+    """
+    updater = PyprojectUpdater(config_file=Path("test.toml"))
+
+    # Config with rule disabled by name
+    config: dict[str, object] = {
+        "tool": {"pylint": {"messages_control": {"disable": ["suppressed-message"]}}}
+    }
+
+    # Rules that would normally be enabled, including I0020 (suppressed-message)
+    rules_to_enable = {"I0020", "C0111", "R0124"}
+    # I0020 is the code for "suppressed-message", so it should be in existing_disabled
+    existing_disabled = {"I0020"}
+
+    result = updater.update_pylint_config(
+        config=config,
+        rules_to_enable=rules_to_enable,
+        existing_disabled=existing_disabled,
+    )
+
+    # I0020 should NOT be enabled because it's disabled by name as "suppressed-message"
+    expected_enable = {"C0111", "R0124"}
+    assert (
+        set(result["tool"]["pylint"]["messages_control"]["enable"]) == expected_enable
+    )
+    # Should preserve the original disable format (by name)
+    assert result["tool"]["pylint"]["messages_control"]["disable"] == [
+        "suppressed-message"
+    ]
+
+    # Verify I0020 is not in the enable list
+    assert "I0020" not in result["tool"]["pylint"]["messages_control"]["enable"]

@@ -71,6 +71,7 @@ repos:
         additional_dependencies:
           - beautifulsoup4
           - pytest
+          - types-requests
         args: []
   - repo: https://github.com/jsh9/pydoclint
     rev: "0.6.7"

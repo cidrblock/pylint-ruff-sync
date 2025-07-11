@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import requests  # type: ignore[import-untyped]
+    import requests
     import tomli_w  # type: ignore[import-not-found]
     from bs4 import BeautifulSoup, Tag
 except ImportError:
@@ -90,7 +90,7 @@ class RuffPylintExtractor:  # pylint: disable=too-few-public-methods
             response = requests.get(self.issue_url, timeout=30)
             response.raise_for_status()
 
-            soup = BeautifulSoup(response.content, "html.parser")
+            soup = BeautifulSoup(markup=response.content, features="html.parser")
             li_tags = soup.find_all("li")
 
             implemented_rules = set()
@@ -182,11 +182,12 @@ class PylintExtractor:
 
                 # Match rule header like ":missing-docstring (C0111): *Missing*"
                 rule_match = re.match(
-                    r"^:([a-z-]+)\s+\(([A-Z]\d+)\):\s*\*(.+)\*$", stripped_line
+                    pattern=r"^:([a-z-]+)\s+\(([A-Z]\d+)\):\s*\*(.+)\*$",
+                    string=stripped_line,
                 )
                 if rule_match:
                     name, code, description = rule_match.groups()
-                    rule = PylintRule(code, name, description)
+                    rule = PylintRule(code=code, name=name, description=description)
                     rules.append(rule)
                     logger.debug("Found pylint rule: %s (%s)", code, name)
 
@@ -271,12 +272,14 @@ class PyprojectUpdater:
         self,
         config: dict[str, Any],
         rules_to_enable: set[str],
+        existing_disabled: set[str],
     ) -> dict[str, Any]:
         """Update pylint configuration to enable only non-implemented rules.
 
         Args:
             config: Current configuration dictionary.
             rules_to_enable: Set of rule codes to enable (not implemented in ruff).
+            existing_disabled: Set of resolved rule codes that are disabled by user.
 
         Returns:
             Updated configuration dictionary.
@@ -289,14 +292,6 @@ class PyprojectUpdater:
             config["tool"]["pylint"] = {}
         if "messages_control" not in config["tool"]["pylint"]:
             config["tool"]["pylint"]["messages_control"] = {}
-
-        # Get existing disabled rules to respect user preferences
-        existing_disabled = set(
-            config.get("tool", {})
-            .get("pylint", {})
-            .get("messages_control", {})
-            .get("disable", [])
-        )
 
         # Don't enable rules that are explicitly disabled by the user
         final_enable_rules = rules_to_enable - existing_disabled
@@ -319,9 +314,15 @@ class PyprojectUpdater:
                     skipped_count,
                 )
 
-        # Preserve existing disable list - don't modify user's manual disable choices
-        if existing_disabled:
-            disable_list = list(existing_disabled)
+        # Preserve existing disable list - keep original format (names/codes)
+        existing_disabled_raw = (
+            config.get("tool", {})
+            .get("pylint", {})
+            .get("messages_control", {})
+            .get("disable", [])
+        )
+        if existing_disabled_raw:
+            disable_list = list(existing_disabled_raw)
             disable_list.sort()
             config["tool"]["pylint"]["messages_control"]["disable"] = disable_list
         else:
@@ -410,11 +411,16 @@ def _extract_rules_and_calculate_changes(
     rules_to_enable = all_pylint_codes - implemented_in_ruff
 
     # Get existing disabled rules from config
-    existing_disabled = set(
+    existing_disabled_raw = (
         config.get("tool", {})
         .get("pylint", {})
         .get("messages_control", {})
         .get("disable", [])
+    )
+
+    # Resolve disabled rule identifiers (names and codes) to codes
+    existing_disabled = pylint_extractor.resolve_rule_identifiers(
+        rule_identifiers=existing_disabled_raw, all_rules=all_pylint_rules
     )
 
     return rules_to_enable, implemented_in_ruff, existing_disabled
@@ -493,7 +499,7 @@ def main() -> int:
 
     try:
         # Read config first to check for existing disabled rules
-        updater = PyprojectUpdater(args.config_file)
+        updater = PyprojectUpdater(config_file=args.config_file)
         config = updater.read_config()
 
         rules_to_enable, implemented_in_ruff, existing_disabled = (
@@ -528,7 +534,11 @@ def main() -> int:
 
         # Only update and write if there are changes
         if original_enable != final_enable:
-            updated_config = updater.update_pylint_config(config, rules_to_enable)
+            updated_config = updater.update_pylint_config(
+                config=config,
+                rules_to_enable=rules_to_enable,
+                existing_disabled=existing_disabled,
+            )
             updater.write_config(updated_config)
 
             logger.info("Pylint configuration updated successfully")
