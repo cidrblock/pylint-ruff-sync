@@ -82,10 +82,13 @@ The hook will automatically create and manage the following section in your `pyp
 # This section will be automatically updated by the precommit hook
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
 enable = [
-    # Rules NOT implemented in ruff - automatically generated
-    "C0112",  # empty-docstring
-    "C0113",  # unneeded-not
-    # ... more rules
+    # Rules NOT implemented in ruff - automatically generated with descriptions
+    "C0112",  # empty-docstring: Used when a module has no docstring
+    "C0113",  # unneeded-not: Used when a boolean expression contains an unneeded negation
+    "C0114",  # missing-module-docstring: Used when a module has no docstring
+    "C0115",  # missing-class-docstring: Used when a class has no docstring
+    "C0116",  # missing-function-docstring: Used when a function or method has no docstring
+    # ... more rules with descriptions
 ]
 disable = [
     # Any existing disabled rules are preserved
@@ -157,7 +160,7 @@ This hook works seamlessly with:
 - pylint 2.15.0+
 - requests 2.28.0+
 - beautifulsoup4 4.11.0+
-- tomli-w 1.0.0+
+- tomlkit 0.12.0+
 
 ## Contributing
 

@@ -136,11 +136,18 @@ def test_update_pylint_config() -> None:
     config: dict[str, object] = {}
     rules_to_enable = {"C0103", "C0111"}
     existing_disabled: set[str] = set()
+    all_rules = [
+        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            code="C0111", name="missing-docstring", description="Missing docstring"
+        ),
+    ]
 
     result = updater.update_pylint_config(
         config=config,
         rules_to_enable=rules_to_enable,
         existing_disabled=existing_disabled,
+        all_rules=all_rules,
     )
 
     assert "tool" in result
@@ -224,11 +231,28 @@ def test_update_pylint_config_with_existing_disabled_rules() -> None:
     rules_to_enable = {"C0103", "C0111", "R0124"}
     # Existing disabled rules resolved to codes
     existing_disabled = {"R0903", "C0103"}
+    all_rules = [
+        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            code="C0111", name="missing-docstring", description="Missing docstring"
+        ),
+        PylintRule(
+            code="R0903",
+            name="too-few-public-methods",
+            description="Too few public methods",
+        ),
+        PylintRule(
+            code="R0124",
+            name="inconsistent-return-statements",
+            description="Inconsistent return statements",
+        ),
+    ]
 
     result = updater.update_pylint_config(
         config=config,
         rules_to_enable=rules_to_enable,
         existing_disabled=existing_disabled,
+        all_rules=all_rules,
     )
 
     # Should only enable rules that are not disabled in config
@@ -262,11 +286,25 @@ def test_disabled_rule_by_name_not_enabled() -> None:
     rules_to_enable = {"I0020", "C0111", "R0124"}
     # I0020 is the code for "suppressed-message", so it should be in existing_disabled
     existing_disabled = {"I0020"}
+    all_rules = [
+        PylintRule(
+            code="I0020", name="suppressed-message", description="Suppressed message"
+        ),
+        PylintRule(
+            code="C0111", name="missing-docstring", description="Missing docstring"
+        ),
+        PylintRule(
+            code="R0124",
+            name="inconsistent-return-statements",
+            description="Inconsistent return statements",
+        ),
+    ]
 
     result = updater.update_pylint_config(
         config=config,
         rules_to_enable=rules_to_enable,
         existing_disabled=existing_disabled,
+        all_rules=all_rules,
     )
 
     # I0020 should NOT be enabled because it's disabled by name as "suppressed-message"

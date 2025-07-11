@@ -7,7 +7,6 @@ to enable only those rules that haven't been implemented in ruff.
 from __future__ import annotations
 
 import argparse
-import io
 import logging
 import re
 import shutil
@@ -15,11 +14,14 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import tomlkit
 
 try:
     import requests
-    import tomli_w
+    import tomlkit
     from bs4 import BeautifulSoup, Tag
 except ImportError:
     sys.exit(1)
@@ -273,6 +275,7 @@ class PyprojectUpdater:
         config: dict[str, Any],
         rules_to_enable: set[str],
         existing_disabled: set[str],
+        all_rules: list[PylintRule],
     ) -> dict[str, Any]:
         """Update pylint configuration to enable only non-implemented rules.
 
@@ -280,6 +283,7 @@ class PyprojectUpdater:
             config: Current configuration dictionary.
             rules_to_enable: Set of rule codes to enable (not implemented in ruff).
             existing_disabled: Set of resolved rule codes that are disabled by user.
+            all_rules: List of all pylint rules with their descriptions.
 
         Returns:
             Updated configuration dictionary.
@@ -298,9 +302,16 @@ class PyprojectUpdater:
 
         # Update enable list
         if final_enable_rules:
+            # Create a dictionary mapping rule codes to their descriptions
+            rule_descriptions = {rule.code: rule.description for rule in all_rules}
+
+            # Store the enable list and descriptions for later use by tomlkit
             enable_list = list(final_enable_rules)
             enable_list.sort()
             config["tool"]["pylint"]["messages_control"]["enable"] = enable_list
+            config["tool"]["pylint"]["messages_control"]["_enable_descriptions"] = (
+                rule_descriptions
+            )
 
             logger.info(
                 "Updated enable list with %d rules (not implemented in ruff)",
@@ -341,23 +352,80 @@ class PyprojectUpdater:
 
         """
         try:
-            # First, write to a string buffer
-            buffer = io.BytesIO()
-            tomli_w.dump(config, buffer, indent=2)
-            toml_content = buffer.getvalue().decode("utf-8")
+            # Read the original file with tomlkit to preserve comments and formatting
+            if self.config_file.exists():
+                with self.config_file.open("r", encoding="utf-8") as f:
+                    doc = tomlkit.load(f)
+            else:
+                doc = tomlkit.document()
 
-            # Remove trailing commas from arrays
-            # This regex matches trailing commas followed by optional whitespace and
-            # newline within arrays
-            toml_content = re.sub(r",(\s*\n\s*])", r"\1", toml_content)
+            # Update the document with new configuration
+            self._update_toml_document(doc, config)
 
-            # Write the processed content to file
+            # Write the updated document back to file
             with self.config_file.open("w", encoding="utf-8") as f:
-                f.write(toml_content)
+                tomlkit.dump(doc, f)
             logger.info("Updated configuration written to %s", self.config_file)
         except Exception:
             logger.exception("Failed to write configuration file")
             raise
+
+    def _update_toml_document(
+        self,
+        doc: Any,  # noqa: ANN401
+        config: dict[str, Any],
+    ) -> None:
+        """Update a tomlkit document with new configuration.
+
+        Args:
+            doc: The tomlkit document to update.
+            config: The configuration dictionary to apply.
+
+        """
+        # Deep update the document with new configuration
+        for key, value in config.items():
+            if isinstance(value, dict):
+                if key not in doc:
+                    doc[key] = tomlkit.table()
+                self._update_toml_table(doc[key], value)
+            else:
+                doc[key] = value
+
+    def _update_toml_table(
+        self,
+        table: Any,  # noqa: ANN401
+        config: dict[str, Any],
+    ) -> None:
+        """Update a tomlkit table with new configuration.
+
+        Args:
+            table: The tomlkit table to update.
+            config: The configuration dictionary to apply.
+
+        """
+        for key, value in config.items():
+            if key == "_enable_descriptions":
+                # Skip the helper key, it's handled with the enable list
+                continue
+            if key == "enable" and "_enable_descriptions" in config:
+                # Special handling for enable list with comments
+                descriptions = config["_enable_descriptions"]
+                enable_array = tomlkit.array()
+                enable_array.multiline(multiline=True)
+                for rule_code in value:
+                    description = descriptions.get(rule_code, "")
+                    item = tomlkit.string(rule_code)
+                    # Add inline comment with description
+                    if description:
+                        item.comment(f"{description}")
+                    enable_array.append(item)
+                table[key] = enable_array
+            elif isinstance(value, dict):
+                if key not in table:
+                    table[key] = tomlkit.table()
+                self._update_toml_table(table[key], value)
+            else:
+                table[key] = value
 
 
 def _setup_argument_parser() -> argparse.ArgumentParser:
@@ -387,7 +455,7 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
 
 def _extract_rules_and_calculate_changes(
     config: dict[str, Any],
-) -> tuple[set[str], set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str], list[PylintRule]]:
     """Extract rules and calculate what changes are needed.
 
     Args:
@@ -395,7 +463,8 @@ def _extract_rules_and_calculate_changes(
             rules.
 
     Returns:
-        A tuple of (rules_to_enable, implemented_in_ruff, existing_disabled).
+        A tuple of (rules_to_enable, implemented_in_ruff, existing_disabled,
+            all_pylint_rules).
 
     """
     # Extract all pylint rules
@@ -423,7 +492,7 @@ def _extract_rules_and_calculate_changes(
         rule_identifiers=existing_disabled_raw, all_rules=all_pylint_rules
     )
 
-    return rules_to_enable, implemented_in_ruff, existing_disabled
+    return rules_to_enable, implemented_in_ruff, existing_disabled, all_pylint_rules
 
 
 def _log_rule_summary(
@@ -502,7 +571,7 @@ def main() -> int:
         updater = PyprojectUpdater(config_file=args.config_file)
         config = updater.read_config()
 
-        rules_to_enable, implemented_in_ruff, existing_disabled = (
+        rules_to_enable, implemented_in_ruff, existing_disabled, all_pylint_rules = (
             _extract_rules_and_calculate_changes(config)
         )
 
@@ -538,6 +607,7 @@ def main() -> int:
                 config=config,
                 rules_to_enable=rules_to_enable,
                 existing_disabled=existing_disabled,
+                all_rules=all_pylint_rules,
             )
             updater.write_config(updated_config)
 
