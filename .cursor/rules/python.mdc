@@ -17,3 +17,4 @@ alwaysApply: true
 - Avoid the use of classes in the tests, with the exception of a dataclass for data if needed.
 - Always run "pre-commit run --all-files after making any changes, fix errors reported"
 - When calling a python function, use named arguments (kwargs) when ever possible
+- Always use a src layout for new projects https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/

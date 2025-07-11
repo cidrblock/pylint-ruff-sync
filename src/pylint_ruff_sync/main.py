@@ -19,7 +19,7 @@ from typing import Any
 
 try:
     import requests
-    import tomli_w  # type: ignore[import-not-found]
+    import tomli_w
     from bs4 import BeautifulSoup, Tag
 except ImportError:
     sys.exit(1)

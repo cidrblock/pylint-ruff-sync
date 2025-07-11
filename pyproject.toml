@@ -1,18 +1,10 @@
 [build-system]
-requires = [
-  "hatchling"
-]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [
-  "pytest>=8.3.5",
-  "ruff>=0.12.3"
-]
-test = [
-  "pydoclint>=0.5.11",
-  "types-requests>=2.32.4.20250611"
-]
+dev = ["pytest>=8.3.5", "ruff>=0.12.3"]
+test = ["mypy>=1.16.1", "pydoclint>=0.5.11", "types-requests>=2.32.4.20250611"]
 
 [project]
 name = "pylint-ruff-sync"
@@ -40,6 +32,9 @@ test = [
 
 [project.scripts]
 pylint-ruff-sync = "pylint_ruff_sync.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pylint_ruff_sync"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -70,9 +65,7 @@ style = "google"
 
 [tool.pylint.basic]
 good-names = "i,j,k,ex,Run,_,f,fh"
-ignore = [
-  "_version.py"
-]
+ignore = ["_version.py"]
 jobs = 0
 no-docstring-rgx = "__.*__"
 
@@ -257,10 +250,7 @@ enable = [
   "W4905",
   "W4906"
 ]
-disable = [
-  "locally-disabled",
-  "suppressed-message"
-]
+disable = ["locally-disabled", "suppressed-message"]
 
 [tool.pylint.reports]
 output-format = "colorized"
@@ -271,19 +261,8 @@ line-length = 88
 fix = true
 
 [tool.ruff.lint]
-select = [
-  "ALL"
-]
-ignore = [
-  "D203",
-  "D211",
-  "D213",
-  "COM812"
-]
+select = ["ALL"]
+ignore = ["D203", "D211", "D213", "COM812"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = [
-  "S101",
-  "SLF001",
-  "EXE001"
-]
+"tests/**" = ["S101", "SLF001", "EXE001"]

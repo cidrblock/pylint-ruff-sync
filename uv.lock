@@ -425,6 +425,7 @@ dev = [
     { name = "ruff" },
 ]
 test = [
+    { name = "mypy" },
     { name = "pydoclint" },
     { name = "types-requests" },
 ]
@@ -451,6 +452,7 @@ dev = [
     { name = "ruff", specifier = ">=0.12.3" },
 ]
 test = [
+    { name = "mypy", specifier = ">=1.16.1" },
     { name = "pydoclint", specifier = ">=0.5.11" },
     { name = "types-requests", specifier = ">=2.32.4.20250611" },
 ]
