@@ -1,6 +1,17 @@
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.12.3",
+]
+test = [
+    "pydoclint>=0.5.11",
+]
 
 [project]
 name = "pylint-ruff-sync"
@@ -13,15 +24,10 @@ dependencies = [
     "beautifulsoup4>=4.11.0",
     "tomli-w>=1.0.0",
     "pylint>=2.15.0",
-    "ruff>=0.12.3",
-    "pre-commit>=3.5.0",
 ]
 
-[project.scripts]
-pylint-ruff-sync = "pylint_ruff_sync.main:main"
-
 [project.optional-dependencies]
-dev = [
+test = [
     "pre-commit>=2.20.0",
     "ruff>=0.1.6",
     "mypy>=1.7.1",
@@ -31,29 +37,8 @@ dev = [
     "pytest-cov>=4.0.0",
 ]
 
-
-[tool.ruff]
-target-version = "py38"
-line-length = 88
-fix = true
-
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = [
-    "D203",   # One blank line required before class docstring
-    "D211",   # No blank lines allowed before class docstring
-    "D213",   # Multi-line docstring summary should start at the second line
-    "COM812", # Trailing comma missing
-]
-
-[tool.ruff.lint.per-file-ignores]
-# Test files can use assert statements, access private members, and have hardcoded test data
-"tests/**" = [
-    "S101",   # Use of assert (standard in pytest)
-    "SLF001", # Private member access (needed for testing internal methods)
-    "EXE001", # Shebang without executable (common for test files)
-]
-
+[project.scripts]
+pylint-ruff-sync = "pylint_ruff_sync.main:main"
 
 [tool.mypy]
 python_version = "3.8"
@@ -71,32 +56,235 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
-[tool.pylint.messages_control]
-# This section will be automatically updated by the precommit hook
-# based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
-enable = [
-    # Rules NOT implemented in ruff - this creates a shorter, more maintainable list
-    # This list is automatically generated - do not edit manually
+[tool.pydoclint]
+allow-init-docstring = true
+arg-type-hints-in-docstring = false
+baseline = ".config/pydoclint-baseline.txt"
+check-return-types = false
+exclude = "\\.git|\\.tox|\\.venv|build|out|venv"
+should-document-private-class-attributes = true
+show-filenames-in-every-violation-message = true
+skip-checking-short-docstrings = false
+style = "google"
+
+[tool.pylint.basic]
+good-names = "i,j,k,ex,Run,_,f,fh"
+ignore = [
+    "_version.py",
 ]
-disable = [] # Empty since we use enable-only approach
+jobs = 0
+no-docstring-rgx = "__.*__"
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.messages_control]
+enable = [
+    "C0104",
+    "C0117",
+    "C0200",
+    "C0203",
+    "C0204",
+    "C0209",
+    "C0302",
+    "C0325",
+    "C0327",
+    "C0328",
+    "C0401",
+    "C0402",
+    "C0403",
+    "C1803",
+    "C1804",
+    "C1805",
+    "C2503",
+    "E0011",
+    "E0013",
+    "E0014",
+    "E0015",
+    "E0106",
+    "E0108",
+    "E0110",
+    "E0111",
+    "E0113",
+    "E0119",
+    "E0202",
+    "E0203",
+    "E0211",
+    "E0236",
+    "E0238",
+    "E0239",
+    "E0240",
+    "E0242",
+    "E0243",
+    "E0244",
+    "E0245",
+    "E0301",
+    "E0306",
+    "E0307",
+    "E0310",
+    "E0311",
+    "E0312",
+    "E0313",
+    "E0401",
+    "E0606",
+    "E0611",
+    "E0633",
+    "E0701",
+    "E0702",
+    "E0705",
+    "E0710",
+    "E0712",
+    "E1003",
+    "E1101",
+    "E1102",
+    "E1111",
+    "E1120",
+    "E1121",
+    "E1123",
+    "E1124",
+    "E1125",
+    "E1126",
+    "E1127",
+    "E1128",
+    "E1129",
+    "E1133",
+    "E1134",
+    "E1135",
+    "E1136",
+    "E1137",
+    "E1138",
+    "E1139",
+    "E1141",
+    "E1143",
+    "E1144",
+    "E1200",
+    "E1201",
+    "E1507",
+    "E1701",
+    "E2501",
+    "E2511",
+    "E3102",
+    "E3701",
+    "E4702",
+    "F0002",
+    "F0010",
+    "F0011",
+    "F0202",
+    "I0001",
+    "I0010",
+    "I0011",
+    "I0013",
+    "I0020",
+    "I0021",
+    "I0022",
+    "I1101",
+    "R0022",
+    "R0401",
+    "R0801",
+    "R0901",
+    "R0902",
+    "R0903",
+    "R1706",
+    "R1708",
+    "R1709",
+    "R1712",
+    "R1713",
+    "R1716",
+    "R1726",
+    "R1727",
+    "R1736",
+    "W0012",
+    "W0101",
+    "W0105",
+    "W0124",
+    "W0125",
+    "W0126",
+    "W0128",
+    "W0134",
+    "W0135",
+    "W0143",
+    "W0201",
+    "W0213",
+    "W0221",
+    "W0222",
+    "W0223",
+    "W0231",
+    "W0233",
+    "W0236",
+    "W0237",
+    "W0238",
+    "W0239",
+    "W0240",
+    "W0244",
+    "W0246",
+    "W0407",
+    "W0416",
+    "W0601",
+    "W0614",
+    "W0621",
+    "W0631",
+    "W0632",
+    "W0641",
+    "W0642",
+    "W0644",
+    "W0715",
+    "W0716",
+    "W1114",
+    "W1115",
+    "W1116",
+    "W1117",
+    "W1300",
+    "W1306",
+    "W1307",
+    "W1308",
+    "W1402",
+    "W1502",
+    "W1503",
+    "W1506",
+    "W1507",
+    "W2601",
+    "W2602",
+    "W2603",
+    "W2604",
+    "W2605",
+    "W2606",
+    "W3101",
+    "W3601",
+    "W4701",
+    "W4901",
+    "W4902",
+    "W4903",
+    "W4904",
+    "W4905",
+    "W4906",
+]
+disable = [
+    "locally-disabled",
+    "suppressed-message",
+]
 
 [tool.pylint.reports]
 output-format = "colorized"
 
-[tool.pylint.basic]
-good-names = ["i", "j", "k", "ex", "Run", "_", "id"]
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+fix = true
 
-[tool.pylint.design]
-max-args = 7
-max-attributes = 7
-max-bool-expr = 5
-max-branches = 12
-max-locals = 15
-max-parents = 7
-max-public-methods = 20
-max-returns = 6
-max-statements = 50
-min-public-methods = 2
+[tool.ruff.lint]
+select = [
+    "ALL",
+]
+ignore = [
+    "D203",
+    "D211",
+    "D213",
+    "COM812",
+]
 
-[dependency-groups]
-dev = ["pytest>=8.3.5", "ruff>=0.12.3"]
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",
+    "SLF001",
+    "EXE001",
+]

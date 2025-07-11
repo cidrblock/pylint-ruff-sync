@@ -7,4 +7,4 @@
   files: ^pyproject\.toml$
   pass_filenames: false
   stages: [pre-commit, pre-merge-commit, manual]
-  require_serial: true 
+  require_serial: true

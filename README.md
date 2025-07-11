@@ -29,7 +29,7 @@ Simply add the hook to your `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/your-org/pylint-ruff-sync
-    rev: v0.1.0  # Use the latest version
+    rev: v0.1.0 # Use the latest version
     hooks:
       - id: pylint-ruff-sync
 ```
@@ -45,12 +45,17 @@ repos:
     hooks:
       - id: pylint-ruff-sync
         args: [
-          "--custom-enable", "C0103", "invalid-name",  # Enable specific rules
-          "--custom-disable", "R0903", "too-few-public-methods"  # Disable specific rules
-        ]
+            "--custom-enable",
+            "C0103",
+            "invalid-name", # Enable specific rules
+            "--custom-disable",
+            "R0903",
+            "too-few-public-methods", # Disable specific rules
+          ]
 ```
 
 That's it! The hook will automatically:
+
 - Install its own dependencies
 - Run when `pyproject.toml` is modified
 - Update your pylint configuration
@@ -124,6 +129,7 @@ The script runs `pylint --list-msgs` to extract all available pylint rules with 
 ### 2. Ruff Implementation Status
 
 It fetches the current status from the [ruff pylint tracking issue](https://github.com/astral-sh/ruff/issues/970) by:
+
 - Making an HTTP request to the GitHub issue
 - Parsing the HTML with BeautifulSoup
 - Extracting checked items from the task list
@@ -132,6 +138,7 @@ It fetches the current status from the [ruff pylint tracking issue](https://gith
 ### 3. Configuration Update
 
 The script then:
+
 - Calculates which rules should be disabled (implemented in ruff)
 - Updates the `pyproject.toml` file with the new configuration
 - Preserves existing configuration while updating the disable list
@@ -170,6 +177,7 @@ INFO: Disabled 1 custom rules
 ## Integration with CI/CD
 
 This hook works seamlessly with:
+
 - **pre-commit.ci**: Automatically updates configuration in pull requests
 - **GitHub Actions**: Runs as part of your pre-commit workflow
 - **GitLab CI**: Compatible with GitLab's pre-commit integration

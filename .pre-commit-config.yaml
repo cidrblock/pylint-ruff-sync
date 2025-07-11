@@ -43,10 +43,6 @@ repos:
     rev: v1.5.5
     hooks:
       - id: remove-tabs
-        exclude: >
-          (?x)^(
-            .config/pydoclint-baseline.txt
-          )$
 
   - repo: https://github.com/rbubley/mirrors-prettier
     rev: v3.6.2
@@ -79,6 +75,7 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies:
+          - beautifulsoup4
           - pytest
         args: []
   - repo: https://github.com/jsh9/pydoclint
@@ -89,9 +86,20 @@ repos:
         entry: sh -ec "pydoclint . && pydoclint --generate-baseline=1 ."
         pass_filenames: false
 
+  - repo: local
+    hooks:
+      - id: pylint-ruff-sync
+        name: Sync pylint config with ruff implementation status
+        entry: uv run pylint-ruff-sync
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
+
   - repo: https://github.com/pycqa/pylint.git
     rev: v3.3.7
     hooks:
       - id: pylint
         args:
           - --output-format=colorized
+        additional_dependencies:
+          - beautifulsoup4

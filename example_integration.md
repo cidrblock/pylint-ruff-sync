@@ -11,16 +11,18 @@ Add the following hook to the ansible-creator's `.pre-commit-config.yaml`:
 ```yaml
 repos:
   # ... existing repos ...
-  
+
   - repo: https://github.com/your-org/pylint-ruff-sync
-    rev: v0.1.0  # Use the latest version
+    rev: v0.1.0 # Use the latest version
     hooks:
       - id: pylint-ruff-sync
         # Optional: Add custom rules specific to ansible-creator
         args: [
-          "--custom-enable", "C0103",  # Allow specific naming patterns
-          "--custom-disable", "R0903"  # Disable too-few-public-methods for DTOs
-        ]
+            "--custom-enable",
+            "C0103", # Allow specific naming patterns
+            "--custom-disable",
+            "R0903", # Disable too-few-public-methods for DTOs
+          ]
 ```
 
 That's it! No need to copy scripts or manage dependencies manually. The custom rules will be preserved and noted in the generated configuration.
@@ -79,6 +81,7 @@ disable = [
 ## Maintenance
 
 The hook will automatically:
+
 - Run whenever `pyproject.toml` is modified
 - Check the GitHub issue for the latest ruff implementation status
 - Update the pylint configuration to enable only non-implemented rules
@@ -115,8 +118,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - uses: pre-commit/action@v3.0.0
 ```
 
-The `update-pylint-config` hook will run automatically and update the configuration if needed. 
+The `update-pylint-config` hook will run automatically and update the configuration if needed.

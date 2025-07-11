@@ -33,7 +33,7 @@ RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
 MIN_CODE_ELEMENTS = 2
 
 
-class PylintRule:
+class PylintRule:  # pylint: disable=too-few-public-methods
     """Represents a pylint rule with its metadata."""
 
     def __init__(self, code: str, name: str, description: str) -> None:
@@ -50,11 +50,16 @@ class PylintRule:
         self.description = description
 
     def __repr__(self) -> str:
-        """Return a string representation of the PylintRule."""
+        """Return a string representation of the PylintRule.
+
+        Returns:
+            A string representation of the PylintRule instance.
+
+        """
         return f"PylintRule(code='{self.code}', name='{self.name}')"
 
 
-class RuffPylintExtractor:
+class RuffPylintExtractor:  # pylint: disable=too-few-public-methods
     """Extracts pylint rules implemented in ruff from GitHub issue."""
 
     def __init__(self, issue_url: str = RUFF_PYLINT_ISSUE_URL) -> None:
@@ -77,7 +82,7 @@ class RuffPylintExtractor:
             Exception: If parsing fails.
 
         """
-        try:
+        try:  # pylint: disable=too-many-nested-blocks
             logger.info(
                 "Fetching ruff pylint implementation status from %s", self.issue_url
             )
@@ -135,8 +140,7 @@ class RuffPylintExtractor:
         except Exception:
             logger.exception("Failed to parse GitHub issue")
             raise
-        else:
-            return implemented_rules
+        return implemented_rules
 
 
 class PylintExtractor:
@@ -149,6 +153,7 @@ class PylintExtractor:
             List of PylintRule objects.
 
         Raises:
+            FileNotFoundError: If pylint executable is not found in PATH.
             subprocess.CalledProcessError: If pylint command fails.
             Exception: If parsing fails.
 
@@ -193,8 +198,7 @@ class PylintExtractor:
         except Exception:
             logger.exception("Failed to parse pylint output")
             raise
-        else:
-            return rules
+        return rules
 
     def resolve_rule_identifiers(
         self,
@@ -241,7 +245,16 @@ class PyprojectUpdater:
         self.config_file = config_file
 
     def read_config(self) -> dict[str, Any]:
-        """Read current configuration from pyproject.toml."""
+        """Read current configuration from pyproject.toml.
+
+        Returns:
+            The current configuration dictionary from pyproject.toml, or empty dict
+            if file not found.
+
+        Raises:
+            Exception: If parsing the configuration file fails.
+
+        """
         try:
             with self.config_file.open("rb") as f:
                 config: dict[str, Any] = tomllib.load(f)
@@ -316,7 +329,15 @@ class PyprojectUpdater:
         return config
 
     def write_config(self, config: dict[str, Any]) -> None:
-        """Write updated configuration to pyproject.toml."""
+        """Write updated configuration to pyproject.toml.
+
+        Args:
+            config: The configuration dictionary to write to the file.
+
+        Raises:
+            Exception: If writing the configuration file fails.
+
+        """
         try:
             with self.config_file.open("wb") as f:
                 tomli_w.dump(config, f)
@@ -327,7 +348,12 @@ class PyprojectUpdater:
 
 
 def _setup_argument_parser() -> argparse.ArgumentParser:
-    """Set up and return the argument parser."""
+    """Set up and return the argument parser.
+
+    Returns:
+        The configured ArgumentParser instance.
+
+    """
     parser = argparse.ArgumentParser(
         description="Update pylint configuration to enable only rules not in ruff",
     )
@@ -349,7 +375,16 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
 def _extract_rules_and_calculate_changes(
     config: dict[str, Any],
 ) -> tuple[set[str], set[str], set[str]]:
-    """Extract rules and calculate what changes are needed."""
+    """Extract rules and calculate what changes are needed.
+
+    Args:
+        config: The current configuration dictionary to check for existing disabled
+            rules.
+
+    Returns:
+        A tuple of (rules_to_enable, implemented_in_ruff, existing_disabled).
+
+    """
     # Extract all pylint rules
     pylint_extractor = PylintExtractor()
     all_pylint_rules = pylint_extractor.extract_all_rules()
@@ -381,7 +416,16 @@ def _log_rule_summary(
     *,
     verbose: bool,
 ) -> None:
-    """Log summary of rules being processed."""
+    """Log summary of rules being processed.
+
+    Args:
+        all_pylint_codes: Set of all available pylint rule codes.
+        implemented_in_ruff: Set of pylint rules that are implemented in ruff.
+        rules_to_enable: Set of rules to enable (not implemented in ruff).
+        existing_disabled: Set of rules that are already disabled in config.
+        verbose: Whether to include detailed rule listings in the log output.
+
+    """
     logger.info("Total pylint rules: %d", len(all_pylint_codes))
     logger.info("Rules implemented in ruff: %d", len(implemented_in_ruff))
     logger.info("Rules to enable (not implemented in ruff): %d", len(rules_to_enable))
@@ -407,7 +451,13 @@ def _log_rule_summary(
 
 
 def _handle_dry_run(rules_to_enable: set[str], existing_disabled: set[str]) -> None:
-    """Handle dry run mode logging."""
+    """Handle dry run mode logging.
+
+    Args:
+        rules_to_enable: Set of rules that would be enabled (not implemented in ruff).
+        existing_disabled: Set of rules that are already disabled in the configuration.
+
+    """
     logger.info("Dry run mode - no changes will be made")
     final_rules = rules_to_enable - existing_disabled
     logger.info("Would enable %d rules (not implemented in ruff)", len(final_rules))
@@ -417,7 +467,12 @@ def _handle_dry_run(rules_to_enable: set[str], existing_disabled: set[str]) -> N
 
 
 def main() -> int:
-    """Run the precommit hook to update pylint configuration."""
+    """Run the precommit hook to update pylint configuration.
+
+    Returns:
+        Exit code: 0 for success, 1 for failure.
+
+    """
     parser = _setup_argument_parser()
     args = parser.parse_args()
 
@@ -472,7 +527,7 @@ def main() -> int:
         logger.info("No changes needed - configuration is already up to date")
         return 0  # noqa: TRY300
 
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         logger.exception("Failed to update pylint configuration")
         return 1
 

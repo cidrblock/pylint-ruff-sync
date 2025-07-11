@@ -17,28 +17,33 @@ The ansible-creator project (and many others) use both ruff and pylint for code 
 ## 📊 Key Benefits
 
 ### ✅ **Enable-Only Approach**
+
 - Creates shorter, more maintainable rule lists
 - Lists get **smaller over time** as ruff implements more rules
 - More future-proof than disable-only approach
 
 ### ✅ **Distributed Package**
+
 - No script copying required
 - Automatic dependency management
 - Single source of truth
 - Easy updates via version tags
 
 ### ✅ **Always Current**
+
 - References live GitHub issue for accuracy
 - Automatically adapts as ruff evolves
 - No manual maintenance required
 
 ### ✅ **Production Ready**
+
 - Comprehensive error handling and logging
 - Type hints throughout
 - Extensive documentation
 - CI/CD integration ready
 
 ### ✅ **Customizable**
+
 - Support for custom enable/disable rules
 - Rules can be specified by code (C0103) or name (invalid-name)
 - Custom rules are preserved and documented in configuration
@@ -97,12 +102,14 @@ disable = []  # Empty - using enable-only approach
 ## 📈 Impact
 
 ### For ansible-creator Project
+
 - **Reduced CI/CD time**: No duplicate rule execution
 - **Cleaner configuration**: Shorter, more maintainable lists
 - **Future-proof**: Automatically adapts to ruff updates
 - **Zero maintenance**: Hook handles everything automatically
 
 ### For the Ecosystem
+
 - **Reusable**: Any project can use the hook
 - **Standardized**: Follows precommit best practices
 - **Community benefit**: Solves a common problem
@@ -110,29 +117,32 @@ disable = []  # Empty - using enable-only approach
 ## 🌟 Innovation
 
 ### Technical Excellence
+
 - **Smart algorithm**: Enable-only approach vs. traditional disable-only
 - **Live data source**: References GitHub issue for accuracy
 - **Comprehensive tooling**: Full development workflow included
 
 ### Following Best Practices
+
 - **Medium article approach**: Based on proven precommit hook patterns
 - **cidrblock/gist reference**: Uses established GitHub issue parsing
 - **Professional packaging**: Proper Python package structure
 
 ## 📊 Comparison
 
-| Approach | Traditional | pylint-ruff-sync |
-|----------|-------------|------------------|
+| Approach          | Traditional          | pylint-ruff-sync       |
+| ----------------- | -------------------- | ---------------------- |
 | **Configuration** | Manual disable lists | Automatic enable lists |
-| **Maintenance** | Manual updates | Zero maintenance |
-| **List size** | Growing over time | Shrinking over time |
-| **Accuracy** | Manual checking | Live GitHub issue |
-| **Distribution** | Script copying | Package management |
-| **Updates** | Manual process | Version tags |
+| **Maintenance**   | Manual updates       | Zero maintenance       |
+| **List size**     | Growing over time    | Shrinking over time    |
+| **Accuracy**      | Manual checking      | Live GitHub issue      |
+| **Distribution**  | Script copying       | Package management     |
+| **Updates**       | Manual process       | Version tags           |
 
 ## 🚀 Getting Started
 
 ### 1. Quick Start (User)
+
 ```bash
 # Add to .pre-commit-config.yaml
 repos:
@@ -143,6 +153,7 @@ repos:
 ```
 
 ### 2. Publishing (Maintainer)
+
 ```bash
 # Create repository and publish
 gh repo create your-org/pylint-ruff-sync --public
@@ -152,6 +163,7 @@ gh release create v0.1.0
 ```
 
 ### 3. Integration (ansible-creator)
+
 ```yaml
 # Simply add to existing .pre-commit-config.yaml
 repos:
@@ -183,4 +195,4 @@ repos:
 4. **Zero maintenance**: Truly "set and forget" solution
 5. **Future-proof**: Gets better as ruff implements more rules
 
-This solution transforms a manual, error-prone process into a fully automated, future-proof system that benefits the entire Python ecosystem. 
+This solution transforms a manual, error-prone process into a fully automated, future-proof system that benefits the entire Python ecosystem.

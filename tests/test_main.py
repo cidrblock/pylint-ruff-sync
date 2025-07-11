@@ -6,9 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
-if TYPE_CHECKING:
-    import pytest  # type: ignore[import-not-found]
-
 from pylint_ruff_sync.main import (
     PylintExtractor,
     PylintRule,
@@ -16,6 +13,9 @@ from pylint_ruff_sync.main import (
     RuffPylintExtractor,
     _setup_argument_parser,
 )
+
+if TYPE_CHECKING:
+    import pytest
 
 # Constants
 EXPECTED_RULES_COUNT = 2
@@ -36,7 +36,12 @@ def test_pylint_rule_repr() -> None:
 
 
 def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test extracting implemented rules from GitHub issue."""
+    """Test extracting implemented rules from GitHub issue.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+
+    """
     # Mock HTML response
     mock_response = Mock()
     mock_response.content = b"""
@@ -93,7 +98,12 @@ def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test extracting all pylint rules."""
+    """Test extracting all pylint rules.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+
+    """
     # Mock subprocess output
     mock_result = Mock()
     mock_result.stdout = """

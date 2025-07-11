@@ -5,6 +5,7 @@ This guide explains how to publish the `pylint-ruff-sync` package so it can be u
 ## Overview
 
 The package is structured as a proper Python package with:
+
 - A main module (`pylint_ruff_sync/main.py`)
 - A console script entry point (`pylint-ruff-sync`)
 - Pre-commit hook configuration (`.pre-commit-hooks.yaml`)
@@ -42,6 +43,7 @@ git push origin main
 Update the repository URLs in:
 
 1. **`.pre-commit-config.yaml`**:
+
    ```yaml
    repos:
      - repo: https://github.com/your-org/pylint-ruff-sync
@@ -126,7 +128,7 @@ Once published, projects can use the hook by adding to their `.pre-commit-config
 ```yaml
 repos:
   - repo: https://github.com/your-org/pylint-ruff-sync
-    rev: v0.1.0  # Use the latest version
+    rev: v0.1.0 # Use the latest version
     hooks:
       - id: pylint-ruff-sync
 ```
@@ -179,13 +181,14 @@ repos:
 After publishing, projects can integrate the hook in seconds:
 
 **ansible-creator project**:
+
 ```yaml
 repos:
   - repo: https://github.com/your-org/pylint-ruff-sync
     rev: v0.1.0
     hooks:
       - id: pylint-ruff-sync
-  
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.6
     hooks:
@@ -194,6 +197,7 @@ repos:
 ```
 
 **Any Python project**:
+
 ```yaml
 repos:
   - repo: https://github.com/your-org/pylint-ruff-sync
@@ -227,9 +231,10 @@ repos:
 ## Success Metrics
 
 Track adoption through:
+
 - GitHub repository stars/forks
 - PyPI download statistics (if using PyPI)
 - GitHub issue reports and feature requests
 - Community contributions
 
-This publishing approach makes the hook reusable across many projects while maintaining a single source of truth for the logic and dependencies. 
+This publishing approach makes the hook reusable across many projects while maintaining a single source of truth for the logic and dependencies.
