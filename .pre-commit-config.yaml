@@ -71,7 +71,7 @@ repos:
         additional_dependencies:
           - beautifulsoup4
           - pytest
-          - tomli-w
+          - tomlkit
           - types-requests
         args: []
   - repo: https://github.com/jsh9/pydoclint
@@ -105,5 +105,5 @@ repos:
           - --output-format=colorized
         additional_dependencies:
           - beautifulsoup4
-          - tomli-w
+          - tomlkit
           - requests

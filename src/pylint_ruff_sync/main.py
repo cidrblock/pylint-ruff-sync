@@ -14,10 +14,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    import tomlkit
+from typing import Any
 
 try:
     import requests
