@@ -34,32 +34,12 @@ repos:
       - id: pylint-ruff-sync
 ```
 
-#### Custom Rules (Optional)
-
-You can also pass custom enable/disable rules by code or name:
-
-```yaml
-repos:
-  - repo: https://github.com/your-org/pylint-ruff-sync
-    rev: v0.1.0
-    hooks:
-      - id: pylint-ruff-sync
-        args: [
-            "--custom-enable",
-            "C0103",
-            "invalid-name", # Enable specific rules
-            "--custom-disable",
-            "R0903",
-            "too-few-public-methods", # Disable specific rules
-          ]
-```
-
 That's it! The hook will automatically:
 
 - Install its own dependencies
 - Run when `pyproject.toml` is modified
 - Update your pylint configuration
-- Apply your custom enable/disable rules
+- Preserve existing disabled rules
 
 ## Usage
 
@@ -91,9 +71,6 @@ pylint-ruff-sync --verbose
 
 # Custom config file
 pylint-ruff-sync --config-file path/to/pyproject.toml
-
-# With custom enable/disable rules (by code or name)
-pylint-ruff-sync --custom-enable C0103 invalid-name --custom-disable R0903 too-few-public-methods
 ```
 
 ## Configuration
@@ -104,19 +81,16 @@ The hook will automatically create and manage the following section in your `pyp
 [tool.pylint.messages_control]
 # This section will be automatically updated by the precommit hook
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
-# Custom rules added via --custom-enable and --custom-disable are preserved
 enable = [
     # Rules NOT implemented in ruff - automatically generated
     "C0112",  # empty-docstring
     "C0113",  # unneeded-not
-    # Custom enabled rules (if any)
-    "C0103",  # invalid-name (custom)
     # ... more rules
 ]
 disable = [
-    # Custom disabled rules (if any)
-    "R0903",  # too-few-public-methods (custom)
-    # ... more custom disabled rules
+    # Any existing disabled rules are preserved
+    "locally-disabled",
+    "suppressed-message"
 ]
 ```
 
@@ -139,9 +113,9 @@ It fetches the current status from the [ruff pylint tracking issue](https://gith
 
 The script then:
 
-- Calculates which rules should be disabled (implemented in ruff)
+- Calculates which rules should be enabled (not implemented in ruff)
 - Updates the `pyproject.toml` file with the new configuration
-- Preserves existing configuration while updating the disable list
+- Preserves existing disabled rules while updating the enable list
 
 ## Benefits
 
@@ -163,15 +137,10 @@ INFO: Found 127 implemented pylint rules in ruff
 INFO: Total pylint rules: 409
 INFO: Rules implemented in ruff: 127
 INFO: Rules to enable (not implemented in ruff): 282
-INFO: Custom enable rules: 2
-INFO: Custom disable rules: 1
-INFO: Updated enable list with 282 auto-generated rules
-INFO: Added 2 custom enable rules
-INFO: Updated disable list with 1 custom disable rules
+INFO: Updated enable list with 282 rules
 INFO: Updated configuration written to pyproject.toml
 INFO: Pylint configuration updated successfully
-INFO: Enabled 284 total rules
-INFO: Disabled 1 custom rules
+INFO: Enabled 282 total rules
 ```
 
 ## Integration with CI/CD
