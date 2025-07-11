@@ -1,0 +1,41 @@
+{
+    "cSpell.words": [
+        "Cronicle",
+        "docstrings",
+        "levelname",
+        "pydocstyle",
+        "pylint"
+    ],
+    "cSpell.ignorePaths": [
+        ".gitignore",
+        "pyproject.toml"
+    ],
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": false,
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll.ruff": "explicit"
+        },
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    },
+    "ruff.enable": true,
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true,
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.languageServer": "None",
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.autoImportCompletions": false,
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.autoSearchPaths": false,
+    "python.analysis.extraPaths": [],
+    "python.analysis.stubPath": "",
+    "pylance.enable": false,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true
+}

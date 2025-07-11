@@ -1,0 +1,17 @@
+---
+description: Python coding standards
+globs:
+alwaysApply: true
+---
+
+- Always Use type hints for all function parameters and return types
+- Always avoid the use of "Any" as a type hint
+- Always Ask before using "Any" as a type hint with a clear explanation of why it is necessary
+- Always run ruff and fix any errors reported
+- Always run mypy and fix any errors reports
+- Always run the tests and fix any test failures
+- Never use unittest, use pytest instead with monkeypatch
+- Minimize the project dependendices
+- Never disable ruff rules in the pyproject.toml file
+- Always fix errors rather than disable them, ask if a disable is necessary and explain why
+- Avoid the use of classes in the tests, with the exception of a dataclass for data if needed.

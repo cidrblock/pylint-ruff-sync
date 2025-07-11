@@ -1,0 +1,102 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pylint-ruff-sync"
+version = "0.1.0"
+description = "Precommit hook to sync pylint configuration with ruff implementation status"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.28.0",
+    "beautifulsoup4>=4.11.0",
+    "tomli-w>=1.0.0",
+    "pylint>=2.15.0",
+    "ruff>=0.12.3",
+    "pre-commit>=3.5.0",
+]
+
+[project.scripts]
+pylint-ruff-sync = "pylint_ruff_sync.main:main"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=2.20.0",
+    "ruff>=0.1.6",
+    "mypy>=1.7.1",
+    "types-requests>=2.28.0",
+    "types-beautifulsoup4>=4.11.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+fix = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D203",   # One blank line required before class docstring
+    "D211",   # No blank lines allowed before class docstring
+    "D213",   # Multi-line docstring summary should start at the second line
+    "COM812", # Trailing comma missing
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files can use assert statements, access private members, and have hardcoded test data
+"tests/**" = [
+    "S101",   # Use of assert (standard in pytest)
+    "SLF001", # Private member access (needed for testing internal methods)
+    "EXE001", # Shebang without executable (common for test files)
+]
+
+
+[tool.mypy]
+python_version = "3.8"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pylint.messages_control]
+# This section will be automatically updated by the precommit hook
+# based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
+enable = [
+    # Rules NOT implemented in ruff - this creates a shorter, more maintainable list
+    # This list is automatically generated - do not edit manually
+]
+disable = [] # Empty since we use enable-only approach
+
+[tool.pylint.reports]
+output-format = "colorized"
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "id"]
+
+[tool.pylint.design]
+max-args = 7
+max-attributes = 7
+max-bool-expr = 5
+max-branches = 12
+max-locals = 15
+max-parents = 7
+max-public-methods = 20
+max-returns = 6
+max-statements = 50
+min-public-methods = 2
+
+[dependency-groups]
+dev = ["pytest>=8.3.5", "ruff>=0.12.3"]

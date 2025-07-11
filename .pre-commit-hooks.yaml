@@ -1,0 +1,10 @@
+- id: pylint-ruff-sync
+  name: Sync pylint configuration with ruff implementation status
+  description: Update pylint configuration to disable rules implemented in ruff
+  entry: pylint-ruff-sync
+  language: python
+  types: [toml]
+  files: ^pyproject\.toml$
+  pass_filenames: false
+  stages: [pre-commit, pre-merge-commit, manual]
+  require_serial: true 
