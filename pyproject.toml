@@ -11,7 +11,7 @@ dependencies = [
   "requests>=2.28.0",
   "beautifulsoup4>=4.11.0",
   "pylint>=2.15.0",
-  "toml-sort>=0.24.0",
+  "toml-sort>=0.24.0"
 ]
 description = "Precommit hook to sync pylint configuration with ruff implementation status"
 name = "pylint-ruff-sync"
@@ -27,7 +27,7 @@ test = [
   "types-requests>=2.28.0",
   "types-beautifulsoup4>=4.11.0",
   "pytest>=7.0.0",
-  "pytest-cov>=4.0.0",
+  "pytest-cov>=4.0.0"
 ]
 
 [project.scripts]
@@ -253,7 +253,7 @@ enable = [
   "W4903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-argument.html
   "W4904", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-class.html
   "W4905", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-decorator.html
-  "W4906", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
+  "W4906" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
 ]
 
 [tool.pylint.reports]
