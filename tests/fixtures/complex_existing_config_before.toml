@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "test-project"
+version = "0.1.0"
+description = "Test project"
+
+[tool.pylint.main]
+jobs = 0
+persistent = true
+suggestion-mode = true
+
+[tool.pylint.messages_control]
+# This section will be automatically updated by the precommit hook
+enable = ["C0103", "C0111", "R0903"]
+disable = [
+    "locally-disabled",
+    "suppressed-message",
+    "too-many-arguments",
+    "too-few-public-methods",
+    "invalid-name",
+]
+
+[tool.pylint.reports]
+output-format = "text"
+reports = false
+
+[tool.pylint.refactoring]
+max-nested-blocks = 5
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "W503"]

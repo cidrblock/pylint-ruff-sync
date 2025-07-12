@@ -55,12 +55,12 @@ After the first run, your `pyproject.toml` should have an updated pylint configu
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
 # Custom rules added via --custom-enable and --custom-disable are preserved
 enable = [
-    # Rules NOT implemented in ruff - automatically generated
-    "C0103",  # invalid-name (custom enabled)
-    "C0112",  # empty-docstring
-    "C0113",  # unneeded-not
-    "R0124",  # comparison-with-callable
-    "W0108",  # unnecessary-lambda
+    # Rules NOT implemented in ruff - automatically generated with documentation URLs
+    "C0103",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
+    "C0112",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/empty-docstring.html
+    "C0113",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unneeded-not.html
+    "R0124",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/comparison-with-callable.html
+    "W0108",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unnecessary-lambda.html
     # ... more rules (only those not implemented in ruff)
 ]
 disable = [

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "test-project"
+version = "0.1.0"
+description = "Test project"
+
+[tool.pylint.messages_control]
+enable = ["C0103", "C0111"]
+disable = ["locally-disabled", "suppressed-message"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"

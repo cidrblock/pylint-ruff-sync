@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "test-project"
+version = "0.1.0"
+description = "Test project"
+
+[tool.pylint.main]
+jobs = 0
+persistent = true
+suggestion-mode = true
+
+[tool.pylint.reports]
+output-format = "text"
+reports = false
+
+[tool.pylint.refactoring]
+max-nested-blocks = 5
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.pylint]
+
+[tool.pylint.messages_control]
+# This section will be automatically updated by the precommit hook
+# based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
+enable = [
+  "C0103",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
+  "C0111",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
+  "R0903",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+]

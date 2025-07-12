@@ -76,12 +76,7 @@ def _extract_rules_and_calculate_changes(
     rules_to_enable = all_pylint_codes - implemented_in_ruff
 
     # Get existing disabled rules from config
-    existing_disabled_raw = (
-        config.get("tool", {})
-        .get("pylint", {})
-        .get("messages_control", {})
-        .get("disable", [])
-    )
+    existing_disabled_raw = PyprojectUpdater.extract_disabled_rules_from_config(config)
 
     # Resolve disabled rule identifiers (names and codes) to codes
     existing_disabled = pylint_extractor.resolve_rule_identifiers(

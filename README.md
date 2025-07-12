@@ -18,6 +18,7 @@ As the ruff project continues to implement more pylint rules, projects using bot
 - 📊 **Comprehensive**: Handles all pylint rules automatically
 - 🔧 **Configurable**: Supports dry-run mode and custom configuration paths
 - 📝 **Well-Documented**: Includes detailed logging and type hints
+- 🔗 **Documentation URLs**: Adds clickable links to pylint rule documentation
 - ✅ **CI-Ready**: Works with pre-commit.ci
 
 ## Installation
@@ -82,13 +83,13 @@ The hook will automatically create and manage the following section in your `pyp
 # This section will be automatically updated by the precommit hook
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
 enable = [
-    # Rules NOT implemented in ruff - automatically generated with descriptions
-    "C0112",  # empty-docstring: Used when a module has no docstring
-    "C0113",  # unneeded-not: Used when a boolean expression contains an unneeded negation
-    "C0114",  # missing-module-docstring: Used when a module has no docstring
-    "C0115",  # missing-class-docstring: Used when a class has no docstring
-    "C0116",  # missing-function-docstring: Used when a function or method has no docstring
-    # ... more rules with descriptions
+    # Rules NOT implemented in ruff - automatically generated with documentation URLs
+    "C0112",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/empty-docstring.html
+    "C0113",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unneeded-not.html
+    "C0114",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-module-docstring.html
+    "C0115",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-class-docstring.html
+    "C0116",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-function-docstring.html
+    # ... more rules with documentation URLs
 ]
 disable = [
     # Any existing disabled rules are preserved
@@ -119,6 +120,22 @@ The script then:
 - Calculates which rules should be enabled (not implemented in ruff)
 - Updates the `pyproject.toml` file with the new configuration
 - Preserves existing disabled rules while updating the enable list
+- Adds inline comments with URLs to the official pylint documentation for each rule
+
+### 4. Documentation URLs
+
+For each enabled rule, the tool automatically generates a URL comment pointing to the official pylint documentation. The URLs follow the format:
+
+```
+https://pylint.readthedocs.io/en/stable/user_guide/messages/{category}/{rule-name}.html
+```
+
+Where:
+
+- `category` is determined by the rule code prefix (C=convention, E=error, W=warning, R=refactor, F=fatal, I=info)
+- `rule-name` is the actual pylint rule name (e.g., "missing-function-docstring")
+
+This makes it easy to quickly understand what each rule does and access detailed documentation.
 
 ## Benefits
 
@@ -129,6 +146,7 @@ The script then:
 - **Improve Performance**: Faster linting by avoiding duplicate work
 - **Maintain Quality**: Ensures you still get comprehensive code analysis
 - **Future-Proof**: List gets shorter over time as ruff implements more rules
+- **Easy Reference**: Direct links to pylint documentation for each rule
 
 ## Example Output
 
@@ -160,7 +178,6 @@ This hook works seamlessly with:
 - pylint 2.15.0+
 - requests 2.28.0+
 - beautifulsoup4 4.11.0+
-- tomlkit 0.12.0+
 
 ## Contributing
 
