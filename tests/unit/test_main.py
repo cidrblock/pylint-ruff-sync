@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from pylint_ruff_sync.main import _setup_argument_parser
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
@@ -15,6 +17,9 @@ from tests.constants import (
     EXPECTED_RULES_COUNT,
     setup_mocks,
 )
+
+# Constants for test expectations
+EXPECTED_DISABLE_LIST_LENGTH = 3
 
 if TYPE_CHECKING:
     import pytest
@@ -212,4 +217,4 @@ def test_update_pylint_config_with_existing_disabled_rules() -> None:
     assert "all" in disable_list
     assert "locally-disabled" in disable_list
     assert "suppressed-message" in disable_list
-    assert len(disable_list) == 3
+    assert len(disable_list) == EXPECTED_DISABLE_LIST_LENGTH

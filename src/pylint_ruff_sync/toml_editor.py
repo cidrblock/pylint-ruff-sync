@@ -203,7 +203,7 @@ class TomlEditor:
 
         return config
 
-    def ensure_item_in_array(
+    def ensure_item_in_array(  # pylint: disable=too-many-arguments
         self,
         section_path: list[str],
         key: str,
@@ -370,7 +370,7 @@ class TomlEditor:
 
         self._update_section_key_with_regex(section_pattern, key, new_content)
 
-    def _update_section_key_with_regex(
+    def _update_section_key_with_regex(  # pylint: disable=too-many-locals
         self,
         section_pattern: str,
         key: str,
