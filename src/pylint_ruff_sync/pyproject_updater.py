@@ -118,6 +118,17 @@ class PyprojectUpdater:
         enable_list = sorted(final_enable_rules)
         config["tool"]["pylint"]["messages_control"]["enable"] = enable_list
 
+        # Ensure "all" is in the disable list to prevent duplicate rule execution
+        existing_disable = (
+            config.get("tool", {})
+            .get("pylint", {})
+            .get("messages_control", {})
+            .get("disable", [])
+        )
+        if "all" not in existing_disable:
+            existing_disable.append("all")
+            config["tool"]["pylint"]["messages_control"]["disable"] = existing_disable
+
         if final_enable_rules:
             logger.info(
                 "Updated enable list with %d rules (not implemented in ruff)",
@@ -134,6 +145,9 @@ class PyprojectUpdater:
             logger.info(
                 "Cleared enable list (all rules are implemented in ruff or disabled)"
             )
+
+        # Log the "all" disable functionality
+        logger.info("Added 'all' to disable list to prevent duplicate rule execution")
 
         # Create rule lookup dictionaries for enable array with comments
         rule_descriptions = {rule.code: rule.description for rule in all_rules}
@@ -158,6 +172,14 @@ class PyprojectUpdater:
 
         """
         try:
+            # Ensure "all" is in the disable list before writing
+            self.toml_editor.ensure_item_in_array(
+                section_path=["tool", "pylint", "messages_control"],
+                key="disable",
+                item="all",
+                preserve_format=True,
+            )
+
             # Use surgical regex updates for pylint section
             self._update_pylint_section_with_toml_editor(config)
             logger.info("Updated configuration written to %s", self.config_file)
@@ -207,13 +229,3 @@ class PyprojectUpdater:
             array_data=enable_array,
             preserve_format=True,
         )
-
-        # Handle disable array (simple list, no comments needed)
-        existing_disable = pylint_config.get("disable", [])
-        if existing_disable:
-            self.toml_editor.update_section_array(
-                section_path=["tool", "pylint", "messages_control"],
-                key="disable",
-                array_data=existing_disable,
-                preserve_format=True,
-            )

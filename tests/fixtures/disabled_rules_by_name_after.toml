@@ -10,14 +10,13 @@ version = "0.1.0"
 [tool.pylint.messages_control]
 disable = [
   "all",
-  "locally-disabled",
-  "suppressed-message",
   "invalid-name",
+  "locally-disabled",
   "missing-docstring",
-  "too-few-public-methods"
+  "suppressed-message",
+  "too-few-public-methods",
 ]
-enable = [
-]
+enable = []
 
 [tool.ruff]
 line-length = 88

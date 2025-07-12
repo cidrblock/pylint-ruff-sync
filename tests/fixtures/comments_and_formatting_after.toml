@@ -22,7 +22,7 @@ jobs = 0
 
 # Pylint configuration - preserve this comment
 [tool.pylint.messages_control]
-disable = ["locally-disabled", "suppressed-message"]
+disable = ["all", "locally-disabled", "suppressed-message"]
 # Current configuration - this comment should be preserved
 enable = [
     "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html

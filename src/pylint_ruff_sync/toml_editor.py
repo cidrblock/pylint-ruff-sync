@@ -203,6 +203,49 @@ class TomlEditor:
 
         return config
 
+    def ensure_item_in_array(
+        self,
+        section_path: list[str],
+        key: str,
+        item: str,
+        *,
+        preserve_format: bool = False,
+    ) -> None:
+        """Ensure an item exists in an array, adding it if not present.
+
+        Args:
+            section_path: List of keys representing the path to the section.
+            key: The key name for the array.
+            item: The item to ensure exists in the array.
+            preserve_format: Whether to use surgical replacement to preserve formatting.
+
+        """
+        config = self.read_config()
+
+        # Navigate to the section
+        current = config
+        for section_key in section_path:
+            if section_key not in current:
+                current[section_key] = {}
+            current = current[section_key]
+
+        # Get existing array or create empty one
+        existing_array = current.get(key, [])
+        if not isinstance(existing_array, list):
+            existing_array = []
+
+        # Add item if not present
+        if item not in existing_array:
+            existing_array.append(item)
+
+            # Update the array
+            self.update_section_array(
+                section_path=section_path,
+                key=key,
+                array_data=existing_array,
+                preserve_format=preserve_format,
+            )
+
     def update_section_array(
         self,
         section_path: list[str],
@@ -232,6 +275,62 @@ class TomlEditor:
             else:
                 section[key] = array_data
             self.write_config(config)
+
+    def ensure_array_contains_items(
+        self,
+        section_path: list[str],
+        key: str,
+        items_to_add: list[str],
+        *,
+        position: str = "end",
+        preserve_format: bool = False,
+    ) -> None:
+        """Ensure an array contains specific items, adding them if missing.
+
+        Args:
+            section_path: List of keys representing the path to the section.
+            key: The key name for the array within the section.
+            items_to_add: List of items to ensure are in the array.
+            position: Where to add new items - "start", "end", or "sorted".
+            preserve_format: Whether to preserve existing formatting.
+
+        """
+        # Read current config and get existing array
+        config = self.read_config()
+        section = self._get_nested_section(config, section_path)
+        existing_array = section.get(key, [])
+
+        # Convert to set for efficient lookup
+        existing_set = set(existing_array)
+        items_to_add_set = set(items_to_add)
+
+        # Find items that need to be added
+        new_items = items_to_add_set - existing_set
+
+        if not new_items:
+            # Nothing to add
+            return
+
+        # Create new array based on position preference
+        if position == "start":
+            # Add new items at the start, preserving order of items_to_add
+            new_items_ordered = [item for item in items_to_add if item in new_items]
+            updated_array = new_items_ordered + existing_array
+        elif position == "sorted":
+            # Add new items and sort the entire array
+            updated_array = sorted(existing_array + list(new_items))
+        else:  # position == "end" (default)
+            # Add new items at the end, preserving order of items_to_add
+            new_items_ordered = [item for item in items_to_add if item in new_items]
+            updated_array = existing_array + new_items_ordered
+
+        # Update the array using existing functionality
+        self.update_section_array(
+            section_path=section_path,
+            key=key,
+            array_data=updated_array,
+            preserve_format=preserve_format,
+        )
 
     def _update_array_with_surgical_replacement(
         self,

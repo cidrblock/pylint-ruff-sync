@@ -28,6 +28,7 @@ target-version = "py38"
 [tool.pylint]
 
 [tool.pylint.messages_control]
+disable = ["all"]
 enable = [
   "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
