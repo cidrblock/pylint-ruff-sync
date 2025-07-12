@@ -16,19 +16,19 @@ suggestion-mode = true
 # This section will be automatically updated by the precommit hook
 enable = ["C0103", "C0111", "R0903"]
 disable = [
-    "locally-disabled",
-    "suppressed-message",
-    "too-many-arguments",
-    "too-few-public-methods",
-    "invalid-name",
+  "locally-disabled",
+  "suppressed-message",
+  "too-many-arguments",
+  "too-few-public-methods",
+  "invalid-name"
 ]
+
+[tool.pylint.refactoring]
+max-nested-blocks = 5
 
 [tool.pylint.reports]
 output-format = "text"
 reports = false
-
-[tool.pylint.refactoring]
-max-nested-blocks = 5
 
 [tool.ruff]
 line-length = 88

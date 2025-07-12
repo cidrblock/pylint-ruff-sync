@@ -4,98 +4,20 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import Mock
-
-if TYPE_CHECKING:
-    import pytest
 
 from pylint_ruff_sync.main import _setup_argument_parser
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
+from tests.constants import (
+    EXPECTED_IMPLEMENTED_RULES_COUNT,
+    EXPECTED_RULES_COUNT,
+    setup_mocks,
+)
 
-# We're mocking with exactly 6 rules, 3 implemented in ruff, 3 not implemented
-EXPECTED_RULES_COUNT = 6
-EXPECTED_IMPLEMENTED_RULES_COUNT = 3
-EXPECTED_NOT_IMPLEMENTED_RULES_COUNT = 3
-
-# Sample HTML response with implemented rules (mocked GitHub issue)
-MOCK_GITHUB_RESPONSE = """
-<html>
-<body>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F401</code> <code>F401</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F841</code> <code>F841</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>E501</code> <code>E501</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0103</code> <code>C0103</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0111</code> <code>C0111</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>R0903</code> <code>R0903</code>
-</li>
-</body>
-</html>
-"""
-
-# Mock pylint output with the same 6 rules as in GitHub mock
-MOCK_PYLINT_OUTPUT = """
-:unused-import (F401): *Unused import*
-:unused-variable (F841): *Unused variable*
-:line-too-long (E501): *Line too long*
-:invalid-name (C0103): *Invalid name*
-:missing-docstring (C0111): *Missing docstring*
-:too-few-public-methods (R0903): *Too few public methods*
-"""
-
-
-def _setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set up all mocks needed for tests.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture for mocking.
-
-    """
-
-    # Mock the GitHub API call
-    class MockResponse:
-        def __init__(self, content: str) -> None:
-            self.content = content.encode("utf-8")
-
-        def raise_for_status(self) -> None:
-            pass
-
-    def mock_requests_get(*_args: object, **_kwargs: object) -> MockResponse:
-        return MockResponse(MOCK_GITHUB_RESPONSE)
-
-    monkeypatch.setattr("requests.get", mock_requests_get)
-
-    # Mock the pylint command output
-    mock_result = Mock()
-    mock_result.stdout = MOCK_PYLINT_OUTPUT
-
-    def mock_subprocess_run(*_args: object, **_kwargs: object) -> Mock:
-        return mock_result
-
-    def mock_shutil_which(_cmd: str) -> str:
-        return "/usr/bin/pylint"
-
-    monkeypatch.setattr("subprocess.run", mock_subprocess_run)
-    monkeypatch.setattr("shutil.which", mock_shutil_which)
+if TYPE_CHECKING:
+    import pytest
 
 
 def test_pylint_rule_init() -> None:
@@ -119,7 +41,7 @@ def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
-    _setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch)
 
     extractor = RuffPylintExtractor()
     result = extractor.extract_implemented_rules()
@@ -138,7 +60,7 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
-    _setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch)
 
     extractor = PylintExtractor()
     rules = extractor.extract_all_rules()

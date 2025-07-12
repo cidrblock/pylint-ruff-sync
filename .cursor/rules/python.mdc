@@ -10,7 +10,7 @@ alwaysApply: true
 - Always run ruff and fix any errors reported
 - Always run mypy and fix any errors reports
 - Always run the tests and fix any test failures
-- Never use unittest, use pytest instead with monkeypatch
+- Never use "unittest", use pytest instead with monkeypatch
 - Minimize the project dependendices
 - Never disable ruff rules in the pyproject.toml file
 - Always fix errors rather than disable them, ask if a disable is necessary and explain why

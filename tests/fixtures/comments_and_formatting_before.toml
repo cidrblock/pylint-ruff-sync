@@ -1,4 +1,5 @@
 # This is a test project configuration
+
 [build-system]
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -13,29 +14,33 @@ description = "Test project"
 line-length = 88
 target-version = ["py38"]
 
-# Ruff configuration
-[tool.ruff]
-line-length = 88
-target-version = "py38"
-select = ["E", "F", "I"]
+# Other pylint settings
+[tool.pylint]
+
+[tool.pylint.main]
+jobs = 0
 
 # Pylint configuration - preserve this comment
 [tool.pylint.messages_control]
 # Current configuration - this comment should be preserved
 enable = [
-    "C0103", # Check variable names
-    "C0111", # Check docstrings
+  "C0103", # Check variable names
+  "C0111" # Check docstrings
 ]
 disable = [
-    "locally-disabled",   # Allow local disabling
-    "suppressed-message", # Allow suppressed messages
+  "locally-disabled", # Allow local disabling
+  "suppressed-message" # Allow suppressed messages
 ]
 
-# Other pylint settings
-[tool.pylint.main]
-jobs = 0
-
 # Test configuration
+[tool.pytest]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+# Ruff configuration
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+select = ["E", "F", "I"]

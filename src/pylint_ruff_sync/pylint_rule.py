@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-class PylintRule:  # pylint: disable=too-few-public-methods
+class PylintRule:
     """Represents a pylint rule with its metadata."""
 
     def __init__(self, code: str, name: str, description: str) -> None:

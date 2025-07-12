@@ -20,7 +20,7 @@ RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
 MIN_CODE_ELEMENTS = 2
 
 
-class RuffPylintExtractor:  # pylint: disable=too-few-public-methods
+class RuffPylintExtractor:
     """Extracts pylint rules implemented in ruff from GitHub issue."""
 
     def __init__(self, issue_url: str = RUFF_PYLINT_ISSUE_URL) -> None:

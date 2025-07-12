@@ -10,11 +10,11 @@ description = "Test project"
 [tool.pylint.messages_control]
 enable = ["C0103", "C0111"]
 disable = [
-    "locally-disabled",
-    "suppressed-message",
-    "invalid-name",
-    "missing-docstring",
-    "too-few-public-methods",
+  "locally-disabled",
+  "suppressed-message",
+  "invalid-name",
+  "missing-docstring",
+  "too-few-public-methods"
 ]
 
 [tool.ruff]

@@ -105,3 +105,4 @@ repos:
         additional_dependencies:
           - beautifulsoup4
           - requests
+          - pytest

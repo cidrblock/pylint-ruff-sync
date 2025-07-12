@@ -15,21 +15,22 @@ suggestion-mode = true
 [tool.pylint.messages_control]
 # This section will be automatically updated by the precommit hook
 enable = [
-  "C0111",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
+  "C0111" # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
 ]
 disable = [
-    "locally-disabled",
-    "suppressed-message",
-    "too-many-arguments",
-    "too-few-public-methods",
-    "invalid-name",
+  "locally-disabled",
+  "suppressed-message",
+  "too-many-arguments",
+  "too-few-public-methods",
+  "invalid-name"
 ]
-[tool.pylint.reports]
-output-format = "text"
-reports = false
 
 [tool.pylint.refactoring]
 max-nested-blocks = 5
+
+[tool.pylint.reports]
+output-format = "text"
+reports = false
 
 [tool.ruff]
 line-length = 88

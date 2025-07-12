@@ -13,7 +13,7 @@ description = "Test project"
 # This section will be automatically updated by the precommit hook
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
 enable = [
-  "C0103",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
-  "C0111",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+  "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
+  "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
+  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]

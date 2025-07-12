@@ -4,3 +4,4 @@ docstrings
 levelname
 pydocstyle
 pylint
+testpaths
