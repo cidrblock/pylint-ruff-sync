@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
 
 [project]
+description = "Test project"
 name = "test-project"
 version = "0.1.0"
-description = "Test project"
 
 [tool.pylint.main]
 jobs = 0

@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
 
 [project]
+description = "Test project"
 name = "test-project"
 version = "0.1.0"
-description = "Test project"
 
 [tool.black]
 line-length = 88
@@ -17,7 +17,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [tool.ruff]
-line-length = 88
-target-version = "py38"
-select = ["E", "F", "I"]
 ignore = ["E501"]
+line-length = 88
+select = ["E", "F", "I"]
+target-version = "py38"

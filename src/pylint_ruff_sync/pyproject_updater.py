@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import subprocess
 import tomllib
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -122,8 +123,7 @@ class PyprojectUpdater:
         rule_names = {rule.code: rule.name for rule in all_rules}
 
         # Store the enable list and descriptions for later use by regex replacement
-        enable_list = list(final_enable_rules)
-        enable_list.sort()
+        enable_list = sorted(final_enable_rules)
         config["tool"]["pylint"]["messages_control"]["enable"] = enable_list
         config["tool"]["pylint"]["messages_control"]["_enable_descriptions"] = (
             rule_descriptions
@@ -147,7 +147,23 @@ class PyprojectUpdater:
                 "Cleared enable list (all rules are implemented in ruff or disabled)"
             )
 
-        # Do NOT modify the disable list - leave it completely untouched
+        # Always ensure "all" is first in the disable list
+        # This is required so that only the enabled rules run
+        existing_disable = config["tool"]["pylint"]["messages_control"].get(
+            "disable", []
+        )
+
+        # Ensure "all" is first in the disable list
+        if "all" not in existing_disable:
+            # Add "all" as the first item
+            disable_list = ["all", *existing_disable]
+        else:
+            # Move "all" to the front if it's not already there
+            disable_list = existing_disable.copy()
+            disable_list.remove("all")
+            disable_list.insert(0, "all")
+
+        config["tool"]["pylint"]["messages_control"]["disable"] = disable_list
 
         return config
 
@@ -176,9 +192,80 @@ class PyprojectUpdater:
             with self.config_file.open("w", encoding="utf-8") as f:
                 f.write(updated_content)
             logger.info("Updated configuration written to %s", self.config_file)
+
+            # Run toml-sort to format the file
+            self._run_toml_sort()
         except Exception:
             logger.exception("Failed to write configuration file")
             raise
+
+    def _run_toml_sort(self) -> None:
+        """Run toml-sort on the configuration file.
+
+        Raises:
+            Exception: If toml-sort command fails.
+
+        """
+        commands_to_try = [
+            [
+                "uv",
+                "run",
+                "toml-sort",
+                "--sort-inline-tables",
+                "--sort-table-keys",
+                "--in-place",
+                str(self.config_file),
+            ],
+            [
+                "toml-sort",
+                "--sort-inline-tables",
+                "--sort-table-keys",
+                "--in-place",
+                str(self.config_file),
+            ],
+            [
+                "python",
+                "-m",
+                "toml_sort",
+                "--sort-inline-tables",
+                "--sort-table-keys",
+                "--in-place",
+                str(self.config_file),
+            ],
+        ]
+
+        for cmd in commands_to_try:
+            try:
+                result = subprocess.run(  # noqa: S603
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                if result.returncode == 0:
+                    logger.debug(
+                        "toml-sort completed successfully with command: %s", cmd[0]
+                    )
+                    return
+                logger.warning(
+                    "toml-sort returned non-zero exit code: %d", result.returncode
+                )
+                if result.stderr:
+                    logger.warning("toml-sort stderr: %s", result.stderr)
+                # Try next command
+                continue
+
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                logger.debug("Command %s failed: %s", cmd[0], e)
+                # Try next command
+                continue
+
+        # If we get here, all commands failed
+        logger.warning(
+            "Failed to run toml-sort with any available command, "
+            "continuing without formatting"
+        )
 
     def _update_pylint_section(self, content: str, config: dict[str, Any]) -> str:
         """Update only the enable key in the pylint section using regex.
@@ -202,6 +289,7 @@ class PyprojectUpdater:
         # Always process if we have pylint config, even if enable list is empty
         # (we might need to clear an existing enable list)
         new_enable_content = self._generate_new_enable_content(pylint_config)
+        new_disable_content = self._generate_new_disable_content(pylint_config)
 
         # Check if there's an existing [tool.pylint.messages_control] section
         messages_control_pattern = re.compile(
@@ -216,7 +304,7 @@ class PyprojectUpdater:
             section_content = existing_match.group(1)
             trailing_newlines = existing_match.group(2)
             updated_section = self._update_existing_section(
-                section_content, new_enable_content
+                section_content, new_enable_content, new_disable_content
             )
 
             # Replace the entire section in the content, preserving trailing newlines
@@ -249,9 +337,8 @@ class PyprojectUpdater:
         new_enable_lines = ["enable = ["]
 
         # Add rules even if list is empty (to clear existing rules)
-        for i, rule_code in enumerate(enable_list):
+        for rule_code in enable_list:
             rule_name = rule_names.get(rule_code, "")
-            is_last = i == len(enable_list) - 1
 
             if rule_name:
                 # Generate URL comment
@@ -259,39 +346,130 @@ class PyprojectUpdater:
                 category = self.CATEGORY_MAP.get(category_code, "error")
                 base_url = "https://pylint.readthedocs.io/en/stable/user_guide/messages"
                 url = f"{base_url}/{category}/{rule_name}.html"
-                comma = "" if is_last else ","
-                new_enable_lines.append(f'  "{rule_code}"{comma} # {url}')
+                # Always add comma for consistency with TOML formatting
+                new_enable_lines.append(f'  "{rule_code}", # {url}')
             else:
-                comma = "" if is_last else ","
-                new_enable_lines.append(f'  "{rule_code}"{comma}')
+                # Always add comma for consistency with TOML formatting
+                new_enable_lines.append(f'  "{rule_code}",')
 
         new_enable_lines.append("]")
         return "\n".join(new_enable_lines)
 
+    def _generate_new_disable_content(self, pylint_config: dict[str, Any]) -> str:
+        """Generate the new disable section content.
+
+        Args:
+            pylint_config: The pylint configuration dictionary.
+
+        Returns:
+            The formatted disable section string.
+
+        """
+        disable_list = pylint_config.get("disable", [])
+
+        if not disable_list:
+            return ""
+
+        # Handle inline format for single "all" item
+        if len(disable_list) == 1 and disable_list[0] == "all":
+            return 'disable = ["all"]'
+
+        # Handle multiline format for multiple items
+        new_disable_lines = ["disable = ["]
+        for i, rule_code in enumerate(disable_list):
+            is_last = i == len(disable_list) - 1
+            comma = "" if is_last else ","
+            new_disable_lines.append(f'  "{rule_code}"{comma}')
+        new_disable_lines.append("]")
+        return "\n".join(new_disable_lines)
+
     def _update_existing_section(
-        self, section_content: str, new_enable_content: str
+        self,
+        section_content: str,
+        new_enable_content: str,
+        new_disable_content: str = "",
     ) -> str:
-        """Update an existing messages_control section with new enable content.
+        """Update an existing messages_control section with new content.
 
         Args:
             section_content: The existing section content.
             new_enable_content: The new enable content to insert.
+            new_disable_content: The new disable content to insert.
 
         Returns:
             The updated section content.
 
         """
-        # Look for existing enable = [...] pattern and replace it
+        updated_content = section_content
+
+        # Handle disable first, then enable to maintain proper order
+        disable_pattern = re.compile(
+            r"disable\s*=\s*\[(?:[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)\]",
+            re.DOTALL | re.MULTILINE,
+        )
+
         enable_pattern = re.compile(
             r"enable\s*=\s*\[(?:[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*)\]",
             re.DOTALL | re.MULTILINE,
         )
 
-        if enable_pattern.search(section_content):
+        # First, handle disable section
+        if new_disable_content:
+            if disable_pattern.search(updated_content):
+                # Replace existing disable section
+                updated_content = disable_pattern.sub(
+                    new_disable_content, updated_content
+                )
+            else:
+                # Add disable section - delegate to helper method
+                updated_content = self._add_disable_to_section(
+                    updated_content, new_disable_content
+                )
+
+        # Then, handle enable section
+        if enable_pattern.search(updated_content):
             # Replace existing enable section
-            return enable_pattern.sub(new_enable_content, section_content)
-        # Add enable section - delegate to helper method
-        return self._add_enable_to_section(section_content, new_enable_content)
+            updated_content = enable_pattern.sub(new_enable_content, updated_content)
+        else:
+            # Add enable section - delegate to helper method
+            updated_content = self._add_enable_to_section(
+                updated_content, new_enable_content
+            )
+
+        return updated_content
+
+    def _add_disable_to_section(
+        self, section_content: str, new_disable_content: str
+    ) -> str:
+        """Add disable section to an existing messages_control section.
+
+        Args:
+            section_content: The existing section content.
+            new_disable_content: The new disable content to add.
+
+        Returns:
+            The updated section content.
+
+        """
+        lines = section_content.split("\n")
+        header_line = lines[0]  # [tool.pylint.messages_control]
+        rest_lines = lines[1:]
+
+        # Find the insertion point (after comments, before existing content)
+        insert_index = 0
+        for i, line in enumerate(rest_lines):
+            if line.strip() and not line.strip().startswith("#"):
+                insert_index = i
+                break
+        else:
+            insert_index = len(rest_lines)
+
+        # Insert the disable section
+        disable_lines = new_disable_content.split("\n")
+        for i, disable_line in enumerate(disable_lines):
+            rest_lines.insert(insert_index + i, disable_line)
+
+        return header_line + "\n" + "\n".join(rest_lines)
 
     def _add_enable_to_section(
         self, section_content: str, new_enable_content: str
@@ -364,6 +542,21 @@ class PyprojectUpdater:
             "https://github.com/astral-sh/ruff/issues/970"
         )
 
+        # Handle disable list first
+        disable_list = pylint_config.get("disable", [])
+        if disable_list:
+            if len(disable_list) == 1 and disable_list[0] == "all":
+                # Inline format for single "all" item
+                lines.append('disable = ["all"]')
+            else:
+                # Multiline format for multiple items
+                lines.append("disable = [")
+                for i, rule_code in enumerate(disable_list):
+                    is_last = i == len(disable_list) - 1
+                    comma = "" if is_last else ","
+                    lines.append(f'  "{rule_code}"{comma}')
+                lines.append("]")
+
         # Handle enable list
         enable_list = pylint_config.get("enable", [])
         if enable_list:
@@ -381,11 +574,11 @@ class PyprojectUpdater:
                         "https://pylint.readthedocs.io/en/stable/user_guide/messages"
                     )
                     url = f"{base_url}/{category}/{rule_name}.html"
-                    comma = "" if is_last else ","
-                    lines.append(f'  "{rule_code}"{comma} # {url}')
+                    # Always add comma for consistency with TOML formatting
+                    lines.append(f'  "{rule_code}", # {url}')
                 else:
-                    comma = "" if is_last else ","
-                    lines.append(f'  "{rule_code}"{comma}')
+                    # Always add comma for consistency with TOML formatting
+                    lines.append(f'  "{rule_code}",')
             lines.append("]")
 
         return "\n".join(lines) + "\n\n"

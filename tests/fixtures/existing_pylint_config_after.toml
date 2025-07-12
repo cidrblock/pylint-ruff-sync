@@ -1,19 +1,23 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
 
 [project]
+description = "Test project"
 name = "test-project"
 version = "0.1.0"
-description = "Test project"
 
 [tool.pylint.messages_control]
+disable = [
+  "all",
+  "locally-disabled",
+  "suppressed-message"
+]
 enable = [
   "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
-disable = ["locally-disabled", "suppressed-message"]
 
 [tool.ruff]
 line-length = 88

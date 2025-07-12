@@ -1,14 +1,13 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
 
 [project]
+description = "Test project"
 name = "test-project"
 version = "0.1.0"
-description = "Test project"
 
 [tool.pylint.messages_control]
-enable = ["C0103", "C0111"]
 disable = [
   "locally-disabled",
   "suppressed-message",
@@ -16,6 +15,7 @@ disable = [
   "missing-docstring",
   "too-few-public-methods"
 ]
+enable = ["C0103", "C0111"]
 
 [tool.ruff]
 line-length = 88

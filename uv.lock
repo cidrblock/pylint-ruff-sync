@@ -405,6 +405,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "pylint" },
     { name = "requests" },
+    { name = "toml-sort" },
 ]
 
 [package.optional-dependencies]
@@ -439,6 +440,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "requests", specifier = ">=2.28.0" },
     { name = "ruff", marker = "extra == 'test'", specifier = ">=0.1.6" },
+    { name = "toml-sort", specifier = ">=0.24.0" },
     { name = "types-beautifulsoup4", marker = "extra == 'test'", specifier = ">=4.11.0" },
     { name = "types-requests", marker = "extra == 'test'", specifier = ">=2.28.0" },
 ]
@@ -567,6 +569,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/3f/f4/4a80cd6ef364b2e8b65b15816a843c0980f7a5a2b4dc701fc574952aa19f/soupsieve-2.7.tar.gz", hash = "sha256:ad282f9b6926286d2ead4750552c8a6142bc4c783fd66b0293547c8fe6ae126a", size = 103418, upload-time = "2025-04-20T18:50:08.518Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl", hash = "sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4", size = 36677, upload-time = "2025-04-20T18:50:07.196Z" },
+]
+
+[[package]]
+name = "toml-sort"
+version = "0.24.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "tomlkit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/55/b128ee446606e9f2e49582bb1e462a255317401fd7adb0b2114e50006d01/toml_sort-0.24.2.tar.gz", hash = "sha256:20cb7c5e9de9c871990f1594f028aaf8bd0f78d7ce37995a22289dc157a45b79", size = 17973, upload-time = "2024-11-19T14:03:05.092Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9b/55/7a7c02de848eef670bd018b62122ce32a6e227203e5a626c96d4935958a6/toml_sort-0.24.2-py3-none-any.whl", hash = "sha256:d81d299789a1fd9dd306a4021951eab5fc0c5486599e277fcf8142c7735f3308", size = 20162, upload-time = "2024-11-19T14:03:03.338Z" },
 ]
 
 [[package]]

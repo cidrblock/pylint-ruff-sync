@@ -1,13 +1,13 @@
 # This is a test project configuration
 
 [build-system]
-requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
 
 [project]
+description = "Test project"
 name = "test-project"
 version = "0.1.0"
-description = "Test project"
 
 # Development tools configuration
 [tool.black]
@@ -22,26 +22,27 @@ jobs = 0
 
 # Pylint configuration - preserve this comment
 [tool.pylint.messages_control]
+disable = [
+  "all",
+  "locally-disabled",
+  "suppressed-message"
+]
 # Current configuration - this comment should be preserved
 enable = [
   "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
-]
-disable = [
-  "locally-disabled", # Allow local disabling
-  "suppressed-message" # Allow suppressed messages
+  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
 
 # Test configuration
 [tool.pytest]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
 python_files = ["test_*.py"]
+testpaths = ["tests"]
 
 # Ruff configuration
 [tool.ruff]
 line-length = 88
-target-version = "py38"
 select = ["E", "F", "I"]
+target-version = "py38"

@@ -103,6 +103,8 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
             """
             self.stdout = stdout
+            self.returncode = 0
+            self.stderr = ""
 
     mock_result = MockSubprocessResult(stdout=MOCK_PYLINT_OUTPUT)
 

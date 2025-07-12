@@ -9,7 +9,9 @@ As the ruff project continues to implement more pylint rules, projects using bot
 1. Extracting all available pylint rules using `pylint --list-msgs`
 2. Fetching the current implementation status from the GitHub issue
 3. Calculating which rules should be enabled (not implemented in ruff) - this creates a shorter, more maintainable list
-4. Updating the `pyproject.toml` file with the appropriate configuration
+4. **Automatically adding `disable = ["all"]` as the first item** to ensure only enabled rules run
+5. **Surgically updating only the enable/disable arrays** while preserving all other formatting and comments
+6. **Placing new sections at the end of the file** for consistent organization
 
 ## Features
 
@@ -20,6 +22,8 @@ As the ruff project continues to implement more pylint rules, projects using bot
 - 📝 **Well-Documented**: Includes detailed logging and type hints
 - 🔗 **Documentation URLs**: Adds clickable links to pylint rule documentation
 - ✅ **CI-Ready**: Works with pre-commit.ci
+- 🎯 **Surgical Updates**: Only modifies enable/disable arrays, preserves all other content
+- 🚫 **Smart Disabling**: Automatically adds `disable = ["all"]` to prevent duplicate rule execution
 
 ## Installation
 
@@ -82,6 +86,7 @@ The hook will automatically create and manage the following section in your `pyp
 [tool.pylint.messages_control]
 # This section will be automatically updated by the precommit hook
 # based on ruff implementation status from https://github.com/astral-sh/ruff/issues/970
+disable = ["all"]  # Disables all rules by default
 enable = [
     # Rules NOT implemented in ruff - automatically generated with documentation URLs
     "C0112",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/empty-docstring.html
@@ -91,12 +96,52 @@ enable = [
     "C0116",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-function-docstring.html
     # ... more rules with documentation URLs
 ]
+```
+
+### Smart Disable List Management
+
+The tool automatically manages the `disable` list to ensure optimal behavior:
+
+1. **Always includes "all"** as the first disabled rule to prevent duplicate execution
+2. **Preserves existing user-disabled rules** after "all"
+3. **Uses inline format** when only `disable = ["all"]` is present
+4. **Uses multiline format** when additional rules are disabled:
+
+```toml
+# Inline format (single item)
+disable = ["all"]
+
+# Multiline format (multiple items)
 disable = [
-    # Any existing disabled rules are preserved
-    "locally-disabled",
-    "suppressed-message"
+  "all",
+  "locally-disabled",
+  "suppressed-message"
 ]
 ```
+
+## Section Placement Strategy
+
+The tool follows a specific strategy for placing and organizing pylint configuration:
+
+### New Projects
+
+- **Creates new `[tool.pylint]` section** at the end of the file
+- **Adds `[tool.pylint.messages_control]` subsection** immediately after
+- **Maintains clean separation** from other tools
+
+### Existing Projects
+
+- **Preserves existing pylint section locations**
+- **Only updates the `enable` and `disable` arrays** within `[tool.pylint.messages_control]`
+- **Surgically replaces content** without affecting surrounding configuration
+- **Maintains all existing comments, formatting, and other subsections**
+
+### Section Ordering Within messages_control
+
+1. **Comments**: Automatic generation notice preserved
+2. **disable**: Always first, with "all" as the first item
+3. **enable**: Lists rules not implemented in ruff
+4. **Other settings**: Preserved exactly as they were
 
 ## How It Works
 
@@ -118,8 +163,10 @@ It fetches the current status from the [ruff pylint tracking issue](https://gith
 The script then:
 
 - Calculates which rules should be enabled (not implemented in ruff)
+- **Ensures "all" is first in the disable list** to prevent rule conflicts
 - Updates the `pyproject.toml` file with the new configuration
-- Preserves existing disabled rules while updating the enable list
+- **Preserves existing disabled rules** while updating the enable list
+- **Uses surgical regex replacement** to modify only the enable/disable arrays
 - Adds inline comments with URLs to the official pylint documentation for each rule
 
 ### 4. Documentation URLs
@@ -137,16 +184,27 @@ Where:
 
 This makes it easy to quickly understand what each rule does and access detailed documentation.
 
+### 5. Surgical Updates
+
+The tool uses advanced regex patterns to surgically update only the necessary parts:
+
+- **Preserves all comments** including user-added ones
+- **Maintains original formatting** for untouched sections
+- **Only replaces enable/disable arrays** within existing sections
+- **Adds new sections at the end** when none exist
+- **Respects existing section organization** and doesn't reorder other pylint settings
+
 ## Benefits
 
-- **Avoid Duplication**: Prevents running the same checks twice
+- **Avoid Duplication**: Prevents running the same checks twice by disabling all rules then enabling only needed ones
 - **Stay Current**: Automatically adapts as ruff implements more rules
 - **Shorter Lists**: Enable-only approach creates more maintainable configuration
 - **Reduce Noise**: Eliminates redundant warnings and errors
-- **Improve Performance**: Faster linting by avoiding duplicate work
+- **Improve Performance**: Faster linting by avoiding duplicate work through smart disable strategy
 - **Maintain Quality**: Ensures you still get comprehensive code analysis
 - **Future-Proof**: List gets shorter over time as ruff implements more rules
 - **Easy Reference**: Direct links to pylint documentation for each rule
+- **Preserve Customization**: Maintains all existing configuration and comments
 
 ## Example Output
 
@@ -158,6 +216,7 @@ INFO: Found 127 implemented pylint rules in ruff
 INFO: Total pylint rules: 409
 INFO: Rules implemented in ruff: 127
 INFO: Rules to enable (not implemented in ruff): 282
+INFO: Added 'all' to disable list to prevent duplicate rule execution
 INFO: Updated enable list with 282 rules
 INFO: Updated configuration written to pyproject.toml
 INFO: Pylint configuration updated successfully
@@ -178,6 +237,26 @@ This hook works seamlessly with:
 - pylint 2.15.0+
 - requests 2.28.0+
 - beautifulsoup4 4.11.0+
+
+## Project Structure
+
+```
+pylint-ruff-sync/
+├── src/pylint_ruff_sync/           # Main package source
+│   ├── __init__.py                 # Package initialization
+│   ├── main.py                     # CLI entry point and orchestration
+│   ├── pylint_extractor.py         # Pylint rule extraction logic
+│   ├── pylint_rule.py              # Rule data structures
+│   ├── pyproject_updater.py        # TOML file surgical updates
+│   └── ruff_pylint_extractor.py    # GitHub issue parsing
+├── tests/                          # Comprehensive test suite
+│   ├── integration/                # End-to-end integration tests
+│   ├── unit/                       # Unit tests for individual components
+│   ├── fixtures/                   # Test fixture files (before/after pairs)
+│   └── constants.py                # Shared test data and mock helpers
+├── pyproject.toml                  # Project configuration
+└── README.md                       # This file
+```
 
 ## Contributing
 

@@ -1,18 +1,23 @@
 [build-system]
-requires = ["hatchling"]
 build-backend = "hatchling.build"
+requires = ["hatchling"]
 
 [dependency-groups]
 dev = ["pytest>=8.3.5", "ruff>=0.12.3"]
 test = ["mypy>=1.16.1", "pydoclint>=0.5.11", "types-requests>=2.32.4.20250611"]
 
 [project]
-name = "pylint-ruff-sync"
-version = "0.1.0"
+dependencies = [
+  "requests>=2.28.0",
+  "beautifulsoup4>=4.11.0",
+  "pylint>=2.15.0",
+  "toml-sort>=0.24.0"
+]
 description = "Precommit hook to sync pylint configuration with ruff implementation status"
+name = "pylint-ruff-sync"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["requests>=2.28.0", "beautifulsoup4>=4.11.0", "pylint>=2.15.0"]
+version = "0.1.0"
 
 [project.optional-dependencies]
 test = [
@@ -32,20 +37,20 @@ pylint-ruff-sync = "pylint_ruff_sync.main:main"
 packages = ["src/pylint_ruff_sync"]
 
 [tool.mypy]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+no_implicit_optional = true
 python_version = "3.11"
 strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
 strict_equality = true
+warn_no_return = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
 
 [tool.pydoclint]
 allow-init-docstring = true
@@ -72,6 +77,7 @@ min-public-methods = 0
 max-line-length = 100
 
 [tool.pylint.messages_control]
+disable = ["locally-disabled", "suppressed-message"]
 enable = [
   "C0104", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/disallowed-name.html
   "C0117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unnecessary-negation.html
@@ -249,25 +255,24 @@ enable = [
   "W4905", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-decorator.html
   "W4906" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
 ]
-disable = ["locally-disabled", "suppressed-message"]
 
 [tool.pylint.reports]
 output-format = "colorized"
 
 [tool.pylint.similarities]
-min-similarity-lines = 20
 ignore-comments = true
 ignore-docstrings = true
 ignore-imports = true
+min-similarity-lines = 20
 
 [tool.ruff]
-target-version = "py311"
-line-length = 88
 fix = true
+line-length = 88
+target-version = "py311"
 
 [tool.ruff.lint]
-select = ["ALL"]
 ignore = ["D203", "D211", "D213", "COM812"]
+select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "SLF001", "EXE001"]
