@@ -72,11 +72,19 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Mock the GitHub API call
     class MockResponse:
+        """Mock response object for GitHub API calls."""
+
         def __init__(self, content: str) -> None:
+            """Initialize with content string.
+
+            Args:
+                content: The response content as string.
+
+            """
             self.content = content.encode("utf-8")
 
         def raise_for_status(self) -> None:
-            pass
+            """Mock method that does nothing."""
 
     def mock_requests_get(*_args: object, **_kwargs: object) -> MockResponse:
         return MockResponse(MOCK_GITHUB_RESPONSE)
@@ -85,7 +93,15 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Mock the pylint command output
     class MockSubprocessResult:
+        """Mock subprocess result object."""
+
         def __init__(self, stdout: str) -> None:
+            """Initialize with stdout string.
+
+            Args:
+                stdout: The subprocess stdout as string.
+
+            """
             self.stdout = stdout
 
     mock_result = MockSubprocessResult(stdout=MOCK_PYLINT_OUTPUT)

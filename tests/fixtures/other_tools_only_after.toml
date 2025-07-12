@@ -16,6 +16,12 @@ python_version = "3.8"
 warn_return_any = true
 warn_unused_configs = true
 
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
 [tool.pylint]
 
 [tool.pylint.messages_control]
@@ -26,9 +32,3 @@ enable = [
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
   "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
-
-[tool.ruff]
-line-length = 88
-target-version = "py38"
-select = ["E", "F", "I"]
-ignore = ["E501"]

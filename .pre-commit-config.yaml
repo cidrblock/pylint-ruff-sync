@@ -95,6 +95,7 @@ repos:
     hooks:
       - id: toml-sort-fix
         alias: toml
+        exclude: ^tests/fixtures/
 
   - repo: https://github.com/pycqa/pylint.git
     rev: v3.3.7

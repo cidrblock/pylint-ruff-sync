@@ -15,6 +15,7 @@ alwaysApply: true
 - Never disable ruff rules in the pyproject.toml file
 - Always fix errors rather than disable them, ask if a disable is necessary and explain why
 - Avoid the use of classes in the tests, with the exception of a dataclass for data if needed.
+- Always "git add --all" and "git commit" with a message before running pre-commit
 - Always run "pre-commit run --all-files after making any changes, fix errors reported"
 - When calling a python function, use named arguments (kwargs) when ever possible
 - Always use a src layout for new projects https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/

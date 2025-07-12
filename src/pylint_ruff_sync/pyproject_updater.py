@@ -205,7 +205,7 @@ class PyprojectUpdater:
 
         # Check if there's an existing [tool.pylint.messages_control] section
         messages_control_pattern = re.compile(
-            r"(\[tool\.pylint\.messages_control\].*?)(?=\n\[|\Z)",
+            r"(\[tool\.pylint\.messages_control\].*?)(\n*?)(?=\n\[|\Z)",
             re.DOTALL | re.MULTILINE,
         )
 
@@ -214,14 +214,14 @@ class PyprojectUpdater:
         if existing_match:
             # Section exists - replace only the enable part
             section_content = existing_match.group(1)
+            trailing_newlines = existing_match.group(2)
             updated_section = self._update_existing_section(
                 section_content, new_enable_content
             )
 
-            # Replace the entire section in the content
-            updated_content = messages_control_pattern.sub(
-                updated_section.rstrip(), content
-            )
+            # Replace the entire section in the content, preserving trailing newlines
+            replacement = updated_section.rstrip() + trailing_newlines
+            updated_content = messages_control_pattern.sub(replacement, content)
         else:
             # Add new section only if we have rules to enable
             enable_list = pylint_config.get("enable", [])
@@ -249,17 +249,21 @@ class PyprojectUpdater:
         new_enable_lines = ["enable = ["]
 
         # Add rules even if list is empty (to clear existing rules)
-        for rule_code in enable_list:
+        for i, rule_code in enumerate(enable_list):
             rule_name = rule_names.get(rule_code, "")
+            is_last = i == len(enable_list) - 1
+
             if rule_name:
                 # Generate URL comment
                 category_code = rule_code[0]
                 category = self.CATEGORY_MAP.get(category_code, "error")
                 base_url = "https://pylint.readthedocs.io/en/stable/user_guide/messages"
                 url = f"{base_url}/{category}/{rule_name}.html"
-                new_enable_lines.append(f'  "{rule_code}",  # {url}')
+                comma = "" if is_last else ","
+                new_enable_lines.append(f'  "{rule_code}"{comma} # {url}')
             else:
-                new_enable_lines.append(f'  "{rule_code}",')
+                comma = "" if is_last else ","
+                new_enable_lines.append(f'  "{rule_code}"{comma}')
 
         new_enable_lines.append("]")
         return "\n".join(new_enable_lines)
@@ -365,8 +369,10 @@ class PyprojectUpdater:
         if enable_list:
             rule_names = pylint_config.get("_rule_names", {})
             lines.append("enable = [")
-            for rule_code in enable_list:
+            for i, rule_code in enumerate(enable_list):
                 rule_name = rule_names.get(rule_code, "")
+                is_last = i == len(enable_list) - 1
+
                 if rule_name:
                     # Generate URL comment
                     category_code = rule_code[0]
@@ -375,12 +381,14 @@ class PyprojectUpdater:
                         "https://pylint.readthedocs.io/en/stable/user_guide/messages"
                     )
                     url = f"{base_url}/{category}/{rule_name}.html"
-                    lines.append(f'  "{rule_code}",  # {url}')
+                    comma = "" if is_last else ","
+                    lines.append(f'  "{rule_code}"{comma} # {url}')
                 else:
-                    lines.append(f'  "{rule_code}",')
+                    comma = "" if is_last else ","
+                    lines.append(f'  "{rule_code}"{comma}')
             lines.append("]")
 
-        return "\n".join(lines) + "\n"
+        return "\n".join(lines) + "\n\n"
 
     def _add_pylint_section(self, content: str, new_section: str) -> str:
         """Add the pylint section to the TOML content.
@@ -393,24 +401,7 @@ class PyprojectUpdater:
             The updated TOML content.
 
         """
-        # Try to find [tool.pylint] section and add messages_control under it
-        tool_pylint_pattern = re.compile(
-            r"(\[tool\.pylint\].*?)(?=\n\[|\Z)", re.DOTALL | re.MULTILINE
-        )
-
-        if tool_pylint_pattern.search(content):
-            # Find the end of [tool.pylint] section and insert our messages_control
-            def replace_tool_pylint(match: re.Match[str]) -> str:
-                existing_section = match.group(1)
-                if "[tool.pylint.messages_control]" in existing_section:
-                    # messages_control already exists, just return original
-                    return existing_section
-                # Add our messages_control section
-                return existing_section.rstrip() + "\n\n" + new_section.rstrip()
-
-            return tool_pylint_pattern.sub(replace_tool_pylint, content)
-
-        # If no [tool.pylint] section exists, add everything at the end
+        # If no [tool.pylint] section exists, add at the end
         if content and not content.endswith("\n"):
             content += "\n"
 
