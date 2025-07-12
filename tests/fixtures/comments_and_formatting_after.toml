@@ -31,7 +31,7 @@ disable = [
 enable = [
   "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
 
 # Test configuration

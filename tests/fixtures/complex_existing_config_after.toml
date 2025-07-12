@@ -23,7 +23,7 @@ disable = [
 ]
 # This section will be automatically updated by the precommit hook
 enable = [
-  "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
+  "C0111" # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
 ]
 
 [tool.pylint.refactoring]
