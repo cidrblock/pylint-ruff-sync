@@ -76,12 +76,13 @@ class PyprojectUpdater:
         """
         try:
             config = self.toml_editor.read_config()
-            if not config:
-                logger.warning("No pyproject.toml found, creating new configuration")
-            return config
         except Exception:
             logger.exception("Failed to read configuration file")
             raise
+        else:
+            if not config:
+                logger.warning("No pyproject.toml found, creating new configuration")
+            return config
 
     def update_pylint_config(
         self,

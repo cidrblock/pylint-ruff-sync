@@ -132,14 +132,16 @@ class TomlEditor:
 
         # If we get here, all commands failed
         logger.warning(
-            "Failed to run toml-sort with any available command, continuing without formatting"
+            "Failed to run toml-sort with any available command, "
+            "continuing without formatting"
         )
 
     def ensure_section_exists(self, section_path: list[str]) -> dict[str, Any]:
-        """Ensure a section exists in the configuration, creating nested structure as needed.
+        """Ensure a section exists in the configuration, creating nested structure.
 
         Args:
-            section_path: List of keys representing the path to the section (e.g., ["tool", "pylint"]).
+            section_path: List of keys representing the path to the section
+                (e.g., ["tool", "pylint"]).
 
         Returns:
             The configuration dictionary with the section guaranteed to exist.
@@ -192,7 +194,8 @@ class TomlEditor:
         r"""Update section content using regex for surgical updates.
 
         Args:
-            section_pattern: Regex pattern to match the section (e.g., r"\[tool\.pylint\.messages_control\]").
+            section_pattern: Regex pattern to match the section
+                (e.g., r"\[tool\.pylint\.messages_control\]").
             key: The key to update within the section.
             new_content: The new content to replace the key's value.
             add_if_missing: Whether to add the section if it doesn't exist.
@@ -236,10 +239,12 @@ class TomlEditor:
 
             # For pylint.messages_control, we need to ensure parent section exists
             section_header = section_pattern.replace("\\", "").replace(".", ".")
-            if "pylint.messages_control" in section_header:
+            if (
+                "pylint.messages_control" in section_header
+                and "[tool.pylint]" not in content
+            ):
                 # Add parent [tool.pylint] section if it doesn't exist
-                if "[tool.pylint]" not in content:
-                    content += "\n[tool.pylint]\n"
+                content += "\n[tool.pylint]\n"
 
             updated_content = content + f"\n{section_header}\n{new_content}\n"
         else:
@@ -333,9 +338,6 @@ class TomlEditor:
         """
         if not self.file_path.exists():
             return
-
-        with self.file_path.open("r", encoding="utf-8") as f:
-            content = f.read()
 
         # Generate the section pattern
         section_pattern = r"\[" + r"\.".join(section_path) + r"\]"

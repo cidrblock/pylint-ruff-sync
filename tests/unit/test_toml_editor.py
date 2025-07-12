@@ -48,7 +48,7 @@ class TestTomlEditor:
 
         try:
             editor = TomlEditor(temp_path)
-            with pytest.raises(Exception):
+            with pytest.raises((ValueError, TypeError, OSError)):
                 editor.read_config()
         finally:
             temp_path.unlink()
