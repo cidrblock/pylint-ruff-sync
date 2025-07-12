@@ -102,8 +102,8 @@ def test_update_pylint_config() -> None:
     assert result["tool"]["pylint"]["messages_control"]["enable"] == [
         "C0103",  # Only C0103 should be enabled
     ]
-    # Now we DO modify the disable list - it should always include "all" first
-    assert result["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+    # The disable list should not be automatically modified
+    assert "disable" not in result["tool"]["pylint"]["messages_control"]
 
 
 def test_main_argument_parsing() -> None:
@@ -207,8 +207,8 @@ def test_update_pylint_config_with_existing_disabled_rules() -> None:
     assert result["tool"]["pylint"]["messages_control"]["enable"] == [
         "C0103",  # Only C0103 should be enabled
     ]
+    # The existing disable list should be preserved unchanged
     assert result["tool"]["pylint"]["messages_control"]["disable"] == [
-        "all",
         "locally-disabled",
         "suppressed-message",
     ]

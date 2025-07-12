@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from .toml_editor import SimpleArrayWithComments, TomlEditor
+
 if TYPE_CHECKING:
     from pathlib import Path
 
     from .pylint_rule import PylintRule
-
-from .toml_editor import TomlEditor
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -79,10 +79,10 @@ class PyprojectUpdater:
         except Exception:
             logger.exception("Failed to read configuration file")
             raise
-        else:
-            if not config:
-                logger.warning("No pyproject.toml found, creating new configuration")
-            return config
+
+        if not config:
+            logger.warning("No pyproject.toml found, creating new configuration")
+        return config
 
     def update_pylint_config(
         self,
@@ -115,19 +115,8 @@ class PyprojectUpdater:
         final_enable_rules = rules_to_enable - existing_disabled
 
         # Always update enable list, even if empty (to clear existing rules)
-        # Create a dictionary mapping rule codes to their descriptions
-        rule_descriptions = {rule.code: rule.description for rule in all_rules}
-
-        # Create a dictionary mapping rule codes to their names for URL generation
-        rule_names = {rule.code: rule.name for rule in all_rules}
-
-        # Store the enable list and descriptions for later use by regex replacement
         enable_list = sorted(final_enable_rules)
         config["tool"]["pylint"]["messages_control"]["enable"] = enable_list
-        config["tool"]["pylint"]["messages_control"]["_enable_descriptions"] = (
-            rule_descriptions
-        )
-        config["tool"]["pylint"]["messages_control"]["_rule_names"] = rule_names
 
         if final_enable_rules:
             logger.info(
@@ -146,28 +135,20 @@ class PyprojectUpdater:
                 "Cleared enable list (all rules are implemented in ruff or disabled)"
             )
 
-        # Always ensure "all" is first in the disable list
-        # This is required so that only the enabled rules run
-        existing_disable = config["tool"]["pylint"]["messages_control"].get(
-            "disable", []
+        # Create rule lookup dictionaries for enable array with comments
+        rule_descriptions = {rule.code: rule.description for rule in all_rules}
+        rule_names = {rule.code: rule.name for rule in all_rules}
+
+        # Store these for write_config to use
+        config["tool"]["pylint"]["messages_control"]["_enable_descriptions"] = (
+            rule_descriptions
         )
-
-        # Ensure "all" is first in the disable list
-        if "all" not in existing_disable:
-            # Add "all" as the first item
-            disable_list = ["all", *existing_disable]
-        else:
-            # Move "all" to the front if it's not already there
-            disable_list = existing_disable.copy()
-            disable_list.remove("all")
-            disable_list.insert(0, "all")
-
-        config["tool"]["pylint"]["messages_control"]["disable"] = disable_list
+        config["tool"]["pylint"]["messages_control"]["_rule_names"] = rule_names
 
         return config
 
     def write_config(self, config: dict[str, Any]) -> None:
-        """Write updated configuration to pyproject.toml using regex replacement.
+        """Write updated configuration to pyproject.toml using surgical updates.
 
         Args:
             config: The configuration dictionary to write to the file.
@@ -199,86 +180,40 @@ class PyprojectUpdater:
         if not pylint_config:
             return
 
-        # Generate content for enable and disable sections
-        new_enable_content = self._generate_new_enable_content(pylint_config)
-        new_disable_content = self._generate_new_disable_content(pylint_config)
-
-        # Update disable section if needed
-        if new_disable_content:
-            self.toml_editor.update_section_content_with_regex(
-                section_pattern=r"\[tool\.pylint\.messages_control\]",
-                key="disable",
-                new_content=new_disable_content,
-            )
-
-        # Update enable section
-        self.toml_editor.update_section_content_with_regex(
-            section_pattern=r"\[tool\.pylint\.messages_control\]",
-            key="enable",
-            new_content=new_enable_content,
-        )
-
-    def _generate_new_enable_content(self, pylint_config: dict[str, Any]) -> str:
-        """Generate the new enable section content.
-
-        Args:
-            pylint_config: The pylint configuration dictionary.
-
-        Returns:
-            The formatted enable section string.
-
-        """
+        # Create enable array with comments
         enable_list = pylint_config.get("enable", [])
         rule_names = pylint_config.get("_rule_names", {})
 
-        new_enable_lines = ["enable = ["]
-
-        # Add rules even if list is empty (to clear existing rules)
-        for i, rule_code in enumerate(enable_list):
+        # Generate URL comments for enabled rules
+        enable_comments: dict[str, str] = {}
+        for rule_code in enable_list:
             rule_name = rule_names.get(rule_code, "")
-            is_last = i == len(enable_list) - 1
-
             if rule_name:
-                # Generate URL comment
                 category_code = rule_code[0]
                 category = self.CATEGORY_MAP.get(category_code, "error")
                 base_url = "https://pylint.readthedocs.io/en/stable/user_guide/messages"
                 url = f"{base_url}/{category}/{rule_name}.html"
-                # Add comma only if not the last item
-                comma = "" if is_last else ","
-                new_enable_lines.append(f'  "{rule_code}"{comma} # {url}')
-            else:
-                # Add comma only if not the last item
-                comma = "" if is_last else ","
-                new_enable_lines.append(f'  "{rule_code}"{comma}')
+                enable_comments[rule_code] = url
 
-        new_enable_lines.append("]")
-        return "\n".join(new_enable_lines)
+        # Create SimpleArrayWithComments for enable list
+        enable_array = SimpleArrayWithComments(
+            items=enable_list, comments=enable_comments if enable_comments else None
+        )
 
-    def _generate_new_disable_content(self, pylint_config: dict[str, Any]) -> str:
-        """Generate the new disable section content.
+        # Update enable section with preserve_format=True for surgical replacement
+        self.toml_editor.update_section_array(
+            section_path=["tool", "pylint", "messages_control"],
+            key="enable",
+            array_data=enable_array,
+            preserve_format=True,
+        )
 
-        Args:
-            pylint_config: The pylint configuration dictionary.
-
-        Returns:
-            The formatted disable section string.
-
-        """
-        disable_list = pylint_config.get("disable", [])
-
-        if not disable_list:
-            return ""
-
-        # Handle inline format for single "all" item
-        if len(disable_list) == 1 and disable_list[0] == "all":
-            return 'disable = ["all"]'
-
-        # Handle multiline format for multiple items
-        new_disable_lines = ["disable = ["]
-        for i, rule_code in enumerate(disable_list):
-            is_last = i == len(disable_list) - 1
-            comma = "" if is_last else ","
-            new_disable_lines.append(f'  "{rule_code}"{comma}')
-        new_disable_lines.append("]")
-        return "\n".join(new_disable_lines)
+        # Handle disable array (simple list, no comments needed)
+        existing_disable = pylint_config.get("disable", [])
+        if existing_disable:
+            self.toml_editor.update_section_array(
+                section_path=["tool", "pylint", "messages_control"],
+                key="disable",
+                array_data=existing_disable,
+                preserve_format=True,
+            )

@@ -11,6 +11,7 @@ alwaysApply: true
 - Always run mypy and fix any errors reports
 - Always run the tests and fix any test failures
 - Never use "unittest", use pytest instead with monkeypatch
+- Do not add pytest-mock
 - Minimize the project dependendices
 - Never disable ruff rules in the pyproject.toml file
 - Always fix errors rather than disable them, ask if a disable is necessary and explain why
@@ -22,3 +23,4 @@ alwaysApply: true
 - Never use relative imports
 - Always use uv instead of pip
 - Never install a python package outside of the workspace virtual environment
+- Always review the rules after making changes to ensure they were followed, ask if a rule needs to be broken

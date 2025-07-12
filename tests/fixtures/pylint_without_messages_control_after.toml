@@ -7,28 +7,33 @@ description = "Test project"
 name = "test-project"
 version = "0.1.0"
 
-[tool.pylint.main]
-jobs = 0
-persistent = true
-suggestion-mode = true
-
-[tool.pylint.refactoring]
-max-nested-blocks = 5
-
-[tool.pylint.reports]
-output-format = "text"
-reports = false
-
-[tool.ruff]
+# Development tools configuration
+[tool.black]
 line-length = 88
-target-version = "py38"
+target-version = ["py38"]
 
+# Other pylint settings
 [tool.pylint]
 
+[tool.pylint.main]
+jobs = 0
+
 [tool.pylint.messages_control]
-disable = ["all"]
 enable = [
   "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
+
+# Test configuration
+[tool.pytest]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+
+# Ruff configuration
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "I"]
+target-version = "py38"

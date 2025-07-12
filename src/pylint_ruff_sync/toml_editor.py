@@ -6,11 +6,57 @@ import logging
 import re
 import subprocess
 import tomllib
-from pathlib import Path
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class SimpleArrayWithComments:
+    """Represents a simple TOML array with optional comments for each item.
+
+    Attributes:
+        items: List of string values for the array.
+        comments: Optional dict mapping item values to their comments.
+
+    """
+
+    items: list[str]
+    comments: dict[str, str] | None = None
+
+    def format_as_toml(self, key: str) -> str:
+        """Format the array as TOML content.
+
+        Args:
+            key: The TOML key name for this array.
+
+        Returns:
+            Formatted TOML string representation.
+
+        """
+        if not self.items:
+            return f"{key} = []"
+
+        if len(self.items) == 1 and (
+            not self.comments or self.items[0] not in self.comments
+        ):
+            return f'{key} = ["{self.items[0]}"]'
+
+        lines = [f"{key} = ["]
+        for i, item in enumerate(self.items):
+            is_last = i == len(self.items) - 1
+            comma = "" if is_last else ","
+            comment = ""
+            if self.comments and item in self.comments:
+                comment = f" # {self.comments[item]}"
+            lines.append(f'  "{item}"{comma}{comment}')
+        lines.append("]")
+        return "\n".join(lines)
 
 
 class TomlEditor:
@@ -161,7 +207,7 @@ class TomlEditor:
         self,
         section_path: list[str],
         key: str,
-        values: list[str],
+        array_data: list[str] | SimpleArrayWithComments,
         *,
         preserve_format: bool = False,
     ) -> None:
@@ -170,20 +216,62 @@ class TomlEditor:
         Args:
             section_path: List of keys representing the path to the section.
             key: The key within the section to update.
-            values: The new array values to set.
+            array_data: The array data - either a simple list or
+                SimpleArrayWithComments.
             preserve_format: If True, use surgical regex updates to preserve formatting.
 
         """
         if preserve_format and self.file_path.exists():
-            self._update_array_with_regex(section_path, key, values)
+            self._update_array_with_surgical_replacement(section_path, key, array_data)
         else:
             # Simple update through config dictionary
             config = self.ensure_section_exists(section_path)
             section = self._get_nested_section(config, section_path)
-            section[key] = values
+            if isinstance(array_data, SimpleArrayWithComments):
+                section[key] = array_data.items
+            else:
+                section[key] = array_data
             self.write_config(config)
 
-    def update_section_content_with_regex(
+    def _update_array_with_surgical_replacement(
+        self,
+        section_path: list[str],
+        key: str,
+        array_data: list[str] | SimpleArrayWithComments,
+    ) -> None:
+        """Update array using surgical regex replacement to preserve formatting.
+
+        Args:
+            section_path: Path to the section containing the array.
+            key: The key of the array to update.
+            array_data: New array data to set.
+
+        """
+        if not self.file_path.exists():
+            return
+
+        # Create section pattern from section path
+        section_pattern = r"\[" + r"\.".join(section_path) + r"\]"
+
+        # Generate new array content
+        if isinstance(array_data, SimpleArrayWithComments):
+            new_content = array_data.format_as_toml(key)
+        # Handle simple list
+        elif not array_data:
+            new_content = f"{key} = []"
+        elif len(array_data) == 1:
+            new_content = f'{key} = ["{array_data[0]}"]'
+        else:
+            lines = [f"{key} = ["]
+            for i, value in enumerate(array_data):
+                comma = "," if i < len(array_data) - 1 else ""
+                lines.append(f'  "{value}"{comma}')
+            lines.append("]")
+            new_content = "\n".join(lines)
+
+        self._update_section_key_with_regex(section_pattern, key, new_content)
+
+    def _update_section_key_with_regex(
         self,
         section_pattern: str,
         key: str,
@@ -191,11 +279,10 @@ class TomlEditor:
         *,
         add_if_missing: bool = True,
     ) -> None:
-        r"""Update section content using regex for surgical updates.
+        """Update a key in a section using regex for surgical updates.
 
         Args:
-            section_pattern: Regex pattern to match the section
-                (e.g., r"\[tool\.pylint\.messages_control\]").
+            section_pattern: Regex pattern to match the section.
             key: The key to update within the section.
             new_content: The new content to replace the key's value.
             add_if_missing: Whether to add the section if it doesn't exist.
@@ -283,7 +370,7 @@ class TomlEditor:
         for key, value in data.items():
             if not isinstance(value, dict):
                 if isinstance(value, list):
-                    if len(value) == 0:
+                    if not value:
                         lines.append(f"{key} = []")
                     elif len(value) == 1:
                         lines.append(f'{key} = ["{value[0]}"]')
@@ -324,38 +411,6 @@ class TomlEditor:
                 current[key] = {}
             current = current[key]
         return current
-
-    def _update_array_with_regex(
-        self, section_path: list[str], key: str, values: list[str]
-    ) -> None:
-        """Update array using regex for surgical updates.
-
-        Args:
-            section_path: Path to the section containing the array.
-            key: The key of the array to update.
-            values: New values for the array.
-
-        """
-        if not self.file_path.exists():
-            return
-
-        # Generate the section pattern
-        section_pattern = r"\[" + r"\.".join(section_path) + r"\]"
-
-        # Generate new array content
-        if len(values) == 0:
-            new_content = f"{key} = []"
-        elif len(values) == 1:
-            new_content = f'{key} = ["{values[0]}"]'
-        else:
-            lines = [f"{key} = ["]
-            for i, value in enumerate(values):
-                comma = "," if i < len(values) - 1 else ""
-                lines.append(f'  "{value}"{comma}')
-            lines.append("]")
-            new_content = "\n".join(lines)
-
-        self.update_section_content_with_regex(section_pattern, key, new_content)
 
     def _update_key_in_section(
         self, section_content: str, key: str, new_content: str
