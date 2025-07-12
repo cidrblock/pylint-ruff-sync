@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Script to regenerate test fixtures using pytest infrastructure."""
 
+import logging
 import shutil
+import subprocess
+import traceback
 from pathlib import Path
 
+from _pytest.monkeypatch import MonkeyPatch
 from constants import setup_mocks
 
 from pylint_ruff_sync.main import main
+
+logger = logging.getLogger(__name__)
 
 
 def regenerate_fixture(fixture_name: str) -> None:
@@ -21,15 +27,13 @@ def regenerate_fixture(fixture_name: str) -> None:
     after_fixture = fixtures_dir / f"{fixture_name}_after.toml"
     temp_file = fixtures_dir / "temp_working.toml"
 
-    print(f"Regenerating {fixture_name}...")
+    logger.info(f"Regenerating {fixture_name}...")
 
     # Copy before fixture to temp location
     shutil.copy2(before_fixture, temp_file)
 
     try:
         # Mock the environment using pytest's monkeypatch infrastructure
-        from _pytest.monkeypatch import MonkeyPatch
-
         with MonkeyPatch().context() as m:
             setup_mocks(m)
 
@@ -42,12 +46,10 @@ def regenerate_fixture(fixture_name: str) -> None:
             # Copy result to after fixture
             shutil.copy2(temp_file, after_fixture)
 
-            print(f"  ✓ Generated {fixture_name} (exit code: {result})")
+            logger.info(f"  ✓ Generated {fixture_name} (exit code: {result})")
 
-    except Exception as e:
-        print(f"  ✗ Failed to generate {fixture_name}: {e}")
-        import traceback
-
+    except subprocess.CalledProcessError as e:
+        logger.error(f"  ✗ Failed to generate {fixture_name}: {e}")
         traceback.print_exc()
 
     finally:

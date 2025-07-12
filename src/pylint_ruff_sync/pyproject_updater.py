@@ -200,12 +200,7 @@ class PyprojectUpdater:
             raise
 
     def _run_toml_sort(self) -> None:
-        """Run toml-sort on the configuration file.
-
-        Raises:
-            Exception: If toml-sort command fails.
-
-        """
+        """Run toml-sort on the configuration file."""
         commands_to_try = [
             [
                 "uv",
@@ -243,7 +238,7 @@ class PyprojectUpdater:
                     check=True,
                 )
 
-                if result.returncode == 0:
+                if not result.returncode:
                     logger.debug(
                         "toml-sort completed successfully with command: %s", cmd[0]
                     )
