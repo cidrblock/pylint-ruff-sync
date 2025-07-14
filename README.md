@@ -338,7 +338,6 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
-
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -346,7 +345,6 @@ This project was developed through an innovative collaborative process between [
    - **Offline Caching**: Implemented a comprehensive caching solution for precommit.ci compatibility
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
-
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback
