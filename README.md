@@ -184,7 +184,65 @@ Where:
 
 This makes it easy to quickly understand what each rule does and access detailed documentation.
 
-### 5. Surgical Updates
+### 5. Offline Caching
+
+To ensure reliable operation in environments without internet access (like precommit.ci), the tool implements a robust caching system:
+
+#### Cache Structure
+
+The tool maintains a cache file at `data/ruff_implemented_rules.json` containing:
+
+```json
+{
+  "implemented_rules": ["C0103", "C0105", "C0112", "..."],
+  "source_url": "https://github.com/astral-sh/ruff/issues/970",
+  "last_updated": "2024-01-15T10:30:00Z"
+}
+```
+
+#### Fallback Strategy
+
+1. **Primary**: Fetch latest data from GitHub issue
+2. **Fallback**: Use cached data when GitHub is unreachable
+3. **Error**: Only fail if both GitHub and cache are unavailable
+
+#### Cache Management
+
+**Manual Cache Updates:**
+
+```bash
+# Update cache with latest GitHub data
+python -m pylint_ruff_sync --update-cache
+
+# Verbose cache update
+python -m pylint_ruff_sync --update-cache --verbose
+```
+
+**Automatic Updates:**
+
+- Weekly GitHub Actions automatically update the cache
+- Creates releases when cache content changes
+- Ensures cache stays current without manual intervention
+
+#### Offline Compatibility
+
+The tool gracefully handles offline scenarios:
+
+```
+INFO: Fetching ruff pylint implementation status...
+WARNING: Failed to fetch from GitHub: Connection timeout
+INFO: Attempting to use cached data...
+INFO: Using cached data with 220 rules
+```
+
+This ensures the tool works reliably in:
+
+- CI environments without internet access
+- Corporate networks with restricted access
+- Offline development environments
+- precommit.ci which blocks external requests
+
+### 6. Surgical Updates
 
 The tool uses advanced regex patterns to surgically update only the necessary parts:
 
