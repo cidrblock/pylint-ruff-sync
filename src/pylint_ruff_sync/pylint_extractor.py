@@ -63,7 +63,7 @@ class PylintExtractor:
                 )
                 if rule_match:
                     name, code, description = rule_match.groups()
-                    rule = PylintRule(code=code, name=name, description=description)
+                    rule = PylintRule(rule_id=code, name=name, description=description)
                     rules.append(rule)
                     logger.debug("Found pylint rule: %s (%s)", code, name)
 

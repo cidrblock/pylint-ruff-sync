@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 def test_pylint_rule_init() -> None:
     """Test PylintRule initialization."""
-    rule = PylintRule(code="C0103", name="invalid-name", description="Invalid name")
+    rule = PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name")
     assert rule.code == "C0103"
     assert rule.name == "invalid-name"
     assert rule.description == "Invalid name"
@@ -35,8 +35,8 @@ def test_pylint_rule_init() -> None:
 
 def test_pylint_rule_repr() -> None:
     """Test PylintRule representation."""
-    rule = PylintRule(code="C0103", name="invalid-name", description="Invalid name")
-    assert repr(rule) == "PylintRule(code='C0103', name='invalid-name')"
+    rule = PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name")
+    assert repr(rule) == "PylintRule(rule_id='C0103', name='invalid-name')"
 
 
 def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -83,32 +83,50 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_update_pylint_config() -> None:
     """Test updating pylint configuration."""
-    updater = PyprojectUpdater(config_file=Path("test.toml"))
-    config: dict[str, object] = {}
-    rules_to_enable = {"C0103"}  # Only C0103 is not implemented in ruff
-    existing_disabled: set[str] = set()
-    all_rules = [
-        PylintRule(code="F401", name="unused-import", description="Unused import"),
-        PylintRule(code="F841", name="unused-variable", description="Unused variable"),
-        PylintRule(code="E501", name="line-too-long", description="Line too long"),
-        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
-    ]
+    # Create a temporary file for testing
+    import tempfile
 
-    result = updater.update_pylint_config(
-        config=config,
-        rules_to_enable=rules_to_enable,
-        existing_disabled=existing_disabled,
-        all_rules=all_rules,
-    )
+    from pylint_ruff_sync.toml_editor import TomlFile
 
-    assert "tool" in result
-    assert "pylint" in result["tool"]
-    assert "messages_control" in result["tool"]["pylint"]
-    assert result["tool"]["pylint"]["messages_control"]["enable"] == [
-        "C0103",  # Only C0103 should be enabled
-    ]
-    # The disable list should automatically include "all"
-    assert result["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("[tool.test]\nkey = 'value'\n")
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        updater = PyprojectUpdater(toml_file)
+
+        disable_rules = [
+            PylintRule(
+                rule_id="F401", name="unused-import", description="Unused import"
+            ),
+            PylintRule(
+                rule_id="F841", name="unused-variable", description="Unused variable"
+            ),
+        ]
+        enable_rules = [
+            PylintRule(
+                rule_id="C0103", name="invalid-name", description="Invalid name"
+            ),
+        ]
+
+        updater.update_pylint_config(disable_rules, enable_rules)
+
+        result_dict = toml_file.as_dict()
+        assert "tool" in result_dict
+        assert "pylint" in result_dict["tool"]
+        assert "messages_control" in result_dict["tool"]["pylint"]
+
+        # Check that enable rules are present
+        assert "C0103" in result_dict["tool"]["pylint"]["messages_control"]["enable"]
+
+        # Check that disable rules include "all" and the disabled rules
+        disable_list = result_dict["tool"]["pylint"]["messages_control"]["disable"]
+        assert "all" in disable_list
+        assert "F401" in disable_list
+        assert "F841" in disable_list
+    finally:
+        temp_path.unlink()
 
 
 def test_main_argument_parsing() -> None:
@@ -125,96 +143,108 @@ def test_main_argument_parsing() -> None:
     assert args.verbose is True
 
     # Test config file argument
-    args = parser.parse_args(["--config-file", "custom.toml"])
-    assert args.config_file == Path("custom.toml")
+    args = parser.parse_args(["--config", "custom.toml"])
+    assert args.config == Path("custom.toml")
 
 
 def test_resolve_rule_identifiers() -> None:
-    """Test resolving rule identifiers by code and name."""
-    extractor = PylintExtractor()
-    rules = [
-        PylintRule(code="F401", name="unused-import", description="Unused import"),
-        PylintRule(code="F841", name="unused-variable", description="Unused variable"),
-        PylintRule(code="E501", name="line-too-long", description="Line too long"),
-        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
+    """Test resolving rule identifiers to codes."""
+    all_rules = [
+        PylintRule(rule_id="F401", name="unused-import", description="Unused import"),
+        PylintRule(
+            rule_id="F841", name="unused-variable", description="Unused variable"
+        ),
+        PylintRule(rule_id="E501", name="line-too-long", description="Line too long"),
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
     ]
 
-    # Test resolving by code
-    result = extractor.resolve_rule_identifiers(
-        rule_identifiers=["F401", "C0103"], all_rules=rules
-    )
-    assert result == {"F401", "C0103"}
+    extractor = PylintExtractor()
 
-    # Test resolving by name
-    result = extractor.resolve_rule_identifiers(
-        rule_identifiers=["unused-import", "invalid-name"], all_rules=rules
+    # Test with rule codes
+    rule_identifiers = ["F401", "C0103"]
+    resolved = extractor.resolve_rule_identifiers(
+        rule_identifiers=rule_identifiers, all_rules=all_rules
     )
-    assert result == {"F401", "C0103"}
+    assert resolved == {"F401", "C0103"}
 
-    # Test mixed codes and names
-    result = extractor.resolve_rule_identifiers(
-        rule_identifiers=["F401", "invalid-name"], all_rules=rules
+    # Test with rule names
+    rule_identifiers = ["unused-import", "invalid-name"]
+    resolved = extractor.resolve_rule_identifiers(
+        rule_identifiers=rule_identifiers, all_rules=all_rules
     )
-    assert result == {"F401", "C0103"}
+    assert resolved == {"F401", "C0103"}
+
+    # Test with mixed codes and names
+    rule_identifiers = ["F401", "invalid-name"]
+    resolved = extractor.resolve_rule_identifiers(
+        rule_identifiers=rule_identifiers, all_rules=all_rules
+    )
+    assert resolved == {"F401", "C0103"}
+
+    # Test with unknown identifiers (should be ignored)
+    rule_identifiers = ["F401", "unknown-rule", "C0103"]
+    resolved = extractor.resolve_rule_identifiers(
+        rule_identifiers=rule_identifiers, all_rules=all_rules
+    )
+    assert resolved == {"F401", "C0103"}
 
 
 def test_disabled_rule_by_name_not_enabled() -> None:
-    """Test that disabled rules (by name) are not enabled."""
-    extractor = PylintExtractor()
-    rules = [
-        PylintRule(code="F401", name="unused-import", description="Unused import"),
-        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
+    """Test that disabled rules by name are not enabled."""
+    all_rules = [
+        PylintRule(rule_id="F401", name="unused-import", description="Unused import"),
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
     ]
 
-    # Test that disabled rules are not enabled
-    result = extractor.resolve_rule_identifiers(
-        rule_identifiers=["unused-import"], all_rules=rules
-    )
-    assert result == {"F401"}
+    extractor = PylintExtractor()
 
-    # Test that other rules are still resolved
-    result = extractor.resolve_rule_identifiers(
-        rule_identifiers=["invalid-name"], all_rules=rules
+    # Test resolving rule names to codes
+    rule_identifiers = ["unused-import"]
+    resolved = extractor.resolve_rule_identifiers(
+        rule_identifiers=rule_identifiers, all_rules=all_rules
     )
-    assert result == {"C0103"}
+    assert resolved == {"F401"}
 
 
 def test_update_pylint_config_with_existing_disabled_rules() -> None:
     """Test updating pylint configuration with existing disabled rules."""
-    updater = PyprojectUpdater(config_file=Path("test.toml"))
-    # Config with existing disabled rules
-    config: dict[str, object] = {
-        "tool": {
-            "pylint": {
-                "messages_control": {
-                    "disable": ["locally-disabled", "suppressed-message"]
-                }
-            }
-        }
-    }
-    rules_to_enable = {"C0103"}  # Only C0103 is not implemented in ruff
-    existing_disabled = {"locally-disabled", "suppressed-message"}
-    all_rules = [
-        PylintRule(code="F401", name="unused-import", description="Unused import"),
-        PylintRule(code="C0103", name="invalid-name", description="Invalid name"),
-    ]
+    # Create a temporary file for testing
+    import tempfile
 
-    result = updater.update_pylint_config(
-        config=config,
-        rules_to_enable=rules_to_enable,
-        existing_disabled=existing_disabled,
-        all_rules=all_rules,
-    )
+    from pylint_ruff_sync.toml_editor import TomlFile
 
-    assert "tool" in result
-    assert "pylint" in result["tool"]
-    assert "messages_control" in result["tool"]["pylint"]
-    assert result["tool"]["pylint"]["messages_control"]["enable"] == [
-        "C0103",  # Only C0103 should be enabled
-    ]
-    # The existing disable list should include "all" and preserve existing rules
-    disable_list = result["tool"]["pylint"]["messages_control"]["disable"]
-    assert "all" in disable_list
-    assert "locally-disabled" in disable_list
-    assert "suppressed-message" in disable_list
-    assert len(disable_list) == EXPECTED_DISABLE_LIST_LENGTH
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("""[tool.pylint.messages_control]
+disable = ["existing-rule"]
+""")
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        updater = PyprojectUpdater(toml_file)
+
+        disable_rules = [
+            PylintRule(
+                rule_id="F401", name="unused-import", description="Unused import"
+            ),
+        ]
+        enable_rules = [
+            PylintRule(
+                rule_id="C0103", name="invalid-name", description="Invalid name"
+            ),
+        ]
+
+        updater.update_pylint_config(disable_rules, enable_rules)
+
+        result_dict = toml_file.as_dict()
+
+        # Check that existing disabled rules are preserved
+        disable_list = result_dict["tool"]["pylint"]["messages_control"]["disable"]
+        assert "existing-rule" in disable_list
+        assert "all" in disable_list
+        assert "F401" in disable_list
+
+        # Check that enable rules are present
+        assert "C0103" in result_dict["tool"]["pylint"]["messages_control"]["enable"]
+    finally:
+        temp_path.unlink()

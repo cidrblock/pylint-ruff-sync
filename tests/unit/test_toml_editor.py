@@ -1,631 +1,354 @@
-"""Tests for the TomlEditor class."""
+"""Tests for the TomlFile class."""
 
 from __future__ import annotations
 
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
 
-import pytest
-
-from pylint_ruff_sync.toml_editor import SimpleArrayWithComments, TomlEditor
-
-# Test constants
-EXPECTED_FALLBACK_CALLS = 2
-EXPECTED_ALL_FAIL_CALLS = 3
+from pylint_ruff_sync.toml_editor import SimpleArrayWithComments, TomlFile
 
 
-def test_init() -> None:
-    """Test TomlEditor initialization."""
-    file_path = Path("test.toml")
-    editor = TomlEditor(file_path)
-    assert editor.file_path == file_path
-
-
-def test_read_config_existing_file() -> None:
-    """Test reading an existing TOML file."""
+def test_init_existing_file() -> None:
+    """Test TomlFile initialization with existing file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write('[tool.test]\nkey = "value"\n')
         temp_path = Path(f.name)
 
     try:
-        editor = TomlEditor(temp_path)
-        config = editor.read_config()
-        assert config == {"tool": {"test": {"key": "value"}}}
+        toml_file = TomlFile(temp_path)
+        assert toml_file.file_path == temp_path
+        assert "tool.test" in toml_file.as_str()
     finally:
         temp_path.unlink()
 
 
-def test_read_config_nonexistent_file() -> None:
-    """Test reading a nonexistent TOML file returns empty dict."""
-    editor = TomlEditor(Path("nonexistent.toml"))
-    config = editor.read_config()
-    assert config == {}
+def test_init_nonexistent_file() -> None:
+    """Test TomlFile initialization with nonexistent file."""
+    toml_file = TomlFile(Path("nonexistent.toml"))
+    assert toml_file.file_path == Path("nonexistent.toml")
+    assert toml_file.as_str() == ""
+    assert toml_file.as_dict() == {}
 
 
-def test_read_config_invalid_toml() -> None:
-    """Test reading invalid TOML raises exception."""
+def test_as_dict_existing_file() -> None:
+    """Test as_dict method with existing file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write("invalid toml [")
+        f.write('[tool.test]\nkey = "value"\n')
         temp_path = Path(f.name)
 
     try:
-        editor = TomlEditor(temp_path)
-        with pytest.raises((ValueError, TypeError, OSError)):
-            editor.read_config()
+        toml_file = TomlFile(temp_path)
+        result = toml_file.as_dict()
+        assert result == {"tool": {"test": {"key": "value"}}}
     finally:
         temp_path.unlink()
 
 
-def test_write_config_simple(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test writing a simple configuration."""
+def test_as_dict_empty_file() -> None:
+    """Test as_dict method with empty file."""
     with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
         temp_path = Path(f.name)
 
     try:
-        editor = TomlEditor(temp_path)
-        config = {"tool": {"test": {"key": "value"}}}
-
-        mock_sort_called = []
-
-        def mock_sort_file(_: TomlEditor) -> None:
-            mock_sort_called.append(True)
-
-        monkeypatch.setattr(TomlEditor, "sort_file", mock_sort_file)
-
-        editor.write_config(config)
-        assert len(mock_sort_called) == 1
-
-        # Read back and verify
-        result = editor.read_config()
-        assert result == config
+        toml_file = TomlFile(temp_path)
+        result = toml_file.as_dict()
+        assert result == {}
     finally:
         temp_path.unlink()
 
 
-def test_write_config_no_sort(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test writing configuration without sorting."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
-        temp_path = Path(f.name)
-
-    try:
-        editor = TomlEditor(temp_path)
-        config = {"key": "value"}
-
-        mock_sort_called = []
-
-        def mock_sort_file(_: TomlEditor) -> None:
-            mock_sort_called.append(True)
-
-        monkeypatch.setattr(TomlEditor, "sort_file", mock_sort_file)
-
-        editor.write_config(config, run_sort=False)
-        assert len(mock_sort_called) == 0
-    finally:
-        temp_path.unlink()
-
-
-def test_sort_file_success_uv(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test successful toml-sort with uv command."""
-
-    class MockResult:
-        def __init__(self, returncode: int, stderr: str) -> None:
-            self.returncode = returncode
-            self.stderr = stderr
-
-    mock_calls = []
-
-    def mock_run(cmd: list[str], **_kwargs: object) -> MockResult:
-        mock_calls.append(cmd)
-        return MockResult(returncode=0, stderr="")
-
-    monkeypatch.setattr(subprocess, "run", mock_run)
-
-    editor = TomlEditor(Path("test.toml"))
-    editor.sort_file()
-
-    assert len(mock_calls) == 1
-    args = mock_calls[0]
-    assert args[0] == "uv"
-    assert "toml-sort" in args
-    assert "--sort-inline-tables" in args
-    assert "--sort-table-keys" in args
-
-
-def test_sort_file_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test toml-sort with fallback commands."""
-
-    class MockResult:
-        def __init__(self, returncode: int, stderr: str) -> None:
-            self.returncode = returncode
-            self.stderr = stderr
-
-    mock_calls = []
-
-    def mock_run(cmd: list[str], **_kwargs: object) -> MockResult:
-        mock_calls.append(cmd)
-        if len(mock_calls) == 1:
-            uv_not_found_msg = "uv not found"
-            raise FileNotFoundError(uv_not_found_msg)
-        return MockResult(returncode=0, stderr="")
-
-    monkeypatch.setattr(subprocess, "run", mock_run)
-
-    editor = TomlEditor(Path("test.toml"))
-    editor.sort_file()
-
-    assert len(mock_calls) == EXPECTED_FALLBACK_CALLS
-
-
-def test_sort_file_all_fail(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test toml-sort when all commands fail."""
-    mock_calls = []
-
-    def mock_run(cmd: list[str], **_kwargs: object) -> None:
-        mock_calls.append(cmd)
-        command_failed_msg = "Command failed"
-        raise FileNotFoundError(command_failed_msg)
-
-    monkeypatch.setattr(subprocess, "run", mock_run)
-
-    editor = TomlEditor(Path("test.toml"))
-    # Should not raise an exception
-    editor.sort_file()
-
-    assert len(mock_calls) == EXPECTED_ALL_FAIL_CALLS
-
-
-def test_ensure_section_exists_new_section() -> None:
-    """Test creating a new section path."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
-        temp_path = Path(f.name)
-
-    try:
-        editor = TomlEditor(temp_path)
-        config = editor.ensure_section_exists(["tool", "pylint", "messages_control"])
-
-        assert "tool" in config
-        assert "pylint" in config["tool"]
-        assert "messages_control" in config["tool"]["pylint"]
-    finally:
-        temp_path.unlink()
-
-
-def test_ensure_section_exists_partial_existing() -> None:
-    """Test creating section path when part already exists."""
+def test_as_str() -> None:
+    """Test as_str method."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write('[tool.existing]\nkey = "value"\n')
+        content = '[tool.test]\nkey = "value"\n'
+        f.write(content)
         temp_path = Path(f.name)
 
     try:
-        editor = TomlEditor(temp_path)
-        config = editor.ensure_section_exists(["tool", "new", "subsection"])
-
-        assert "tool" in config
-        assert "existing" in config["tool"]
-        assert "new" in config["tool"]
-        assert "subsection" in config["tool"]["new"]
+        toml_file = TomlFile(temp_path)
+        result = toml_file.as_str()
+        assert "tool.test" in result
+        assert 'key = "value"' in result
     finally:
         temp_path.unlink()
 
 
-def test_update_section_array_simple(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test updating array in section without preserve_format."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+def test_update_section_array_simple_list() -> None:
+    """Test updating a section array with a simple list."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write('[tool.pylint.messages_control]\ndisable = ["old-rule"]\n')
         temp_path = Path(f.name)
 
     try:
-        editor = TomlEditor(temp_path)
-
-        mock_write_called = []
-
-        def mock_write_config(
-            _: TomlEditor, config: dict[str, Any], **_kwargs: object
-        ) -> None:
-            mock_write_called.append(config)
-
-        monkeypatch.setattr(TomlEditor, "write_config", mock_write_config)
-
-        editor.update_section_array(
-            section_path=["tool", "test"],
-            key="rules",
-            array_data=["rule1", "rule2"],
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            array_data=["new-rule", "another-rule"],
         )
 
-        assert len(mock_write_called) == 1
-        config = mock_write_called[0]
-        assert config["tool"]["test"]["rules"] == ["rule1", "rule2"]
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "new-rule",
+            "another-rule",
+        ]
     finally:
         temp_path.unlink()
 
 
-def test_update_section_array_preserve_format(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test updating section array with preserve_format=True."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
+def test_update_section_array_with_comments() -> None:
+    """Test updating a section array with comments."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write("[tool.pylint.messages_control]\nenable = []\n")
+        temp_path = Path(f.name)
 
-    mock_calls = []
+    try:
+        toml_file = TomlFile(temp_path)
 
-    def mock_update_array_with_surgical_replacement(
-        _: TomlEditor,
-        section_path: list[str],
-        key: str,
-        array_data: list[str] | SimpleArrayWithComments,
-    ) -> None:
-        mock_calls.append((section_path, key, array_data))
+        array_with_comments = SimpleArrayWithComments(
+            items=["C0103", "W0613"],
+            comments={
+                "C0103": "https://example.com/C0103",
+                "W0613": "https://example.com/W0613",
+            },
+        )
 
-    monkeypatch.setattr(
-        TomlEditor,
-        "_update_array_with_surgical_replacement",
-        mock_update_array_with_surgical_replacement,
-    )
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            array_data=array_with_comments,
+        )
 
-    # Mock file exists to trigger surgical replacement
-    monkeypatch.setattr(Path, "exists", lambda _: True)
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == [
+            "C0103",
+            "W0613",
+        ]
 
-    editor.update_section_array(
-        section_path=["tool", "pylint"],
-        key="enable",
-        array_data=["C0103", "C0111"],
-        preserve_format=True,
-    )
-
-    assert len(mock_calls) == 1
-    call_args = mock_calls[0]
-    assert call_args[0] == ["tool", "pylint"]
-    assert call_args[1] == "enable"
-    assert call_args[2] == ["C0103", "C0111"]
+        # Check that comments are in the string representation
+        result_str = toml_file.as_str()
+        assert "https://example.com/C0103" in result_str
+        assert "https://example.com/W0613" in result_str
+    finally:
+        temp_path.unlink()
 
 
-def test_update_section_array_simple_replacement(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test updating section array with simple replacement through config."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
+def test_update_section_array_empty_list() -> None:
+    """Test updating a section array with an empty list."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write('[tool.pylint.messages_control]\ndisable = ["old-rule"]\n')
+        temp_path = Path(f.name)
 
-    mock_calls = []
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            array_data=[],
+        )
 
-    def mock_write_config(
-        _: TomlEditor, config: dict[str, Any], **_kwargs: object
-    ) -> None:
-        mock_calls.append(config)
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == []
+    finally:
+        temp_path.unlink()
 
-    monkeypatch.setattr(TomlEditor, "write_config", mock_write_config)
 
-    # Mock file doesn't exist to trigger simple replacement
-    monkeypatch.setattr(Path, "exists", lambda _: False)
+def test_ensure_item_in_array_existing_section() -> None:
+    """Test ensuring an item exists in an array within an existing section."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write('[tool.pylint.messages_control]\ndisable = ["existing-rule"]\n')
+        temp_path = Path(f.name)
 
-    editor.update_section_array(
-        section_path=["tool", "pylint"],
-        key="enable",
-        array_data=["C0103", "C0111"],
-        preserve_format=True,
-    )
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.ensure_item_in_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            item="new-rule",
+        )
 
-    assert len(mock_calls) == 1
-    config = mock_calls[0]
-    assert config["tool"]["pylint"]["enable"] == ["C0103", "C0111"]
+        result_dict = toml_file.as_dict()
+        disable_list = result_dict["tool"]["pylint"]["messages_control"]["disable"]
+        assert "existing-rule" in disable_list
+        assert "new-rule" in disable_list
+    finally:
+        temp_path.unlink()
+
+
+def test_ensure_item_in_array_new_section() -> None:
+    """Test ensuring an item exists in an array when section doesn't exist."""
+    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.ensure_item_in_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            item="new-rule",
+        )
+
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "new-rule"
+        ]
+    finally:
+        temp_path.unlink()
+
+
+def test_ensure_item_in_array_already_exists() -> None:
+    """Test ensuring an item exists when it's already in the array."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write('[tool.pylint.messages_control]\ndisable = ["existing-rule"]\n')
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.ensure_item_in_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            item="existing-rule",
+        )
+
+        result_dict = toml_file.as_dict()
+        disable_list = result_dict["tool"]["pylint"]["messages_control"]["disable"]
+        assert disable_list == ["existing-rule"]  # Should not duplicate
+    finally:
+        temp_path.unlink()
+
+
+def test_write() -> None:
+    """Test writing the file to disk."""
+    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.test",
+            key="items",
+            array_data=["item1", "item2"],
+        )
+
+        toml_file.write()
+
+        # Read the file directly to verify it was written
+        content = temp_path.read_text(encoding="utf-8")
+        assert "tool.test" in content
+        assert "items" in content
+        assert "item1" in content
+        assert "item2" in content
+    finally:
+        temp_path.unlink()
 
 
 def test_simple_array_with_comments_format_empty() -> None:
-    """Test SimpleArrayWithComments formatting with empty array."""
-    array_data = SimpleArrayWithComments(items=[])
-    result = array_data.format_as_toml("enable")
-    assert result == "enable = []"
+    """Test formatting empty SimpleArrayWithComments."""
+    array = SimpleArrayWithComments(items=[])
+    result = array.format_as_toml()
+    assert result == "[]"
 
 
-def test_simple_array_with_comments_format_single_no_comment() -> None:
-    """Test SimpleArrayWithComments formatting with single item and no comment."""
-    array_data = SimpleArrayWithComments(items=["C0103"])
-    result = array_data.format_as_toml("enable")
-    assert result == 'enable = ["C0103"]'
+def test_simple_array_with_comments_format_simple() -> None:
+    """Test formatting SimpleArrayWithComments without comments."""
+    array = SimpleArrayWithComments(items=["item1", "item2"])
+    result = array.format_as_toml()
+    assert result == '["item1", "item2"]'
 
 
-def test_simple_array_with_comments_format_single_with_comment() -> None:
-    """Test SimpleArrayWithComments formatting with single item and comment."""
-    array_data = SimpleArrayWithComments(
-        items=["C0103"], comments={"C0103": "https://example.com/C0103"}
+def test_simple_array_with_comments_format_with_comments() -> None:
+    """Test formatting SimpleArrayWithComments with comments."""
+    array = SimpleArrayWithComments(
+        items=["item1", "item2"],
+        comments={"item1": "comment1", "item2": "comment2"},
     )
-    result = array_data.format_as_toml("enable")
-    expected = """enable = [
-  "C0103" # https://example.com/C0103
-]"""
-    assert result == expected
+    result = array.format_as_toml()
+
+    # Should be multiline format with comments
+    assert "# comment1" in result
+    assert "# comment2" in result
+    assert '"item1"' in result
+    assert '"item2"' in result
 
 
-def test_simple_array_with_comments_format_multiple_with_comments() -> None:
-    """Test SimpleArrayWithComments formatting with multiple items and comments."""
-    array_data = SimpleArrayWithComments(
-        items=["C0103", "C0111", "R0903"],
-        comments={
-            "C0103": "https://example.com/C0103",
-            "R0903": "https://example.com/R0903",
-        },
+def test_simple_array_with_comments_format_partial_comments() -> None:
+    """Test formatting SimpleArrayWithComments with partial comments."""
+    array = SimpleArrayWithComments(
+        items=["item1", "item2", "item3"],
+        comments={"item1": "comment1", "item3": "comment3"},
     )
-    result = array_data.format_as_toml("enable")
-    expected = """enable = [
-  "C0103", # https://example.com/C0103
-  "C0111",
-  "R0903" # https://example.com/R0903
-]"""
-    assert result == expected
+    result = array.format_as_toml()
+
+    # Should include comments for items that have them
+    assert "# comment1" in result
+    assert "# comment3" in result
+    assert '"item1"' in result
+    assert '"item2"' in result
+    assert '"item3"' in result
 
 
-def test_write_dict_to_lines_simple() -> None:
-    """Test writing simple dictionary to lines."""
-    editor = TomlEditor(Path("test.toml"))
-    lines: list[str] = []
+def test_apply_toml_sort() -> None:
+    """Test that toml-sort is applied to content."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Write unsorted content
+        f.write('[tool.z]\nkey = "value"\n[tool.a]\nother = "value"\n')
+        temp_path = Path(f.name)
 
-    data: dict[str, Any] = {"key": "value", "number": 42, "array": ["a", "b"]}
-    editor._write_dict_to_lines(data, lines)
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.b",
+            key="items",
+            array_data=["item"],
+        )
 
-    assert 'key = "value"' in lines
-    assert "number = 42" in lines
-    assert "array = [" in lines
-    assert '  "a",' in lines
-    assert '  "b"' in lines
+        # The content should be sorted
+        result_str = toml_file.as_str()
 
+        # tool.a should come before tool.b which should come before tool.z
+        a_pos = result_str.find("[tool.a]")
+        b_pos = result_str.find("[tool.b]")
+        z_pos = result_str.find("[tool.z]")
 
-def test_write_dict_to_lines_nested() -> None:
-    """Test writing nested dictionary to lines."""
-    editor = TomlEditor(Path("test.toml"))
-    lines: list[str] = []
-
-    data: dict[str, Any] = {"simple": "value", "tool": {"test": {"nested": "deep"}}}
-    editor._write_dict_to_lines(data, lines)
-
-    assert 'simple = "value"' in lines
-    assert any("[tool]" in line for line in lines)
-    assert any("[tool.test]" in line for line in lines)
-    assert 'nested = "deep"' in lines
-
-
-def test_write_dict_to_lines_empty_array() -> None:
-    """Test writing empty array."""
-    editor = TomlEditor(Path("test.toml"))
-    lines: list[str] = []
-
-    data: dict[str, Any] = {"empty": []}
-    editor._write_dict_to_lines(data, lines)
-
-    assert "empty = []" in lines
+        assert a_pos < b_pos < z_pos
+    finally:
+        temp_path.unlink()
 
 
-def test_write_dict_to_lines_single_item_array() -> None:
-    """Test writing single-item array."""
-    editor = TomlEditor(Path("test.toml"))
-    lines: list[str] = []
+def test_add_key_to_new_section() -> None:
+    """Test adding a key to a completely new section."""
+    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+        temp_path = Path(f.name)
 
-    data: dict[str, Any] = {"single": ["item"]}
-    editor._write_dict_to_lines(data, lines)
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.new.section",
+            key="items",
+            array_data=["item1"],
+        )
 
-    assert 'single = ["item"]' in lines
-
-
-def test_get_nested_section_existing() -> None:
-    """Test getting existing nested section."""
-    editor = TomlEditor(Path("test.toml"))
-    config = {"tool": {"test": {"existing": "value"}}}
-
-    section = editor._get_nested_section(config, ["tool", "test"])
-    assert section == {"existing": "value"}
-
-
-def test_get_nested_section_create_missing() -> None:
-    """Test creating missing nested sections."""
-    editor = TomlEditor(Path("test.toml"))
-    config: dict[str, Any] = {}
-
-    section = editor._get_nested_section(config, ["tool", "new", "section"])
-    assert config == {"tool": {"new": {"section": {}}}}
-    assert section == {}
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["new"]["section"]["items"] == ["item1"]
+    finally:
+        temp_path.unlink()
 
 
-def test_update_key_in_section_replace_existing() -> None:
-    """Test replacing existing key in section."""
-    editor = TomlEditor(Path("test.toml"))
-    section_content = """[tool.test]
-old_key = ["old_value"]
-other_key = "unchanged"
-"""
+def test_update_existing_key() -> None:
+    """Test updating an existing key in an existing section."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        f.write('[tool.test]\nitems = ["old"]\n')
+        temp_path = Path(f.name)
 
-    result = editor._update_key_in_section(section_content, "old_key", "old_key = []")
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.test",
+            key="items",
+            array_data=["new1", "new2"],
+        )
 
-    assert "old_key = []" in result
-    assert "other_key" in result
-
-
-def test_update_key_in_section_add_new() -> None:
-    """Test adding new key to section."""
-    editor = TomlEditor(Path("test.toml"))
-    section_content = """[tool.test]
-existing_key = "value"
-"""
-
-    result = editor._update_key_in_section(section_content, "new_key", "new_key = []")
-
-    assert "existing_key" in result
-    assert "new_key = []" in result
-
-
-def test_update_array_with_surgical_replacement_empty_array(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test surgical replacement with empty array."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
-
-    mock_calls = []
-
-    def mock_update_section_key_with_regex(
-        _: TomlEditor,
-        section_pattern: str,
-        key: str,
-        new_content: str,
-        *,
-        _add_if_missing: bool = True,
-    ) -> None:
-        mock_calls.append((section_pattern, key, new_content))
-
-    monkeypatch.setattr(
-        TomlEditor,
-        "_update_section_key_with_regex",
-        mock_update_section_key_with_regex,
-    )
-
-    # Mock file exists
-    monkeypatch.setattr(Path, "exists", lambda _: True)
-
-    editor._update_array_with_surgical_replacement(
-        section_path=["tool", "pylint", "messages_control"],
-        key="enable",
-        array_data=[],
-    )
-
-    assert len(mock_calls) == 1
-    call_args = mock_calls[0]
-    assert call_args[0] == r"\[tool\.pylint\.messages_control\]"
-    assert call_args[1] == "enable"
-    assert call_args[2] == "enable = []"
-
-
-def test_update_array_with_surgical_replacement_single_item(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test surgical replacement with single item."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
-
-    mock_calls = []
-
-    def mock_update_section_key_with_regex(
-        _: TomlEditor,
-        section_pattern: str,
-        key: str,
-        new_content: str,
-        *,
-        _add_if_missing: bool = True,
-    ) -> None:
-        mock_calls.append((section_pattern, key, new_content))
-
-    monkeypatch.setattr(
-        TomlEditor,
-        "_update_section_key_with_regex",
-        mock_update_section_key_with_regex,
-    )
-
-    # Mock file exists
-    monkeypatch.setattr(Path, "exists", lambda _: True)
-
-    editor._update_array_with_surgical_replacement(
-        section_path=["tool", "pylint", "messages_control"],
-        key="enable",
-        array_data=["C0103"],
-    )
-
-    assert len(mock_calls) == 1
-    call_args = mock_calls[0]
-    assert call_args[0] == r"\[tool\.pylint\.messages_control\]"
-    assert call_args[1] == "enable"
-    assert call_args[2] == 'enable = ["C0103"]'
-
-
-def test_update_array_with_surgical_replacement_multiple_items(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test surgical replacement with multiple items."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
-
-    mock_calls = []
-
-    def mock_update_section_key_with_regex(
-        _: TomlEditor,
-        section_pattern: str,
-        key: str,
-        new_content: str,
-        *,
-        _add_if_missing: bool = True,
-    ) -> None:
-        mock_calls.append((section_pattern, key, new_content))
-
-    monkeypatch.setattr(
-        TomlEditor,
-        "_update_section_key_with_regex",
-        mock_update_section_key_with_regex,
-    )
-
-    # Mock file exists
-    monkeypatch.setattr(Path, "exists", lambda _: True)
-
-    editor._update_array_with_surgical_replacement(
-        section_path=["tool", "pylint", "messages_control"],
-        key="enable",
-        array_data=["C0103", "C0111"],
-    )
-
-    assert len(mock_calls) == 1
-    call_args = mock_calls[0]
-    assert call_args[0] == r"\[tool\.pylint\.messages_control\]"
-    assert call_args[1] == "enable"
-    expected_content = """enable = [
-  "C0103",
-  "C0111"
-]"""
-    assert call_args[2] == expected_content
-
-
-def test_update_array_with_surgical_replacement_with_comments(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test surgical replacement with SimpleArrayWithComments."""
-    temp_path = Path("test.toml")
-    editor = TomlEditor(temp_path)
-
-    mock_calls = []
-
-    def mock_update_section_key_with_regex(
-        _: TomlEditor,
-        section_pattern: str,
-        key: str,
-        new_content: str,
-        *,
-        _add_if_missing: bool = True,
-    ) -> None:
-        mock_calls.append((section_pattern, key, new_content))
-
-    monkeypatch.setattr(
-        TomlEditor,
-        "_update_section_key_with_regex",
-        mock_update_section_key_with_regex,
-    )
-
-    # Mock file exists
-    monkeypatch.setattr(Path, "exists", lambda _: True)
-
-    # Create SimpleArrayWithComments with comments
-    array_with_comments = SimpleArrayWithComments(
-        items=["C0103", "C0111"],
-        comments={
-            "C0103": "https://example.com/C0103",
-            "C0111": "https://example.com/C0111",
-        },
-    )
-
-    editor._update_array_with_surgical_replacement(
-        section_path=["tool", "pylint", "messages_control"],
-        key="enable",
-        array_data=array_with_comments,
-    )
-
-    assert len(mock_calls) == 1
-    call_args = mock_calls[0]
-    assert call_args[0] == r"\[tool\.pylint\.messages_control\]"
-    assert call_args[1] == "enable"
-    expected_content = """enable = [
-  "C0103", # https://example.com/C0103
-  "C0111" # https://example.com/C0111
-]"""
-    assert call_args[2] == expected_content
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["test"]["items"] == ["new1", "new2"]
+    finally:
+        temp_path.unlink()

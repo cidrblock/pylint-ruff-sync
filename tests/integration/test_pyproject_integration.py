@@ -91,9 +91,7 @@ def test_pyproject_integration(
     config_file = copy_fixture_to_temp(before_fixture, tmp_path)
 
     # Mock sys.argv for main function
-    monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config-file", str(config_file)]
-    )
+    monkeypatch.setattr("sys.argv", ["pylint-ruff-sync", "--config", str(config_file)])
 
     # Run the tool
     result = main()
@@ -144,7 +142,7 @@ def test_dry_run_integration(
 
     # Mock sys.argv for main function with dry-run flag
     monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config-file", str(config_file), "--dry-run"]
+        "sys.argv", ["pylint-ruff-sync", "--config", str(config_file), "--dry-run"]
     )
 
     # Run the tool
@@ -180,7 +178,7 @@ def test_file_not_found_error(
 
     # Mock sys.argv for main function
     monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config-file", str(nonexistent_file)]
+        "sys.argv", ["pylint-ruff-sync", "--config", str(nonexistent_file)]
     )
 
     # Run the tool and expect it to fail
@@ -208,9 +206,7 @@ def test_invalid_config_file(
     invalid_file.write_text("invalid toml content [[[")
 
     # Mock sys.argv for main function
-    monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config-file", str(invalid_file)]
-    )
+    monkeypatch.setattr("sys.argv", ["pylint-ruff-sync", "--config", str(invalid_file)])
 
     # Run the tool and expect it to fail
     result = main()
