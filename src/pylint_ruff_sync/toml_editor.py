@@ -327,8 +327,12 @@ class TomlFile:
 
             if key_exists:
                 # Key already exists, replace it instead of adding
+                # Use a more robust pattern that handles multiline arrays properly
+                key_pattern = (
+                    rf"(^\s*{re.escape(key)}\s*=\s*).*?(?=^\s*\w+\s*=|^\s*\[|\Z)"
+                )
                 new_section_content = re.sub(
-                    rf"(^\s*{re.escape(key)}\s*=\s*).*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)",
+                    key_pattern,
                     rf"\g<1>{value}",
                     section_content,
                     flags=re.MULTILINE | re.DOTALL,
