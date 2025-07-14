@@ -315,10 +315,33 @@ class TomlFile:
         )
 
         if section_match:
-            # Section exists, add the key
+            # Section exists, check if key already exists
             section_content = section_match.group(1)
-            new_section_content = f"{section_content.rstrip()}\n{key} = {value}\n"
-            self._content = self._content.replace(section_content, new_section_content)
+
+            # Check if the key already exists in this section
+            key_exists = re.search(
+                rf"^\s*{re.escape(key)}\s*=",
+                section_content,
+                flags=re.MULTILINE,
+            )
+
+            if key_exists:
+                # Key already exists, replace it instead of adding
+                new_section_content = re.sub(
+                    rf"(^\s*{re.escape(key)}\s*=\s*).*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)",
+                    rf"\g<1>{value}",
+                    section_content,
+                    flags=re.MULTILINE | re.DOTALL,
+                )
+                self._content = self._content.replace(
+                    section_content, new_section_content, 1
+                )
+            else:
+                # Key doesn't exist, add it
+                new_section_content = f"{section_content.rstrip()}\n{key} = {value}\n"
+                self._content = self._content.replace(
+                    section_content, new_section_content, 1
+                )
         else:
             # Section doesn't exist, create it
             new_section = f"\n[{section_path}]\n{key} = {value}\n"

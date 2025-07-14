@@ -578,3 +578,328 @@ disable = ["all"]
 
     finally:
         temp_path.unlink()
+
+
+def test_update_multiline_array_with_comments_existing_key() -> None:
+    """Test updating a multiline array with comments when the key already exists - this reproduces the KeyAlreadyPresent error."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # This is the exact structure from the actual pyproject.toml that causes the issue
+        content = """[tool.pylint.messages_control]
+disable = ["all", "locally-disabled", "suppressed-message"]
+enable = [
+  "C0104", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0104.html
+  "C0117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0117.html
+  "C0200", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0200.html
+]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # This should update the existing disable key, not try to add a new one
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            array_data=["all", "new-rule"],
+        )
+
+        result_dict = toml_file.as_dict()
+
+        # Check that the disable key was updated correctly
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "all",
+            "new-rule",
+        ]
+
+        # Check that the enable key was not affected
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == [
+            "C0104",
+            "C0117",
+            "C0200",
+        ]
+
+    finally:
+        temp_path.unlink()
+
+
+def test_regex_pattern_matching_issue() -> None:
+    """Test that demonstrates the regex pattern matching issue in _update_section_key_with_regex."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Content that might cause the regex to fail
+        content = """[tool.pylint.messages_control]
+disable = ["all", "locally-disabled", "suppressed-message"]
+enable = [
+  "C0104", # comment
+  "C0117", # comment
+  "C0200"  # comment
+]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # Test the internal regex matching directly
+        import re
+
+        section_pattern = toml_file._build_section_pattern(
+            "tool.pylint.messages_control"
+        )
+
+        # This should match the disable key pattern
+        key_pattern = (
+            rf"({section_pattern}.*?^\s*disable\s*=\s*)"
+            rf".*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
+        )
+
+        match = re.search(
+            key_pattern,
+            toml_file._content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        # The regex should find the disable key
+        assert match is not None, "Regex should match the disable key but didn't"
+
+        # Test the replacement
+        new_content = re.sub(
+            key_pattern,
+            r"\g<1>['all', 'new-rule']",
+            toml_file._content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        # The replacement should work
+        assert new_content != toml_file._content, (
+            "Regex replacement should have changed the content"
+        )
+        assert "'new-rule'" in new_content
+
+    finally:
+        temp_path.unlink()
+
+
+def test_key_already_present_error_reproduction() -> None:
+    """Test that reproduces the exact KeyAlreadyPresent error from the pyproject.toml file."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # This is the exact structure from pyproject.toml that causes the issue
+        content = """[tool.pylint.messages_control]
+disable = ["all", "locally-disabled", "suppressed-message"]
+enable = [
+  "C0104", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0104.html
+  "C0117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0117.html
+  "C0200", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0200.html
+  "C0203", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0203.html
+  "C0204", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0204.html
+  "C0209", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0209.html
+  "C0302", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0302.html
+  "C0325", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0325.html
+  "C0327", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0327.html
+  "C0328", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0328.html
+  "C0401", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0401.html
+  "C0402", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0402.html
+  "C0403", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0403.html
+]
+
+[tool.other]
+value = "test"
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # This should reproduce the KeyAlreadyPresent error
+        # The issue is that the disable key is on a single line, but the enable key is multiline
+        # The regex might not handle this correctly
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            array_data=["all", "new-rule"],
+        )
+
+        result_dict = toml_file.as_dict()
+
+        # Check that the disable key was updated correctly
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "all",
+            "new-rule",
+        ]
+
+    finally:
+        temp_path.unlink()
+
+
+def test_regex_issue_with_single_line_vs_multiline() -> None:
+    """Test the regex issue where single-line key is followed by multiline key."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Test case where the key being updated is single line but followed by multiline
+        content = """[tool.pylint.messages_control]
+disable = ["all", "locally-disabled", "suppressed-message"]
+enable = [
+  "C0104", # comment
+  "C0117", # comment
+  "C0200"  # comment
+]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # Test the regex pattern directly
+        import re
+
+        section_pattern = toml_file._build_section_pattern(
+            "tool.pylint.messages_control"
+        )
+
+        # This is the exact pattern from _update_section_key_with_regex
+        key_pattern = (
+            rf"({section_pattern}.*?^\s*disable\s*=\s*)"
+            rf".*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
+        )
+
+        print(f"Content:\n{toml_file._content}")
+        print(f"Section pattern: {section_pattern}")
+        print(f"Key pattern: {key_pattern}")
+
+        match = re.search(
+            key_pattern,
+            toml_file._content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        if match:
+            print(f"Match found: {match.group(0)}")
+            print(f"Group 1: {match.group(1)}")
+        else:
+            print("No match found")
+
+        # The issue might be that the pattern doesn't match correctly
+        # Let's check what happens when we try to replace
+        new_content = re.sub(
+            key_pattern,
+            r"\g<1>['all', 'new-rule']",
+            toml_file._content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        print(f"New content:\n{new_content}")
+        print(f"Content changed: {new_content != toml_file._content}")
+
+    finally:
+        temp_path.unlink()
+
+
+def test_string_replacement_creates_duplicate_keys() -> None:
+    """Test that demonstrates how string replacement in _add_key_to_section can create duplicate keys."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Create content where the section content appears multiple times
+        content = """[tool.pylint.messages_control]
+disable = ["all"]
+
+[tool.other]
+# This comment contains: disable = ["all"]
+value = "test"
+
+[tool.another]
+disable = ["all"]
+value = "test"
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # Force the _add_key_to_section path by calling it directly
+        # This should trigger the string replacement issue
+        toml_file._add_key_to_section(
+            section_path="tool.pylint.messages_control",
+            key="disable",
+            value='["all", "new-rule"]',
+        )
+
+        # This should fail with KeyAlreadyPresent when toml-sort is applied
+        # because the string replacement might create duplicate keys
+        result_dict = toml_file.as_dict()
+
+        # Check that only one disable key exists in the target section
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "all",
+            "new-rule",
+        ]
+        assert result_dict["tool"]["another"]["disable"] == ["all"]
+
+    finally:
+        temp_path.unlink()
+
+
+def test_exact_string_replacement_issue() -> None:
+    """Test the exact issue: when section content appears multiple times, string replacement fails."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Create content where section boundary detection could fail
+        content = """[tool.pylint.messages_control]
+disable = ["all"]
+
+# Some comment with disable = ["all"] in it
+[tool.other]
+disable = ["all"]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # Test the regex pattern from _add_key_to_section
+        import re
+
+        section_pattern = toml_file._build_section_pattern(
+            "tool.pylint.messages_control"
+        )
+
+        # The current pattern in _add_key_to_section
+        pattern = rf"({section_pattern}.*?)(?=^\[|\Z)"
+
+        match = re.search(
+            pattern,
+            toml_file._content,
+            flags=re.MULTILINE | re.DOTALL,
+        )
+
+        if match:
+            section_content = match.group(1)
+            print(f"Section content: {section_content!r}")
+
+            # Check if this content appears multiple times
+            count = toml_file._content.count(section_content)
+            print(f"Section content appears {count} times")
+
+            # This could cause issues if count > 1
+            new_section_content = (
+                f"{section_content.rstrip()}\ndisable = ['all', 'new-rule']\n"
+            )
+
+            # This replace could replace wrong occurrences
+            new_content = toml_file._content.replace(
+                section_content, new_section_content
+            )
+            print(f"New content after replacement:\n{new_content}")
+
+            # Check if this created duplicate keys
+            # By manually counting disable keys
+            disable_count = new_content.count("disable = ")
+            print(f"Number of 'disable = ' occurrences: {disable_count}")
+
+            if disable_count > 2:  # We expect exactly 2 (one in each section)
+                print("ERROR: String replacement created duplicate keys!")
+
+    finally:
+        temp_path.unlink()
