@@ -15,7 +15,7 @@ from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
-from pylint_ruff_sync.toml_editor import TomlFile
+from pylint_ruff_sync.toml_file import TomlFile
 from tests.constants import (
     EXPECTED_IMPLEMENTED_RULES_COUNT,
     EXPECTED_RULES_COUNT,

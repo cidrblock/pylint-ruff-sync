@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from .pylint_extractor import PylintExtractor
 from .pyproject_updater import PyprojectUpdater
 from .ruff_pylint_extractor import RuffPylintExtractor
-from .toml_editor import TomlFile
+from .toml_file import TomlFile
 
 if TYPE_CHECKING:
     from .pylint_rule import PylintRule

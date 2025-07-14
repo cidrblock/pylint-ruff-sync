@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-import re
 import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from toml_sort.tomlsort import FormattingConfiguration, SortConfiguration, TomlSort
+
+from .toml_regex import TOML_REGEX
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -255,111 +256,26 @@ class TomlFile:
     ) -> None:
         """Update a specific key in a section using regex replacement.
 
+        This method uses the centralized TomlRegex class for all regex operations.
+
         Args:
             section_path: Dot-separated path to the section.
             key: Key within the section to update.
             new_value: New value for the key.
 
         """
-        # Create regex pattern to match the key in the section
-        section_pattern = self._build_section_pattern(section_path)
-
-        # Pattern to match: section header, then any content, then the key = value line
-        # We want to capture everything up to and including "key = " and replace
-        # everything after until start of next key, section, or end of file
-        key_pattern = (
-            rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*)"
-            rf".*?(?=^\s*\w+\s*=|^\s*\[|\Z)"
-        )
-
-        replacement = rf"\g<1>{new_value}\n"
-
-        new_content = re.sub(
-            key_pattern,
-            replacement,
-            self._content,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-
-        # If no replacement was made, the key might not exist - add it
-        if new_content == self._content:
-            self._add_key_to_section(section_path, key, new_value)
-        else:
-            self._content = new_content
-
-    def _build_section_pattern(self, section_path: str) -> str:
-        """Build a regex pattern to match a section header.
-
-        Args:
-            section_path: Dot-separated path to the section.
-
-        Returns:
-            Regex pattern string.
-
-        """
-        # Convert "tool.pylint.messages_control" to "\[tool\.pylint\.messages_control\]"
-        escaped_path = re.escape(section_path)
-        return rf"^\[{escaped_path}\]"
-
-    def _add_key_to_section(
-        self,
-        section_path: str,
-        key: str,
-        value: str,
-    ) -> None:
-        """Add a new key-value pair to a section.
-
-        Args:
-            section_path: Dot-separated path to the section.
-            key: Key to add.
-            value: Value for the key.
-
-        """
-        section_pattern = self._build_section_pattern(section_path)
-
-        # Find the section and add the key after it
-        section_match = re.search(
-            rf"({section_pattern}.*?)(?=^\[|\Z)",
-            self._content,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-
-        if section_match:
-            # Section exists, check if key already exists
-            section_content = section_match.group(1)
-
-            # Check if the key already exists in this section
-            key_exists = re.search(
-                rf"^\s*{re.escape(key)}\s*=",
-                section_content,
-                flags=re.MULTILINE,
+        try:
+            # Try to replace the key using the centralized regex
+            new_content = TOML_REGEX.replace_key_in_section(
+                self._content, section_path, key, new_value
             )
-
-            if key_exists:
-                # Key already exists, replace it instead of adding
-                # Use a more robust pattern that handles multiline arrays properly
-                key_pattern = (
-                    rf"(^\s*{re.escape(key)}\s*=\s*).*?(?=^\s*\w+\s*=|^\s*\[|\Z)"
-                )
-                new_section_content = re.sub(
-                    key_pattern,
-                    rf"\g<1>{value}\n",
-                    section_content,
-                    flags=re.MULTILINE | re.DOTALL,
-                )
-                self._content = self._content.replace(
-                    section_content, new_section_content, 1
-                )
-            else:
-                # Key doesn't exist, add it
-                new_section_content = f"{section_content.rstrip()}\n{key} = {value}\n"
-                self._content = self._content.replace(
-                    section_content, new_section_content, 1
-                )
-        else:
-            # Section doesn't exist, create it
-            new_section = f"\n[{section_path}]\n{key} = {value}\n"
-            self._content += new_section
+            self._content = new_content
+        except ValueError:
+            # Key not found, add it using the centralized regex
+            new_content = TOML_REGEX.add_key_to_section(
+                self._content, section_path, key, new_value
+            )
+            self._content = new_content
 
     def write(self) -> None:
         """Write the current in-memory content to the file."""

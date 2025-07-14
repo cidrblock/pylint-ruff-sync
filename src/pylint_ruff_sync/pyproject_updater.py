@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from .toml_editor import SimpleArrayWithComments, TomlFile
+from .toml_file import SimpleArrayWithComments, TomlFile
 
 if TYPE_CHECKING:
     from .pylint_rule import PylintRule

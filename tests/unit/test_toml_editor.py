@@ -5,7 +5,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from pylint_ruff_sync.toml_editor import SimpleArrayWithComments, TomlFile
+from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
 
 
 def test_init_existing_file() -> None:
@@ -529,7 +529,7 @@ disable = ["all"]
 
 
 def test_add_key_to_section_string_replacement_issue() -> None:
-    """Test that demonstrates the string replacement issue in _add_key_to_section."""
+    """Test that adding keys to sections only affects the correct section."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         # Create a TOML where section content appears multiple times
         content = """[tool.pylint.messages_control]
@@ -546,10 +546,10 @@ disable = ["all"]
         toml_file = TomlFile(temp_path)
 
         # This call should only affect the first section
-        toml_file._add_key_to_section(
+        toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
-            value='["C0103"]',
+            array_data=["C0103"],
         )
 
         result_dict = toml_file.as_dict()
@@ -584,11 +584,11 @@ enable = [
     try:
         toml_file = TomlFile(temp_path)
 
-        # This is what causes the error
-        toml_file._add_key_to_section(
+        # This should work with the new implementation
+        toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
-            value='["C0103", "C0117", "C0200"]',
+            array_data=["C0103", "C0117", "C0200"],
         )
 
         # Check the result
