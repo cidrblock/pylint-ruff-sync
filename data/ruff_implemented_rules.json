@@ -1,0 +1,9 @@
+{
+  "implemented_rules": [
+    "E501",
+    "F401",
+    "F841"
+  ],
+  "last_updated": null,
+  "source_url": "https://github.com/astral-sh/ruff/issues/970"
+}

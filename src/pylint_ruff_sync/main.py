@@ -54,6 +54,11 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable verbose logging",
     )
+    parser.add_argument(
+        "--update-cache",
+        action="store_true",
+        help="Update the cached ruff implementation data from GitHub and exit",
+    )
     return parser
 
 
@@ -191,6 +196,25 @@ def _update_config(
     logger.info("  Rules enabled: %d", len(enable_rules))
 
 
+def _update_cache() -> int:
+    """Update the ruff implementation cache from GitHub.
+
+    Returns:
+        Exit code (0 for success, 1 for failure).
+
+    """
+    try:
+        logger.info("Updating ruff implementation cache...")
+        extractor = RuffPylintExtractor()
+        rules = extractor.update_cache()
+        logger.info("Successfully updated cache with %d rules", len(rules))
+    except Exception:
+        logger.exception("Failed to update cache")
+        return 1
+    else:
+        return 0
+
+
 def main() -> int:
     """Run the pylint-ruff-sync tool.
 
@@ -202,6 +226,10 @@ def main() -> int:
     args = parser.parse_args()
 
     _configure_logging(verbose=args.verbose)
+
+    # Handle cache update option
+    if args.update_cache:
+        return _update_cache()
 
     try:
         # Validate config file path
