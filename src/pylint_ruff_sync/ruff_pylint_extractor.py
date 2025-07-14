@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import contextlib
 import json
 import logging
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 try:
     import requests
@@ -14,11 +13,9 @@ try:
 except ImportError:
     sys.exit(1)
 
-with contextlib.suppress(ImportError):
-    from importlib.resources import files
 
-if TYPE_CHECKING:
-    from pathlib import Path
+# We'll use __file__ approach for package data access for simplicity
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -71,23 +68,26 @@ class RuffPylintExtractor:
             except (json.JSONDecodeError, OSError) as e:
                 logger.warning("Failed to load cache from %s: %s", self.cache_path, e)
 
-        # Fallback to package data
+        # Fallback to package data using __file__ approach
         try:
-            package_files = (
-                files("pylint_ruff_sync") / "data" / "ruff_implemented_rules.json"
+            package_data_path = (
+                Path(__file__).parent / "data" / "ruff_implemented_rules.json"
             )
-            with package_files.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict) and "implemented_rules" in data:
-                    rules = data["implemented_rules"]
-                    if isinstance(rules, list):
-                        logger.info(
-                            "Loaded %d rules from package data",
-                            len(rules),
-                        )
-                        return rules
-            logger.warning("Invalid cache format in package data")
-        except (json.JSONDecodeError, OSError, AttributeError) as e:
+            if package_data_path.exists():
+                with package_data_path.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and "implemented_rules" in data:
+                        rules = data["implemented_rules"]
+                        if isinstance(rules, list):
+                            logger.info(
+                                "Loaded %d rules from package data",
+                                len(rules),
+                            )
+                            return rules
+                logger.warning("Invalid cache format in package data")
+            else:
+                logger.warning("Package data file not found: %s", package_data_path)
+        except (json.JSONDecodeError, OSError) as e:
             logger.warning("Failed to load package data: %s", e)
 
         return None
