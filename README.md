@@ -316,6 +316,44 @@ pylint-ruff-sync/
 └── README.md                       # This file
 ```
 
+## TOML Formatting with toml-sort
+
+The tool automatically applies consistent formatting to the `pyproject.toml` file using [toml-sort](https://github.com/pappasam/toml-sort). This ensures:
+
+- **Consistent key ordering** across all TOML sections
+- **Standardized formatting** for arrays and nested structures
+- **Preserved comments** while maintaining clean organization
+
+### Configuration
+
+The tool uses toml-sort's default configuration, which provides:
+
+```toml
+# toml-sort default configuration (no explicit config needed)
+# - Sorts keys alphabetically within sections
+# - Maintains section order as defined
+# - Preserves comments and formatting where possible
+# - Uses consistent indentation and spacing
+```
+
+Since no explicit `[tool.toml-sort]` section exists in the `pyproject.toml`, toml-sort uses its built-in defaults:
+
+- **Key sorting**: Alphabetical within sections
+- **Array formatting**: Multi-line for readability
+- **Comment preservation**: Maintains existing comments
+- **Indentation**: Consistent 2-space indentation
+- **Section ordering**: Preserves original section order
+
+### Automatic Application
+
+toml-sort is applied automatically during the pylint configuration update process:
+
+1. **Update pylint rules**: Modify enable/disable arrays
+2. **Apply toml-sort**: Format the entire file consistently
+3. **Preserve structure**: Maintain comments and section organization
+
+This ensures that all changes integrate seamlessly with your existing `pyproject.toml` structure while maintaining professional formatting standards.
+
 ## Contributing
 
 1. Fork the repository
@@ -338,6 +376,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -345,6 +384,7 @@ This project was developed through an innovative collaborative process between [
    - **Offline Caching**: Implemented a comprehensive caching solution for precommit.ci compatibility
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback
