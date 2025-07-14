@@ -16,12 +16,29 @@ from pylint_ruff_sync.toml_regex import TOML_REGEX, RegexMatch, TomlRegex
 
 
 class IndentedMultiline(str):
-    """Helper class for creating clean multiline strings in tests."""
+    """Helper class for creating clean multiline strings in tests.
+
+    This class inherits from str and automatically removes leading indentation
+    and newlines from multiline strings to improve test readability.
+
+    Attributes:
+        __slots__: Empty tuple to prevent additional attributes.
+
+    """
 
     __slots__ = ()
 
     def __new__(cls, content: str) -> Self:
-        """Create a new IndentedMultiline string with dedented content."""
+        """Create a new IndentedMultiline string with cleaned content.
+
+        Args:
+            content: The multiline string content to clean.
+
+        Returns:
+            A new IndentedMultiline instance with leading indentation and
+            newlines removed.
+
+        """
         cleaned = textwrap.dedent(content).lstrip("\n")
         return super().__new__(cls, cleaned)
 

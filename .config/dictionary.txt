@@ -1,5 +1,6 @@
 cidrblock
 Cronicle
+dedented
 docstrings
 levelname
 pydocstyle
