@@ -1,17 +1,21 @@
-"""Unit tests for pylint-ruff-sync."""
+"""Test module for main functionality."""
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-from pylint_ruff_sync.main import _setup_argument_parser
+from pylint_ruff_sync.main import (
+    _setup_argument_parser,
+)
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
+from pylint_ruff_sync.toml_editor import TomlFile
 from tests.constants import (
     EXPECTED_IMPLEMENTED_RULES_COUNT,
     EXPECTED_RULES_COUNT,
@@ -84,10 +88,6 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_update_pylint_config() -> None:
     """Test updating pylint configuration."""
     # Create a temporary file for testing
-    import tempfile
-
-    from pylint_ruff_sync.toml_editor import TomlFile
-
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
@@ -209,10 +209,6 @@ def test_disabled_rule_by_name_not_enabled() -> None:
 def test_update_pylint_config_with_existing_disabled_rules() -> None:
     """Test updating pylint configuration with existing disabled rules."""
     # Create a temporary file for testing
-    import tempfile
-
-    from pylint_ruff_sync.toml_editor import TomlFile
-
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         f.write("""[tool.pylint.messages_control]
 disable = ["existing-rule"]

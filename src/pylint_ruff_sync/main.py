@@ -33,7 +33,9 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
 
     """
     parser = argparse.ArgumentParser(
-        description="Update pylint configuration to enable only rules not implemented in ruff"
+        description=(
+            "Update pylint configuration to enable only rules not implemented in ruff"
+        )
     )
     parser.add_argument(
         "--config",
@@ -192,7 +194,7 @@ def _update_config(
 
 
 def main() -> int:
-    """Main entry point for the pylint-ruff-sync tool.
+    """Run the pylint-ruff-sync tool.
 
     Returns:
         Exit code (0 for success, 1 for failure).
@@ -229,13 +231,11 @@ def main() -> int:
         # Update configuration
         _update_config(toml_file, disable_rules, enable_rules, dry_run=args.dry_run)
 
-        return 0
-
     except Exception as e:
-        logger.error("Failed to update pylint configuration: %s", e)
-        if args.verbose:
-            logger.exception("Full traceback:")
+        logger.exception("Failed to update pylint configuration: %s", e)
         return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":

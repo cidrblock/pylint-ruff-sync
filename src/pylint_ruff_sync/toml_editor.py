@@ -118,8 +118,8 @@ class TomlFile:
             sorted_doc = sorter.toml_doc_sorted(doc)
 
             return str(sorted_doc.as_string())
-        except Exception as e:
-            logger.warning(f"Failed to sort TOML content: {e}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Failed to sort TOML content: %s", e)
             return content
 
     def as_dict(self) -> dict[str, Any]:
@@ -134,7 +134,7 @@ class TomlFile:
         try:
             return tomllib.loads(self._content)
         except tomllib.TOMLDecodeError as e:
-            logger.error(f"Failed to parse TOML content: {e}")
+            logger.exception("Failed to parse TOML content: %s", e)
             return {}
 
     def as_str(self) -> str:
@@ -155,7 +155,7 @@ class TomlFile:
         """Update an array in a specific section.
 
         Args:
-            section_path: Dot-separated path to the section (e.g., "tool.pylint.messages_control").
+            section_path: Dot-separated path to the section.
             key: Key within the section to update.
             array_data: Either a simple list of strings or SimpleArrayWithComments.
 
@@ -227,7 +227,8 @@ class TomlFile:
         section_pattern = self._build_section_pattern(section_path)
 
         # Pattern to match: section header, then any content, then the key = value line
-        # We want to capture everything up to and including "key = " and replace everything after until newline
+        # We want to capture everything up to and including "key = " and replace
+        # everything after until newline
         key_pattern = rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*).*?$"
 
         replacement = rf"\g<1>{new_value}"
