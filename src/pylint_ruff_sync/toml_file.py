@@ -102,14 +102,14 @@ class TomlFile:
 
     @_content.setter
     def _content(self, value: str) -> None:
-        """Set the file content.
+        """Set the file content with automatic toml-sort application.
 
         Args:
             value: The new content to set.
 
         """
-        # Store content as-is for now - we'll apply toml-sort at the end
-        self._raw_content = value
+        # Apply toml-sort automatically whenever content changes
+        self._raw_content = self._apply_toml_sort(value)
 
     def _load_file(self) -> str:
         """Load the TOML file content from disk.
@@ -171,7 +171,7 @@ class TomlFile:
         """Return the current file content as a string.
 
         Returns:
-            String representation of the TOML file.
+            String representation of the TOML file (already sorted).
 
         """
         return self._content
