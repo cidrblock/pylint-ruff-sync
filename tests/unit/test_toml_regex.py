@@ -29,7 +29,7 @@ def test_regex_match_dataclass() -> None:
     no_match = RegexMatch(match=None, matched=False)
     assert not no_match.matched
     assert no_match.match is None
-    assert no_match.groups == ()
+    assert not no_match.groups
 
 
 def test_build_section_pattern() -> None:
@@ -68,7 +68,7 @@ def test_build_section_pattern_with_regex_characters() -> None:
 
     # Verify it doesn't match without proper escaping
     # (This would fail if we didn't escape the parentheses)
-    assert pattern.search("[tool.testXspecialY]") is None
+    assert pattern.search("[tool.test-special-y]") is None
 
 
 def test_build_key_in_section_pattern_simple() -> None:

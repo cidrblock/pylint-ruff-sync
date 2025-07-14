@@ -102,23 +102,14 @@ class TomlFile:
 
     @_content.setter
     def _content(self, value: str) -> None:
-        """Set the file content and apply toml-sort formatting.
+        """Set the file content.
 
         Args:
             value: The new content to set.
 
         """
-        if value.strip():
-            try:
-                # Verify the TOML is valid before applying sort
-                tomllib.loads(value)
-                # Apply toml-sort formatting
-                self._raw_content = self._apply_toml_sort(value)
-            except tomllib.TOMLDecodeError:
-                # If TOML is invalid, store as-is (intermediate state during editing)
-                self._raw_content = value
-        else:
-            self._raw_content = value
+        # Store content as-is for now - we'll apply toml-sort at the end
+        self._raw_content = value
 
     def _load_file(self) -> str:
         """Load the TOML file content from disk.
@@ -177,13 +168,13 @@ class TomlFile:
             raise
 
     def as_str(self) -> str:
-        """Return the current file content as a string.
+        """Return the current file content as a string with toml-sort applied.
 
         Returns:
-            String representation of the TOML file.
+            String representation of the TOML file with toml-sort formatting.
 
         """
-        return self._content
+        return self._apply_toml_sort(self._content)
 
     def update_section_array(
         self,
@@ -278,5 +269,7 @@ class TomlFile:
             self._content = new_content
 
     def write(self) -> None:
-        """Write the current in-memory content to the file."""
-        self.file_path.write_text(self._content, encoding="utf-8")
+        """Write the current in-memory content to the file with toml-sort formatting."""
+        # Apply toml-sort before writing
+        formatted_content = self._apply_toml_sort(self._content)
+        self.file_path.write_text(formatted_content, encoding="utf-8")

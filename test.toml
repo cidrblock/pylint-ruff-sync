@@ -1,8 +1,8 @@
+[other.section]
+value = "test"
+
 [tool.pylint.messages_control]
 disable = [
   "missing-docstring",
   "line-too-long"
 ]
-
-[other.section]
-value = "test"
