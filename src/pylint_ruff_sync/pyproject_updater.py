@@ -143,7 +143,7 @@ class PyprojectUpdater:
             # Ensure we return a list of strings
             if isinstance(disable_value, list):
                 return [str(item) for item in disable_value]
-            return []
+            return []  # noqa: TRY300
         except (KeyError, TypeError):
             return []
 

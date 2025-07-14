@@ -72,6 +72,7 @@ repos:
           - beautifulsoup4
           - pytest
           - types-requests
+          - toml-sort
         args: []
   - repo: https://github.com/jsh9/pydoclint
     rev: "0.6.7"
@@ -107,3 +108,4 @@ repos:
           - beautifulsoup4
           - requests
           - pytest
+          - toml-sort

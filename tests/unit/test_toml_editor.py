@@ -76,22 +76,19 @@ def test_as_str() -> None:
 def test_update_section_array_simple_list() -> None:
     """Test updating a section array with a simple list."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write('[tool.pylint.messages_control]\ndisable = ["old-rule"]\n')
+        f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
-            array_data=["new-rule", "another-rule"],
+            section_path="tool.test",
+            key="array_key",
+            array_data=["item1", "item2"],
         )
 
         result_dict = toml_file.as_dict()
-        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
-            "new-rule",
-            "another-rule",
-        ]
+        assert result_dict["tool"]["test"]["array_key"] == ["item1", "item2"]
     finally:
         temp_path.unlink()
 
@@ -136,19 +133,19 @@ def test_update_section_array_with_comments() -> None:
 def test_update_section_array_empty_list() -> None:
     """Test updating a section array with an empty list."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
-        f.write('[tool.pylint.messages_control]\ndisable = ["old-rule"]\n')
+        f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
+            section_path="tool.test",
+            key="empty_array",
             array_data=[],
         )
 
         result_dict = toml_file.as_dict()
-        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == []
+        assert result_dict["tool"]["test"]["empty_array"] == []
     finally:
         temp_path.unlink()
 
@@ -243,48 +240,41 @@ def test_write() -> None:
 
 
 def test_simple_array_with_comments_format_empty() -> None:
-    """Test formatting empty SimpleArrayWithComments."""
-    array = SimpleArrayWithComments(items=[])
-    result = array.format_as_toml()
+    """Test SimpleArrayWithComments formatting with empty array."""
+    array_with_comments = SimpleArrayWithComments(items=[], comments=None)
+    result = array_with_comments.format_as_toml()
     assert result == "[]"
 
 
 def test_simple_array_with_comments_format_simple() -> None:
-    """Test formatting SimpleArrayWithComments without comments."""
-    array = SimpleArrayWithComments(items=["item1", "item2"])
-    result = array.format_as_toml()
+    """Test SimpleArrayWithComments formatting with simple array."""
+    array_with_comments = SimpleArrayWithComments(
+        items=["item1", "item2"], comments=None
+    )
+    result = array_with_comments.format_as_toml()
     assert result == '["item1", "item2"]'
 
 
 def test_simple_array_with_comments_format_with_comments() -> None:
-    """Test formatting SimpleArrayWithComments with comments."""
-    array = SimpleArrayWithComments(
+    """Test SimpleArrayWithComments formatting with comments."""
+    array_with_comments = SimpleArrayWithComments(
         items=["item1", "item2"],
         comments={"item1": "comment1", "item2": "comment2"},
     )
-    result = array.format_as_toml()
-
-    # Should be multiline format with comments
-    assert "# comment1" in result
-    assert "# comment2" in result
-    assert '"item1"' in result
-    assert '"item2"' in result
+    result = array_with_comments.format_as_toml()
+    expected = '[\n  "item1", # comment1\n  "item2" # comment2\n]'
+    assert result == expected
 
 
 def test_simple_array_with_comments_format_partial_comments() -> None:
-    """Test formatting SimpleArrayWithComments with partial comments."""
-    array = SimpleArrayWithComments(
+    """Test SimpleArrayWithComments formatting with partial comments."""
+    array_with_comments = SimpleArrayWithComments(
         items=["item1", "item2", "item3"],
         comments={"item1": "comment1", "item3": "comment3"},
     )
-    result = array.format_as_toml()
-
-    # Should include comments for items that have them
-    assert "# comment1" in result
-    assert "# comment3" in result
-    assert '"item1"' in result
-    assert '"item2"' in result
-    assert '"item3"' in result
+    result = array_with_comments.format_as_toml()
+    expected = '[\n  "item1", # comment1\n  "item2",\n  "item3" # comment3\n]'
+    assert result == expected
 
 
 def test_apply_toml_sort() -> None:
@@ -350,5 +340,241 @@ def test_update_existing_key() -> None:
 
         result_dict = toml_file.as_dict()
         assert result_dict["tool"]["test"]["items"] == ["new1", "new2"]
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_with_comments_and_whitespace() -> None:
+    """Test adding a key to a section that has comments and whitespace."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Complex TOML with comments and whitespace
+        content = """# This is a comment
+[tool.pylint.main]
+jobs = 0
+
+# Another comment
+[tool.pylint.messages_control]
+# Comment inside section
+disable = ["all"]
+
+# Final comment
+[tool.ruff]
+line-length = 88
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            array_data=["C0103", "W0613"],
+        )
+
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == [
+            "C0103",
+            "W0613",
+        ]
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+        assert result_dict["tool"]["pylint"]["main"]["jobs"] == 0
+        assert result_dict["tool"]["ruff"]["line-length"] == 88
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_with_similar_section_names() -> None:
+    """Test adding a key when there are sections with similar names."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # TOML with similar section names that could confuse regex
+        content = """[tool.pylint]
+version = "3.0"
+
+[tool.pylint.main]
+jobs = 0
+
+[tool.pylint.messages_control]
+disable = ["all"]
+
+[tool.pylint.messages_control.extended]
+extra = true
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            array_data=["C0103"],
+        )
+
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == ["C0103"]
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+        # Make sure other sections are not affected
+        assert result_dict["tool"]["pylint"]["main"]["jobs"] == 0
+        assert (
+            result_dict["tool"]["pylint"]["messages_control"]["extended"]["extra"]
+            is True
+        )
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_at_end_of_file() -> None:
+    """Test adding a key to a section at the end of the file."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # TOML with section at end, no trailing newline
+        content = """[tool.first]
+value = 1
+
+[tool.last]
+existing = true"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.last",
+            key="items",
+            array_data=["item1"],
+        )
+
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["last"]["items"] == ["item1"]
+        assert result_dict["tool"]["last"]["existing"] is True
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_with_multiline_values() -> None:
+    """Test adding a key to a section that has multiline values."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # TOML with multiline values
+        content = """[tool.pylint.messages_control]
+disable = [
+    "all",
+    "locally-disabled",
+    "suppressed-message"
+]
+
+[tool.other]
+value = "test"
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            array_data=["C0103"],
+        )
+
+        result_dict = toml_file.as_dict()
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == ["C0103"]
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == [
+            "all",
+            "locally-disabled",
+            "suppressed-message",
+        ]
+        assert result_dict["tool"]["other"]["value"] == "test"
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_with_duplicate_content() -> None:
+    """Test adding a key to a section when there's duplicate content that could confuse string replacement."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # TOML with duplicate content that could cause issues with string replacement
+        content = """[tool.pylint.messages_control]
+disable = ["all"]
+
+[tool.ruff]
+# This comment contains the same text as above: disable = ["all"]
+line-length = 88
+
+[tool.other]
+disable = ["all"]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+        toml_file.update_section_array(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            array_data=["C0103"],
+        )
+
+        result_dict = toml_file.as_dict()
+        # Check that the key was added to the correct section
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == ["C0103"]
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+
+        # Check that other sections were not affected
+        assert result_dict["tool"]["other"]["disable"] == ["all"]
+        assert result_dict["tool"]["ruff"]["line-length"] == 88
+
+        # Check that the content appears only once in the right place
+        result_str = toml_file.as_str()
+        # Count occurrences of the section header
+        section_count = result_str.count("[tool.pylint.messages_control]")
+        assert section_count == 1, (
+            f"Expected 1 occurrence of section header, got {section_count}"
+        )
+
+        # Check that enable was added to the correct section
+        pylint_section_start = result_str.find("[tool.pylint.messages_control]")
+        next_section_start = result_str.find("[tool.ruff]", pylint_section_start)
+
+        pylint_section_content = result_str[pylint_section_start:next_section_start]
+        assert "enable" in pylint_section_content
+        assert "C0103" in pylint_section_content
+
+    finally:
+        temp_path.unlink()
+
+
+def test_add_key_to_section_string_replacement_issue() -> None:
+    """Test that demonstrates the potential string replacement issue in _add_key_to_section."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        # Create a TOML where section content appears multiple times
+        content = """[tool.pylint.messages_control]
+disable = ["all"]
+
+[tool.test]
+# This section has the same content: disable = ["all"]
+disable = ["all"]
+"""
+        f.write(content)
+        temp_path = Path(f.name)
+
+    try:
+        toml_file = TomlFile(temp_path)
+
+        # This call should only affect the first section
+        toml_file._add_key_to_section(
+            section_path="tool.pylint.messages_control",
+            key="enable",
+            value='["C0103"]',
+        )
+
+        result_dict = toml_file.as_dict()
+
+        # Check that the key was added to the correct section
+        assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == ["C0103"]
+        assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
+
+        # Check that the other section was not affected
+        assert result_dict["tool"]["test"]["disable"] == ["all"]
+        assert "enable" not in result_dict["tool"]["test"]
+
     finally:
         temp_path.unlink()

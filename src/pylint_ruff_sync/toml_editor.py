@@ -8,10 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-try:
-    from toml_sort.tomlsort import TomlSort
-except ImportError:
-    TomlSort = None  # type: ignore[assignment,misc]
+from toml_sort.tomlsort import FormattingConfiguration, SortConfiguration, TomlSort
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -61,9 +58,9 @@ class SimpleArrayWithComments:
 
             if comment:
                 if is_last:
-                    lines.append(f'  "{item}"  # {comment}')
+                    lines.append(f'  "{item}" # {comment}')
                 else:
-                    lines.append(f'  "{item}",  # {comment}')
+                    lines.append(f'  "{item}", # {comment}')
             elif is_last:
                 lines.append(f'  "{item}"')
             else:
@@ -79,10 +76,6 @@ class TomlFile:
     the in-memory representation. All changes are applied with toml-sort formatting.
     The file is only written when explicitly requested.
 
-    Attributes:
-        file_path: Path to the TOML file.
-        _content: In-memory string representation of the TOML file.
-
     """
 
     def __init__(self, file_path: Path) -> None:
@@ -93,7 +86,28 @@ class TomlFile:
 
         """
         self.file_path = file_path
+        self._raw_content = ""
         self._content = self._load_file()
+
+    @property
+    def _content(self) -> str:
+        """Get the current file content.
+
+        Returns:
+            The current file content as a string.
+
+        """
+        return self._raw_content
+
+    @_content.setter
+    def _content(self, value: str) -> None:
+        """Set the file content and automatically apply toml-sort.
+
+        Args:
+            value: The new content to set.
+
+        """
+        self._raw_content = self._apply_toml_sort(value)
 
     def _load_file(self) -> str:
         """Load the TOML file content from disk.
@@ -105,17 +119,6 @@ class TomlFile:
         if not self.file_path.exists():
             return ""
         return self.file_path.read_text(encoding="utf-8")
-
-    def _check_toml_sort_dependencies(self) -> None:
-        """Check if toml-sort dependencies are available.
-
-        Raises:
-            ImportError: If toml-sort dependencies are not available.
-
-        """
-        if TomlSort is None:
-            msg = "toml-sort dependencies not available"
-            raise ImportError(msg)
 
     def _apply_toml_sort(self, content: str) -> str:
         """Apply toml-sort formatting to the content.
@@ -130,17 +133,19 @@ class TomlFile:
         if not content.strip():
             return content
 
-        try:
-            self._check_toml_sort_dependencies()
+        sort_config = SortConfiguration(
+            inline_tables=True,
+            table_keys=True,
+        )
+        format_config = FormattingConfiguration(
+            spaces_before_inline_comment=1,
+            trailing_comma_inline_array=False,
+        )
 
-            # Create TomlSort instance with the content
-            sorter = TomlSort(input_toml=content)
-
-            # Sort the content and return as string
-            return sorter.sorted()
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Failed to sort TOML content: %s", e)
-            return content
+        sorter = TomlSort(
+            input_toml=content, sort_config=sort_config, format_config=format_config
+        )
+        return sorter.sorted()
 
     def as_dict(self) -> dict[str, Any]:
         """Return the current file content as a dictionary.
@@ -270,7 +275,7 @@ class TomlFile:
         if new_content == self._content:
             self._add_key_to_section(section_path, key, new_value)
         else:
-            self._content = self._apply_toml_sort(new_content)
+            self._content = new_content
 
     def _build_section_pattern(self, section_path: str) -> str:
         """Build a regex pattern to match a section header.
@@ -318,8 +323,6 @@ class TomlFile:
             # Section doesn't exist, create it
             new_section = f"\n[{section_path}]\n{key} = {value}\n"
             self._content += new_section
-
-        self._content = self._apply_toml_sort(self._content)
 
     def write(self) -> None:
         """Write the current in-memory content to the file."""
