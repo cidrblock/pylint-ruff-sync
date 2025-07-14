@@ -134,12 +134,16 @@ class PyprojectUpdater:
 
         """
         try:
-            return (
+            disable_value = (
                 current_dict.get("tool", {})
                 .get("pylint", {})
                 .get("messages_control", {})
                 .get("disable", [])
             )
+            # Ensure we return a list of strings
+            if isinstance(disable_value, list):
+                return [str(item) for item in disable_value]
+            return []
         except (KeyError, TypeError):
             return []
 

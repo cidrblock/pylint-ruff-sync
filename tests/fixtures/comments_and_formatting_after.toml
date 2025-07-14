@@ -1,6 +1,5 @@
 # This is a test project configuration
 
-
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = ["setuptools>=45", "wheel"]
@@ -25,9 +24,9 @@ jobs = 0
 [tool.pylint.messages_control]
 disable = ["all", "locally-disabled", "suppressed-message"]
 enable = [
-  "C0103",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0103.html
-  "C0111",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0111.html
-  "R0903"  # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/0903.html
+    "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0103.html
+    "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0111.html
+    "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/0903.html
 ]
 
 [tool.pytest]

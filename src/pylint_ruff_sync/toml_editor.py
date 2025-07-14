@@ -9,10 +9,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 try:
-    import tomlkit
     from toml_sort.tomlsort import TomlSort
 except ImportError:
-    tomlkit = None  # type: ignore[assignment]
     TomlSort = None  # type: ignore[assignment,misc]
 
 if TYPE_CHECKING:
@@ -45,7 +43,17 @@ class SimpleArrayWithComments:
         if not self.items:
             return "[]"
 
-        # Always use multiline format for consistency
+        # Use single-line format if no comments, multi-line if comments exist
+        has_comments = self.comments and any(
+            self.comments.get(item, "") for item in self.items
+        )
+
+        if not has_comments:
+            # Single-line format for arrays without comments
+            items_str = ", ".join(f'"{item}"' for item in self.items)
+            return f"[{items_str}]"
+
+        # Multi-line format for arrays with comments
         lines = ["["]
         for i, item in enumerate(self.items):
             comment = self.comments.get(item, "") if self.comments else ""
@@ -98,6 +106,17 @@ class TomlFile:
             return ""
         return self.file_path.read_text(encoding="utf-8")
 
+    def _check_toml_sort_dependencies(self) -> None:
+        """Check if toml-sort dependencies are available.
+
+        Raises:
+            ImportError: If toml-sort dependencies are not available.
+
+        """
+        if TomlSort is None:
+            msg = "toml-sort dependencies not available"
+            raise ImportError(msg)
+
     def _apply_toml_sort(self, content: str) -> str:
         """Apply toml-sort formatting to the content.
 
@@ -112,19 +131,13 @@ class TomlFile:
             return content
 
         try:
-            if tomlkit is None or TomlSort is None:
-                raise ImportError("toml-sort dependencies not available")
+            self._check_toml_sort_dependencies()
 
-            # Parse content with tomlkit
-            doc = tomlkit.parse(content)
-
-            # Create TomlSort instance with the document
+            # Create TomlSort instance with the content
             sorter = TomlSort(input_toml=content)
 
-            # Sort the document
-            sorted_doc = sorter.toml_doc_sorted(doc)
-
-            return str(sorted_doc.as_string())
+            # Sort the content and return as string
+            return sorter.sorted()
         except Exception as e:  # noqa: BLE001
             logger.warning("Failed to sort TOML content: %s", e)
             return content
@@ -135,6 +148,9 @@ class TomlFile:
         Returns:
             Dictionary representation of the TOML file.
 
+        Raises:
+            tomllib.TOMLDecodeError: If the TOML content is invalid.
+
         """
         if not self._content.strip():
             return {}
@@ -142,7 +158,7 @@ class TomlFile:
             return tomllib.loads(self._content)
         except tomllib.TOMLDecodeError:
             logger.exception("Failed to parse TOML content")
-            return {}
+            raise
 
     def as_str(self) -> str:
         """Return the current file content as a string.
