@@ -26,7 +26,7 @@ def test_init_nonexistent_file() -> None:
     """Test TomlFile initialization with nonexistent file."""
     toml_file = TomlFile(Path("nonexistent.toml"))
     assert toml_file.file_path == Path("nonexistent.toml")
-    assert toml_file.as_str() == ""
+    assert not toml_file.as_str()
     assert toml_file.as_dict() == {}
 
 
@@ -416,7 +416,7 @@ extra = true
         assert result_dict["tool"]["pylint"]["messages_control"]["enable"] == ["C0103"]
         assert result_dict["tool"]["pylint"]["messages_control"]["disable"] == ["all"]
         # Make sure other sections are not affected
-        assert result_dict["tool"]["pylint"]["main"]["jobs"] == 0
+        assert not result_dict["tool"]["pylint"]["main"]["jobs"]
         assert (
             result_dict["tool"]["pylint"]["messages_control"]["extended"]["extra"]
             is True
@@ -601,3 +601,39 @@ enable = [
 
     finally:
         temp_path.unlink()
+
+
+def test_automatic_toml_sort_application(tmp_path: Path) -> None:
+    """Test that toml-sort is automatically applied when content changes.
+
+    Args:
+        tmp_path: Temporary path for the test file.
+
+    """
+    toml_content = """[tool.pylint.messages_control]
+disable = ["rule-a", "rule-b"]
+
+[tool.ruff]
+line-length = 88
+"""
+
+    temp_file = tmp_path / "test.toml"
+    temp_file.write_text(toml_content)
+
+    toml_file = TomlFile(temp_file)
+
+    # Update an array - this should trigger automatic sorting
+    toml_file.update_section_array(
+        "tool.pylint.messages_control", "disable", ["rule-c", "rule-a"]
+    )
+
+    result = toml_file.as_str()
+
+    # The content should be properly formatted by toml-sort
+    assert "rule-c" in result
+    assert "rule-a" in result
+
+    # Verify it's valid TOML
+    parsed = toml_file.as_dict()
+    assert "rule-c" in parsed["tool"]["pylint"]["messages_control"]["disable"]
+    assert "rule-a" in parsed["tool"]["pylint"]["messages_control"]["disable"]

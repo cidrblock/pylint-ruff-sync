@@ -32,7 +32,7 @@ class RuffPylintExtractor:
         """
         self.issue_url = issue_url
 
-    def extract_implemented_rules(self) -> set[str]:
+    def extract_implemented_rules(self) -> list[str]:
         """Extract pylint rule codes that have been implemented in ruff.
 
         Returns:
@@ -43,7 +43,7 @@ class RuffPylintExtractor:
             Exception: If parsing fails.
 
         """
-        try:  # pylint: disable=too-many-nested-blocks
+        try:
             logger.info(
                 "Fetching ruff pylint implementation status from %s", self.issue_url
             )
@@ -101,4 +101,4 @@ class RuffPylintExtractor:
         except Exception:
             logger.exception("Failed to parse GitHub issue")
             raise
-        return implemented_rules
+        return sorted(implemented_rules)

@@ -101,13 +101,23 @@ class TomlFile:
 
     @_content.setter
     def _content(self, value: str) -> None:
-        """Set the file content and automatically apply toml-sort.
+        """Set the file content and apply toml-sort formatting.
 
         Args:
             value: The new content to set.
 
         """
-        self._raw_content = self._apply_toml_sort(value)
+        if value.strip():
+            try:
+                # Verify the TOML is valid before applying sort
+                tomllib.loads(value)
+                # Apply toml-sort formatting
+                self._raw_content = self._apply_toml_sort(value)
+            except tomllib.TOMLDecodeError:
+                # If TOML is invalid, store as-is (intermediate state during editing)
+                self._raw_content = value
+        else:
+            self._raw_content = value
 
     def _load_file(self) -> str:
         """Load the TOML file content from disk.
@@ -256,13 +266,13 @@ class TomlFile:
 
         # Pattern to match: section header, then any content, then the key = value line
         # We want to capture everything up to and including "key = " and replace
-        # everything after until newline or end of array (for multi-line arrays)
+        # everything after until start of next key, section, or end of file
         key_pattern = (
             rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*)"
-            rf".*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
+            rf".*?(?=^\s*\w+\s*=|^\s*\[|\Z)"
         )
 
-        replacement = rf"\g<1>{new_value}"
+        replacement = rf"\g<1>{new_value}\n"
 
         new_content = re.sub(
             key_pattern,
@@ -333,7 +343,7 @@ class TomlFile:
                 )
                 new_section_content = re.sub(
                     key_pattern,
-                    rf"\g<1>{value}",
+                    rf"\g<1>{value}\n",
                     section_content,
                     flags=re.MULTILINE | re.DOTALL,
                 )

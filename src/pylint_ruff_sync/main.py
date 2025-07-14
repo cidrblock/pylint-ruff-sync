@@ -87,7 +87,7 @@ def _extract_pylint_rules() -> list[PylintRule]:
         raise RuntimeError(msg) from e
 
 
-def _extract_ruff_implemented_rules() -> set[str]:
+def _extract_ruff_implemented_rules() -> list[str]:
     """Extract rules implemented in ruff.
 
     Returns:
@@ -107,7 +107,7 @@ def _extract_ruff_implemented_rules() -> set[str]:
 
 def _categorize_rules(
     all_rules: list[PylintRule],
-    ruff_implemented: set[str],
+    ruff_implemented: list[str],
     toml_file: TomlFile,
 ) -> tuple[list[PylintRule], list[PylintRule]]:
     """Categorize rules into those to disable and enable.
