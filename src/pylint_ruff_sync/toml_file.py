@@ -255,18 +255,22 @@ class TomlFile:
             new_value: New value for the key.
 
         """
+        # Work with the current content and only set it once at the end
+        current_content = self._content
+
         try:
             # Try to replace the key using the centralized regex
             new_content = TOML_REGEX.replace_key_in_section(
-                self._content, section_path, key, new_value
+                current_content, section_path, key, new_value
             )
-            self._content = new_content
         except ValueError:
             # Key not found, add it using the centralized regex
             new_content = TOML_REGEX.add_key_to_section(
-                self._content, section_path, key, new_value
+                current_content, section_path, key, new_value
             )
-            self._content = new_content
+
+        # Only set the content once at the end
+        self._content = new_content
 
     def write(self) -> None:
         """Write the current in-memory content to the file with toml-sort formatting."""

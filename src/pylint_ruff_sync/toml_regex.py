@@ -280,17 +280,16 @@ class TomlRegex:
         """
         pattern = self.build_key_in_section_pattern(section_path, key)
 
+        # Check if the pattern matches first
+        if not pattern.search(content):
+            msg = f"Key '{key}' not found in section '{section_path}'"
+            raise ValueError(msg)
+
         # The replacement preserves everything up to and including "key = "
         # and replaces everything after with the new value plus a newline
         replacement = rf"\g<1>{new_value}\n"
 
-        new_content = pattern.sub(replacement, content)
-
-        if new_content == content:
-            msg = f"Key '{key}' not found in section '{section_path}'"
-            raise ValueError(msg)
-
-        return new_content
+        return pattern.sub(replacement, content)
 
     def add_key_to_section(
         self, content: str, section_path: str, key: str, value: str
