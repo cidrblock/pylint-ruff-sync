@@ -75,14 +75,19 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     rules = extractor.extract_all_rules()
 
     assert len(rules) == EXPECTED_RULES_COUNT
-    assert rules[0].code == "F401"
-    assert rules[0].name == "unused-import"
-    assert rules[1].code == "F841"
-    assert rules[1].name == "unused-variable"
+    # Rules should be sorted by code
+    assert rules[0].code == "C0103"
+    assert rules[0].name == "invalid-name"
+    assert rules[1].code == "C0111"
+    assert rules[1].name == "missing-docstring"
     assert rules[2].code == "E501"
     assert rules[2].name == "line-too-long"
-    assert rules[3].code == "C0103"
-    assert rules[3].name == "invalid-name"
+    assert rules[3].code == "F401"
+    assert rules[3].name == "unused-import"
+    assert rules[4].code == "F841"
+    assert rules[4].name == "unused-variable"
+    assert rules[5].code == "R0903"
+    assert rules[5].name == "too-few-public-methods"
 
 
 def test_update_pylint_config() -> None:

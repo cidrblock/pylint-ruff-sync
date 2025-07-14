@@ -76,6 +76,9 @@ class PylintExtractor:
         except Exception:
             logger.exception("Failed to parse pylint output")
             raise
+
+        # Sort rules by code for consistent ordering
+        rules.sort(key=lambda rule: rule.rule_id)
         return rules
 
     def resolve_rule_identifiers(
