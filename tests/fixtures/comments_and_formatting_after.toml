@@ -1,5 +1,6 @@
 # This is a test project configuration
 
+
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = ["setuptools>=45", "wheel"]
@@ -23,14 +24,12 @@ jobs = 0
 # Pylint configuration - preserve this comment
 [tool.pylint.messages_control]
 disable = ["all", "locally-disabled", "suppressed-message"]
-# Current configuration - this comment should be preserved
 enable = [
-    "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
-    "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-    "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+  "C0103",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0103.html
+  "C0111",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/0111.html
+  "R0903"  # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/0903.html
 ]
 
-# Test configuration
 [tool.pytest]
 
 [tool.pytest.ini_options]

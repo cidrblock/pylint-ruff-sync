@@ -8,6 +8,13 @@ import tomllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+try:
+    import tomlkit
+    from toml_sort.tomlsort import TomlSort
+except ImportError:
+    tomlkit = None  # type: ignore[assignment]
+    TomlSort = None  # type: ignore[assignment,misc]
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -105,14 +112,14 @@ class TomlFile:
             return content
 
         try:
-            import tomlkit  # type: ignore[import-untyped]
-            from toml_sort.tomlsort import TomlSort  # type: ignore[import-untyped]
+            if tomlkit is None or TomlSort is None:
+                raise ImportError("toml-sort dependencies not available")
 
             # Parse content with tomlkit
             doc = tomlkit.parse(content)
 
             # Create TomlSort instance with the document
-            sorter = TomlSort(input_toml=doc)
+            sorter = TomlSort(input_toml=content)
 
             # Sort the document
             sorted_doc = sorter.toml_doc_sorted(doc)
@@ -133,8 +140,8 @@ class TomlFile:
             return {}
         try:
             return tomllib.loads(self._content)
-        except tomllib.TOMLDecodeError as e:
-            logger.exception("Failed to parse TOML content: %s", e)
+        except tomllib.TOMLDecodeError:
+            logger.exception("Failed to parse TOML content")
             return {}
 
     def as_str(self) -> str:
@@ -229,7 +236,10 @@ class TomlFile:
         # Pattern to match: section header, then any content, then the key = value line
         # We want to capture everything up to and including "key = " and replace
         # everything after until newline or end of array (for multi-line arrays)
-        key_pattern = rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*).*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
+        key_pattern = (
+            rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*)"
+            rf".*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
+        )
 
         replacement = rf"\g<1>{new_value}"
 

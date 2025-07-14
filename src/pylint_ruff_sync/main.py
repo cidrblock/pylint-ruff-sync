@@ -229,8 +229,8 @@ def main() -> int:
         # Update configuration
         _update_config(toml_file, disable_rules, enable_rules, dry_run=args.dry_run)
 
-    except Exception as e:
-        logger.exception("Failed to update pylint configuration: %s", e)
+    except Exception:
+        logger.exception("Failed to update pylint configuration")
         return 1
     else:
         return 0
