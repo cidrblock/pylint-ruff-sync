@@ -97,10 +97,6 @@ class RuffPylintExtractor:
         Returns:
             List of implemented rule codes.
 
-        Raises:
-            requests.RequestException: If unable to fetch the GitHub issue.
-            Exception: If parsing fails.
-
         """
         logger.info("Updating cache from %s", self.issue_url)
         rules = self._fetch_from_github()
@@ -188,6 +184,8 @@ class RuffPylintExtractor:
             List of pylint rule codes that are implemented in ruff.
 
         Raises:
+            requests.RequestException: If unable to fetch from GitHub and no cache
+                available.
             Exception: If both GitHub fetch and cache loading fail.
 
         """
