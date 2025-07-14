@@ -278,7 +278,7 @@ def test_simple_array_with_comments_format_partial_comments() -> None:
 
 
 def test_apply_toml_sort() -> None:
-    """Test that toml-sort is applied to content."""
+    """Test that toml-sort is applied when writing to file."""
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
         # Write unsorted content
         f.write('[tool.z]\nkey = "value"\n[tool.a]\nother = "value"\n')
@@ -292,8 +292,11 @@ def test_apply_toml_sort() -> None:
             array_data=["item"],
         )
 
-        # The content should be sorted
-        result_str = toml_file.as_str()
+        # Write the file (which applies toml-sort)
+        toml_file.write()
+
+        # Read the file content back to check if it's sorted
+        result_str = temp_path.read_text()
 
         # tool.a should come before tool.b which should come before tool.z
         a_pos = result_str.find("[tool.a]")

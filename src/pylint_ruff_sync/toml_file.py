@@ -168,13 +168,13 @@ class TomlFile:
             raise
 
     def as_str(self) -> str:
-        """Return the current file content as a string with toml-sort applied.
+        """Return the current file content as a string.
 
         Returns:
-            String representation of the TOML file with toml-sort formatting.
+            String representation of the TOML file.
 
         """
-        return self._apply_toml_sort(self._content)
+        return self._content
 
     def update_section_array(
         self,
