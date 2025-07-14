@@ -36,6 +36,9 @@ pylint-ruff-sync = "pylint_ruff_sync.main:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/pylint_ruff_sync"]
 
+[tool.hatch.build.targets.wheel.shared-data]
+"data" = "data"
+
 [tool.mypy]
 check_untyped_defs = true
 disallow_incomplete_defs = true

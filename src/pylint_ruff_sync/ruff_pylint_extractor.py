@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 try:
     import requests
     from bs4 import BeautifulSoup, Tag
 except ImportError:
     sys.exit(1)
+
+with contextlib.suppress(ImportError):
+    from importlib.resources import files
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -20,10 +27,6 @@ logger = logging.getLogger(__name__)
 RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
 # Minimum number of code elements expected in an implemented rule list item
 MIN_CODE_ELEMENTS = 2
-# Default cache file path
-DEFAULT_CACHE_PATH = (
-    Path(__file__).parent.parent.parent / "data" / "ruff_implemented_rules.json"
-)
 
 
 class RuffPylintExtractor:
@@ -36,35 +39,57 @@ class RuffPylintExtractor:
 
         Args:
             issue_url: The GitHub issue URL to fetch from
-            cache_path: Path to cache file for offline usage
+            cache_path: Path to cache file for offline usage (fallback to package data)
 
         """
         self.issue_url = issue_url
-        self.cache_path = cache_path or DEFAULT_CACHE_PATH
+        self.cache_path = cache_path
 
     def _load_cache(self) -> list[str] | None:
-        """Load implemented rules from cache file.
+        """Load implemented rules from cache file or package data.
 
         Returns:
             List of implemented rule codes or None if cache doesn't exist or is invalid.
 
         """
+        # Try external cache file first if specified
+        if self.cache_path is not None:
+            try:
+                if self.cache_path.exists():
+                    with self.cache_path.open("r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if isinstance(data, dict) and "implemented_rules" in data:
+                            rules = data["implemented_rules"]
+                            if isinstance(rules, list):
+                                logger.info(
+                                    "Loaded %d rules from cache: %s",
+                                    len(rules),
+                                    self.cache_path,
+                                )
+                                return rules
+                    logger.warning("Invalid cache format in %s", self.cache_path)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.warning("Failed to load cache from %s: %s", self.cache_path, e)
+
+        # Fallback to package data
         try:
-            if self.cache_path.exists():
-                with self.cache_path.open("r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict) and "implemented_rules" in data:
-                        rules = data["implemented_rules"]
-                        if isinstance(rules, list):
-                            logger.info(
-                                "Loaded %d rules from cache: %s",
-                                len(rules),
-                                self.cache_path,
-                            )
-                            return rules
-                logger.warning("Invalid cache format in %s", self.cache_path)
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning("Failed to load cache from %s: %s", self.cache_path, e)
+            package_files = (
+                files("pylint_ruff_sync") / "data" / "ruff_implemented_rules.json"
+            )
+            with package_files.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "implemented_rules" in data:
+                    rules = data["implemented_rules"]
+                    if isinstance(rules, list):
+                        logger.info(
+                            "Loaded %d rules from package data",
+                            len(rules),
+                        )
+                        return rules
+            logger.warning("Invalid cache format in package data")
+        except (json.JSONDecodeError, OSError, AttributeError) as e:
+            logger.warning("Failed to load package data: %s", e)
+
         return None
 
     def _save_cache(self, rules: list[str]) -> None:
@@ -74,6 +99,10 @@ class RuffPylintExtractor:
             rules: List of implemented rule codes to cache.
 
         """
+        if self.cache_path is None:
+            logger.warning("No cache path specified, cannot save cache")
+            return
+
         try:
             # Ensure cache directory exists
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)

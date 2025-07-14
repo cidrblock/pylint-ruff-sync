@@ -59,6 +59,11 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Update the cached ruff implementation data from GitHub and exit",
     )
+    parser.add_argument(
+        "--cache-path",
+        type=Path,
+        help="Path to cache file for offline usage (optional)",
+    )
     return parser
 
 
@@ -92,8 +97,11 @@ def _extract_pylint_rules() -> list[PylintRule]:
         raise RuntimeError(msg) from e
 
 
-def _extract_ruff_implemented_rules() -> list[str]:
+def _extract_ruff_implemented_rules(*, cache_path: Path | None = None) -> list[str]:
     """Extract rules implemented in ruff.
+
+    Args:
+        cache_path: Optional path to cache file for offline usage.
 
     Returns:
         Set of rule codes implemented in ruff.
@@ -103,7 +111,7 @@ def _extract_ruff_implemented_rules() -> list[str]:
 
     """
     try:
-        extractor = RuffPylintExtractor()
+        extractor = RuffPylintExtractor(cache_path=cache_path)
         return extractor.extract_implemented_rules()
     except Exception as e:
         msg = f"Failed to extract ruff-implemented rules: {e}"
@@ -196,8 +204,11 @@ def _update_config(
     logger.info("  Rules enabled: %d", len(enable_rules))
 
 
-def _update_cache() -> int:
+def _update_cache(*, cache_path: Path | None = None) -> int:
     """Update the ruff implementation cache from GitHub.
+
+    Args:
+        cache_path: Optional path to cache file.
 
     Returns:
         Exit code (0 for success, 1 for failure).
@@ -205,7 +216,7 @@ def _update_cache() -> int:
     """
     try:
         logger.info("Updating ruff implementation cache...")
-        extractor = RuffPylintExtractor()
+        extractor = RuffPylintExtractor(cache_path=cache_path)
         rules = extractor.update_cache()
         logger.info("Successfully updated cache with %d rules", len(rules))
     except Exception:
@@ -229,7 +240,7 @@ def main() -> int:
 
     # Handle cache update option
     if args.update_cache:
-        return _update_cache()
+        return _update_cache(cache_path=args.cache_path)
 
     try:
         # Validate config file path
@@ -246,7 +257,7 @@ def main() -> int:
         logger.info("Found %d total pylint rules", len(all_rules))
 
         logger.info("Extracting ruff-implemented rules...")
-        ruff_implemented = _extract_ruff_implemented_rules()
+        ruff_implemented = _extract_ruff_implemented_rules(cache_path=args.cache_path)
         logger.info("Found %d rules implemented in ruff", len(ruff_implemented))
 
         # Categorize rules

@@ -36,15 +36,15 @@ jobs:
       - name: Get current cache hash
         id: current-hash
         run: |
-          if [ -f data/ruff_implemented_rules.json ]; then
-            echo "hash=$(sha256sum data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          if [ -f src/pylint_ruff_sync/data/ruff_implemented_rules.json ]; then
+            echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           else
             echo "hash=none" >> $GITHUB_OUTPUT
           fi
 
       - name: Update cache
         run: |
-          uv run python -m pylint_ruff_sync --update-cache
+          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json
 
       - name: Add timestamp to cache
         run: |
@@ -65,7 +65,7 @@ jobs:
       - name: Get new cache hash
         id: new-hash
         run: |
-          echo "hash=$(sha256sum data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
       - name: Check for changes
         id: changes
@@ -84,7 +84,7 @@ jobs:
         run: |
           count=$(python -c "
           import json
-          with open('data/ruff_implemented_rules.json') as f:
+          with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
               data = json.load(f)
               print(len(data['implemented_rules']))
           ")
@@ -106,7 +106,7 @@ jobs:
 
           **What's Changed:**
           - Updated ruff implementation data from upstream GitHub issue
-          - Cache file: `data/ruff_implemented_rules.json`
+          - Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
 
           This update ensures that the tool works correctly in offline environments like precommit.ci.
           EOF
@@ -131,7 +131,7 @@ jobs:
             This PR updates the cached ruff implementation data.
 
             **Changes:**
-            - Updated `data/ruff_implemented_rules.json` with latest data from GitHub
+            - Updated `src/pylint_ruff_sync/data/ruff_implemented_rules.json` with latest data from GitHub
             - Total implemented rules: ${{ steps.rule-count.outputs.count }}
             - Last updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
