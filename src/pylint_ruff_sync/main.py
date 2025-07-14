@@ -133,19 +133,17 @@ def _categorize_rules(
     # Convert to set for easier manipulation
     current_disable_set = set(current_disable) if current_disable else set()
 
-    # Rules to disable: those implemented in ruff (but not already disabled by user)
-    disable_rules = [
-        rule
-        for rule in all_rules
-        if rule.rule_id in ruff_implemented and rule.rule_id not in current_disable_set
-    ]
+    # No rules to disable - we only add "all" and keep existing disabled rules
+    disable_rules: list[PylintRule] = []
 
     # Rules to enable: those NOT implemented in ruff and not explicitly disabled by user
+    # Check both rule ID and rule name when determining if already disabled
     enable_rules = [
         rule
         for rule in all_rules
         if rule.rule_id not in ruff_implemented
         and rule.rule_id not in current_disable_set
+        and rule.name not in current_disable_set
     ]
 
     return disable_rules, enable_rules

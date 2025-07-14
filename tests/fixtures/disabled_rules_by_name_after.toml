@@ -8,14 +8,7 @@ name = "test-project"
 version = "0.1.0"
 
 [tool.pylint.messages_control]
-disable = [
-  "all",
-  "invalid-name",
-  "locally-disabled",
-  "missing-docstring",
-  "suppressed-message",
-  "too-few-public-methods",
-]
+disable = ["all", "invalid-name", "locally-disabled", "missing-docstring", "suppressed-message", "too-few-public-methods"]
 enable = []
 
 [tool.ruff]

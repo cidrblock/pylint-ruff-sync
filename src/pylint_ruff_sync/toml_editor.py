@@ -38,21 +38,21 @@ class SimpleArrayWithComments:
         if not self.items:
             return "[]"
 
-        if not self.comments:
-            # Simple array without comments
-            formatted_items = [f'"{item}"' for item in self.items]
-            return f"[{', '.join(formatted_items)}]"
-
-        # Array with comments - use multiline format
+        # Always use multiline format for consistency
         lines = ["["]
-        for item in self.items:
-            comment = self.comments.get(item, "")
+        for i, item in enumerate(self.items):
+            comment = self.comments.get(item, "") if self.comments else ""
+            is_last = i == len(self.items) - 1
+
             if comment:
-                lines.append(f'  "{item}", # {comment}')
+                if is_last:
+                    lines.append(f'  "{item}"  # {comment}')
+                else:
+                    lines.append(f'  "{item}",  # {comment}')
+            elif is_last:
+                lines.append(f'  "{item}"')
             else:
                 lines.append(f'  "{item}",')
-        # Remove comma from last item
-        lines[-1] = lines[-1].removesuffix(",")
         lines.append("]")
         return "\n".join(lines)
 
@@ -162,7 +162,7 @@ class TomlFile:
         """
         if isinstance(array_data, SimpleArrayWithComments):
             formatted_array = array_data.format_as_toml()
-        # Simple list - format as basic TOML array
+        # Simple list - format as basic TOML array and let toml-sort handle formatting
         elif not array_data:
             formatted_array = "[]"
         else:
@@ -228,8 +228,8 @@ class TomlFile:
 
         # Pattern to match: section header, then any content, then the key = value line
         # We want to capture everything up to and including "key = " and replace
-        # everything after until newline
-        key_pattern = rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*).*?$"
+        # everything after until newline or end of array (for multi-line arrays)
+        key_pattern = rf"({section_pattern}.*?^\s*{re.escape(key)}\s*=\s*).*?(?=\n\s*\w+\s*=|\n\s*\[|\Z)"
 
         replacement = rf"\g<1>{new_value}"
 
