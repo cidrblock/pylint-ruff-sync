@@ -7,10 +7,23 @@ TOML content, with detailed examples and edge cases.
 from __future__ import annotations
 
 import re
+import textwrap
+from typing import Self
 
 import pytest
 
 from pylint_ruff_sync.toml_regex import TOML_REGEX, RegexMatch, TomlRegex
+
+
+class IndentedMultiline(str):
+    """Helper class for creating clean multiline strings in tests."""
+
+    __slots__ = ()
+
+    def __new__(cls, content: str) -> Self:
+        """Create a new IndentedMultiline string with dedented content."""
+        cleaned = textwrap.dedent(content).lstrip("\n")
+        return super().__new__(cls, cleaned)
 
 
 def test_regex_match_dataclass() -> None:
@@ -208,12 +221,13 @@ def test_find_section_header() -> None:
     """Test the find_section_header method."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["rule1"]
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["rule1"]
 
-[other.section]
-value = "test"
-"""
+        [other.section]
+        value = "test"
+        """)
 
     # Should find existing section
     result = regex.find_section_header(toml_content, "tool.pylint.messages_control")
@@ -230,13 +244,14 @@ def test_find_key_in_section() -> None:
     """Test the find_key_in_section method."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["rule1", "rule2"]
-enable = ["rule3"]
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["rule1", "rule2"]
+        enable = ["rule3"]
 
-[other.section]
-disable = ["other-rule"]
-"""
+        [other.section]
+        disable = ["other-rule"]
+        """)
 
     # Should find key in correct section
     result = regex.find_key_in_section(
@@ -255,16 +270,17 @@ def test_key_exists_in_section() -> None:
     """Test checking if a key exists within a specific section."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["rule1"]
-enable = ["rule2"]
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["rule1"]
+        enable = ["rule2"]
 
-[tool.ruff]
-disable = ["other-rule"]
+        [tool.ruff]
+        disable = ["other-rule"]
 
-[tool.black]
-line-length = 88
-"""
+        [tool.black]
+        line-length = 88
+        """)
 
     # Key exists in specified section
     assert regex.key_exists_in_section(
@@ -290,13 +306,14 @@ def test_replace_key_in_section() -> None:
     """Test replacing a key's value within a specific section."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["old-rule"]
-enable = ["rule2"]
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["old-rule"]
+        enable = ["rule2"]
 
-[tool.ruff]
-disable = ["other-rule"]
-"""
+        [tool.ruff]
+        disable = ["other-rule"]
+        """)
 
     # Replace key in specific section
     result = regex.replace_key_in_section(
@@ -345,12 +362,13 @@ def test_add_key_to_section_new_key() -> None:
     """Test adding a new key to an existing section."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["rule1"]
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["rule1"]
 
-[other.section]
-value = "test"
-"""
+        [other.section]
+        value = "test"
+        """)
 
     result = regex.add_key_to_section(
         toml_content, "tool.pylint.messages_control", "enable", '["new-rule"]'
@@ -368,10 +386,11 @@ def test_add_key_to_section_replace_existing() -> None:
     """Test that adding a key that already exists replaces it."""
     regex = TomlRegex()
 
-    toml_content = """[tool.pylint.messages_control]
-disable = ["old-rule"]
-enable = ["rule2"]
-"""
+    toml_content = IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["old-rule"]
+        enable = ["rule2"]
+        """)
 
     result = regex.add_key_to_section(
         toml_content, "tool.pylint.messages_control", "disable", '["new-rule"]'
@@ -389,9 +408,10 @@ def test_add_key_to_section_create_section() -> None:
     """Test adding a key to a non-existent section creates the section."""
     regex = TomlRegex()
 
-    toml_content = """[existing.section]
-key = "value"
-"""
+    toml_content = IndentedMultiline("""
+        [existing.section]
+        key = "value"
+        """)
 
     result = regex.add_key_to_section(
         toml_content, "new.section", "new_key", '"new_value"'
@@ -410,37 +430,38 @@ def test_regex_patterns_with_complex_toml() -> None:
     """Test regex patterns with a complex TOML file structure."""
     regex = TomlRegex()
 
-    complex_toml = """# Top-level comment
-[build-system]
-requires = ["setuptools", "wheel"]
+    complex_toml = IndentedMultiline("""
+        # Top-level comment
+        [build-system]
+        requires = ["setuptools", "wheel"]
 
-[project]
-name = "my-project"
-version = "1.0.0"
+        [project]
+        name = "my-project"
+        version = "1.0.0"
 
-[tool.pylint.messages_control]
-# Pylint configuration
-disable = [
-  "missing-docstring",  # We don't require docstrings everywhere
-  "line-too-long",      # Handled by formatter
-  "invalid-name"        # We use different naming conventions
-]
-enable = [
-  "unused-import",
-  "unused-variable"
-]
+        [tool.pylint.messages_control]
+        # Pylint configuration
+        disable = [
+          "missing-docstring",  # We don't require docstrings everywhere
+          "line-too-long",      # Handled by formatter
+          "invalid-name"        # We use different naming conventions
+        ]
+        enable = [
+          "unused-import",
+          "unused-variable"
+        ]
 
-[tool.ruff]
-line-length = 88
-target-version = "py311"
+        [tool.ruff]
+        line-length = 88
+        target-version = "py311"
 
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = ["D203", "D213"]
+        [tool.ruff.lint]
+        select = ["ALL"]
+        ignore = ["D203", "D213"]
 
-[tool.black]
-line-length = 88
-"""
+        [tool.black]
+        line-length = 88
+        """)
 
     # Test finding sections
     assert regex.find_section_header(
@@ -485,13 +506,14 @@ def test_regex_patterns_edge_cases() -> None:
     assert regex.key_exists_in_section(minimal_toml, "tool.test", "other")
 
     # Test with excessive whitespace
-    spaced_toml = """[tool.test]
+    spaced_toml = IndentedMultiline("""
+        [tool.test]
 
-    key   =   value
+        key   =   value
 
-    other =    data
+        other =    data
 
-"""
+        """)
     assert regex.key_exists_in_section(spaced_toml, "tool.test", "key")
     assert regex.key_exists_in_section(spaced_toml, "tool.test", "other")
 
@@ -526,18 +548,22 @@ def test_regex_performance_with_large_content() -> None:
     """Test that regex patterns perform well with larger TOML content."""
     # Create a large TOML content with many sections
     large_sections = [
-        f"""[section.{i}]
-key_{i} = "value_{i}"
-array_{i} = ["item1", "item2", "item3"]
-"""
+        IndentedMultiline(f"""
+        [section.{i}]
+        key_{i} = "value_{i}"
+        array_{i} = ["item1", "item2", "item3"]
+        """)
         for i in range(100)
     ]
 
     # Add our target section at the end
-    large_sections.append("""[tool.pylint.messages_control]
-disable = ["target-rule"]
-enable = ["other-rule"]
-""")
+    large_sections.append(
+        IndentedMultiline("""
+        [tool.pylint.messages_control]
+        disable = ["target-rule"]
+        enable = ["other-rule"]
+        """)
+    )
 
     large_toml = "\n".join(large_sections)
 

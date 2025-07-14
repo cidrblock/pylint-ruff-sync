@@ -158,8 +158,7 @@ class PyprojectUpdater:
 
         """
         category = self.CATEGORY_MAP.get(rule.rule_id[0], "unknown")
-        rule_name = rule.rule_id[1:] if len(rule.rule_id) > 1 else rule.rule_id
-        return f"https://pylint.readthedocs.io/en/stable/user_guide/messages/{category}/{rule_name}.html"
+        return f"https://pylint.readthedocs.io/en/stable/user_guide/messages/{category}/{rule.name}.html"
 
     def write_config(self) -> None:
         """Write the updated configuration to the file."""
