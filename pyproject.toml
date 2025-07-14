@@ -14,6 +14,7 @@ dependencies = [
   "toml-sort>=0.24.0"
 ]
 description = "Precommit hook to sync pylint configuration with ruff implementation status"
+license = {text = "MIT"}
 name = "pylint-ruff-sync"
 readme = "README.md"
 requires-python = ">=3.11"

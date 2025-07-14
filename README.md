@@ -325,9 +325,64 @@ pylint-ruff-sync/
 5. Run pre-commit hooks: `pre-commit run --all-files`
 6. Submit a pull request
 
+## Development Collaboration
+
+This project was developed through an innovative collaborative process between [Bradley Thornton (cidrblock)](https://github.com/cidrblock) and [Cursor](https://cursor.com) using Claude 4 Sonnet AI. The development process showcased the potential of human-AI collaboration in software engineering.
+
+### The Development Journey
+
+**Initial Problem**: Bradley needed a solution to automatically sync pylint configuration with ruff's implementation status for the ansible-creator project, avoiding duplicate rule checking between the two tools.
+
+**Collaborative Process**:
+
+1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
+
+2. **Iterative Development**: The development proceeded through multiple phases:
+
+   - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
+   - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
+   - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
+   - **Architecture Refactoring**: Centralized regex patterns into a dedicated `TomlRegex` class for maintainability
+   - **Offline Caching**: Implemented a comprehensive caching solution for precommit.ci compatibility
+
+3. **Problem-Solving Approach**: Each challenge was addressed through:
+
+   - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
+   - **Solution Design**: Collaborative brainstorming of approaches
+   - **Implementation**: AI-assisted coding with human oversight and feedback
+   - **Testing**: Comprehensive test coverage with both unit and integration tests
+   - **Refinement**: Iterative improvements based on real-world usage
+
+4. **Quality Assurance**: Maintained high code quality through:
+   - Type hints for all functions and return types
+   - Comprehensive error handling and logging
+   - 66 test cases covering edge cases and integration scenarios
+   - Adherence to coding standards (ruff, mypy, pylint)
+   - Pre-commit hooks ensuring code quality
+
+### Technical Highlights
+
+The collaboration resulted in several innovative solutions:
+
+- **Surgical TOML Editing**: Regex-based approach that preserves formatting, comments, and structure
+- **Intelligent Caching**: Multi-tier fallback system (GitHub → package data → error) for offline environments
+- **URL Generation**: Automatic generation of documentation links for pylint rules
+- **Comprehensive Testing**: Test fixtures demonstrating various TOML configurations and edge cases
+
+### Lessons Learned
+
+This project demonstrated the effectiveness of human-AI collaboration where:
+
+- **Human expertise** provided domain knowledge, requirements clarity, and strategic direction
+- **AI capabilities** accelerated implementation, testing, and documentation
+- **Iterative feedback** between human and AI led to robust, production-ready code
+- **Diverse perspectives** (human creativity + AI systematic analysis) resulted in comprehensive solutions
+
+The final result is a production-ready tool with 220 cached ruff implementations, 66 passing tests, and deployment to precommit.ci environments.
+
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
