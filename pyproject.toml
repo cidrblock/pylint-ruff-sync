@@ -100,6 +100,7 @@ enable = [
   "E0013", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-plugin-value.html
   "E0014", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-configuration-section.html
   "E0015", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/unrecognized-option.html
+  "E0106", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/return-arg-in-generator.html
   "E0108", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/duplicate-argument-name.html
   "E0110", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/abstract-class-instantiated.html
   "E0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-reversed-sequence.html
@@ -234,6 +235,7 @@ enable = [
   "W1307", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/invalid-format-index.html
   "W1308", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/duplicate-string-formatting-argument.html
   "W1402", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/anomalous-unicode-escape-in-string.html
+  "W1502", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/boolean-datetime.html
   "W1503", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-unittest-assert.html
   "W1506", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-thread-instantiation.html
   "W1507", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/shallow-copy-environ.html
@@ -251,9 +253,7 @@ enable = [
   "W4903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-argument.html
   "W4904", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-class.html
   "W4905", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-decorator.html
-  "W4906", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
-  "E0106", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/return-arg-in-generator.html
-  "W1502" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/boolean-datetime.html
+  "W4906" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
 ]
 
 [tool.pylint.reports]
