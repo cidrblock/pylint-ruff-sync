@@ -143,8 +143,8 @@ jobs:
         id: version
         if: steps.changes.outputs.changed == 'true'
         run: |
-          # Generate version based on date and run number
-          version="cache-$(date +%Y.%m.%d)-${{ github.run_number }}"
+          # Generate version in vYY.MM.DD format
+          version="v$(date +%y.%m.%d)"
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create Release
