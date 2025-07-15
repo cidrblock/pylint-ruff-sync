@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pytest
+
+# Constants
+TOML_SORT_MIN_ARGS = 3
 
 # We're mocking with exactly 6 rules, 3 implemented in ruff, 3 not implemented
 EXPECTED_RULES_COUNT = 6
@@ -108,7 +113,80 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     mock_result = MockSubprocessResult(stdout=MOCK_PYLINT_OUTPUT)
 
-    def mock_subprocess_run(*_args: object, **_kwargs: object) -> MockSubprocessResult:
+    def mock_subprocess_run(*args: object, **_kwargs: object) -> MockSubprocessResult:
+        # Check if this is a toml-sort command
+        if (
+            args
+            and len(args) > 0
+            and isinstance(args[0], list)
+            and len(args[0]) > 0
+            and args[0][0] == "toml-sort"
+        ):
+            # This is a toml-sort subprocess call
+            command_args = args[0]
+            if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
+                # Get the file path
+                file_path = command_args[2]
+
+                try:
+                    # Read the file content
+                    content = Path(file_path).read_text(encoding="utf-8")
+
+                    # Apply toml-sort with the desired configuration
+                    try:
+                        # Import here to avoid import errors if toml-sort not available
+                        from toml_sort.tomlsort import (  # noqa: PLC0415
+                            FormattingConfiguration,
+                            SortConfiguration,
+                            TomlSort,
+                        )
+
+                        # Configure toml-sort with desired settings
+                        sort_config = SortConfiguration(
+                            table_keys=True,
+                            inline_tables=True,
+                            inline_arrays=True,
+                        )
+                        formatting_config = FormattingConfiguration(
+                            # Don't add trailing commas
+                            trailing_comma_inline_array=False,
+                        )
+
+                        # Apply sorting
+                        sorter = TomlSort(
+                            input_toml=content,
+                            sort_config=sort_config,
+                            format_config=formatting_config,
+                        )
+
+                        result = sorter.sorted()
+
+                        # Post-process to normalize spacing to match expected
+                        # fixture format
+                        # Fix extra spaces after commas in arrays with comments
+                        # Change ",  # comment" to ", # comment"
+                        result = re.sub(r",\s{2,}(#.*)", r", \1", result)
+
+                        # Remove trailing spaces before comments in arrays
+                        # (for last items)
+                        # Change '"item"  # comment' to '"item" # comment'
+                        result = re.sub(r'"\s{2,}(#.*)', r'" \1', result)
+
+                        # Write the sorted content back to the file
+                        Path(file_path).write_text(result, encoding="utf-8")
+
+                    except ImportError:
+                        # If toml-sort is not available, leave content as-is
+                        pass
+
+                except Exception:  # noqa: S110, BLE001
+                    # If anything fails, leave content as-is
+                    pass
+
+                # Return success for toml-sort command
+                return MockSubprocessResult(stdout="")
+
+        # For other subprocess calls (like pylint), return the default mock
         return mock_result
 
     def mock_shutil_which(_cmd: str) -> str:

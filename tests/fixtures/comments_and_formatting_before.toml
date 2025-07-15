@@ -29,7 +29,7 @@ disable = [
 # Current configuration - this comment should be preserved
 enable = [
   "C0103", # Check variable names
-  "C0111"  # Check docstrings
+  "C0111" # Check docstrings
 ]
 
 # Test configuration

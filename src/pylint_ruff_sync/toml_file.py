@@ -3,19 +3,72 @@
 from __future__ import annotations
 
 import logging
+import subprocess
+import tempfile
 import tomllib
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-from toml_sort.tomlsort import FormattingConfiguration, SortConfiguration, TomlSort
+from pathlib import Path
+from typing import Any
 
 from .toml_regex import TOML_REGEX
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+def apply_toml_sort_subprocess(content: str, working_directory: Path) -> str:
+    """Apply toml-sort formatting to content using subprocess.
+
+    This function uses the toml-sort CLI tool via subprocess, which respects
+    the user's toml-sort configuration in their pyproject.toml file.
+
+    Args:
+        content: TOML content to sort.
+        working_directory: Directory to run toml-sort from (for config lookup).
+
+    Returns:
+        Sorted TOML content.
+
+    Raises:
+        subprocess.CalledProcessError: If toml-sort command fails.
+
+    """
+    if not content.strip():
+        return content
+
+    try:
+        # Create a temporary file with the content
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".toml", delete=False, encoding="utf-8"
+        ) as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+
+        try:
+            # Run toml-sort on the temporary file
+            # Note: Using trusted toml-sort command from user's environment
+            # Security: toml-sort is a trusted tool from the user's environment
+            subprocess.run(
+                ["toml-sort", "--in-place", temp_file_path],
+                check=True,
+                capture_output=True,
+                text=True,
+                cwd=working_directory,  # Use project directory for config
+            )
+
+            # Read the sorted content back
+            return Path(temp_file_path).read_text(encoding="utf-8")
+
+        finally:
+            # Clean up the temporary file
+            Path(temp_file_path).unlink()
+
+    except (subprocess.CalledProcessError, OSError) as e:
+        logger.warning(
+            "Failed to apply toml-sort formatting: %s. Returning original content.",
+            e,
+        )
+        return content
 
 
 @dataclass
@@ -123,7 +176,10 @@ class TomlFile:
         return self.file_path.read_text(encoding="utf-8")
 
     def _apply_toml_sort(self, content: str) -> str:
-        """Apply toml-sort formatting to the content.
+        """Apply toml-sort formatting to the content using subprocess.
+
+        This method uses the toml-sort CLI tool via subprocess, which respects
+        the user's toml-sort configuration in their pyproject.toml file.
 
         Args:
             content: TOML content to sort.
@@ -132,22 +188,7 @@ class TomlFile:
             Sorted TOML content.
 
         """
-        if not content.strip():
-            return content
-
-        sort_config = SortConfiguration(
-            inline_tables=True,
-            table_keys=True,
-        )
-        format_config = FormattingConfiguration(
-            spaces_before_inline_comment=1,
-            trailing_comma_inline_array=False,
-        )
-
-        sorter = TomlSort(
-            input_toml=content, sort_config=sort_config, format_config=format_config
-        )
-        return sorter.sorted()
+        return apply_toml_sort_subprocess(content, self.file_path.parent)
 
     def as_dict(self) -> dict[str, Any]:
         """Return the current file content as a dictionary.

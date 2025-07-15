@@ -330,41 +330,64 @@ pylint-ruff-sync/
 
 ## TOML Formatting with toml-sort
 
-The tool automatically applies consistent formatting to the `pyproject.toml` file using [toml-sort](https://github.com/pappasam/toml-sort). This ensures:
+The tool automatically applies consistent formatting to the `pyproject.toml` file using [toml-sort](https://github.com/pappasam/toml-sort) via subprocess. This ensures:
 
 - **Consistent key ordering** across all TOML sections
 - **Standardized formatting** for arrays and nested structures
 - **Preserved comments** while maintaining clean organization
+- **Respects your project's toml-sort configuration**
 
 ### Configuration
 
-The tool uses toml-sort's default configuration, which provides:
+The tool uses the toml-sort CLI via subprocess, which **automatically respects your project's toml-sort configuration** if you have one.
+
+#### Using Default Configuration
+
+If no explicit `[tool.toml-sort]` section exists in your `pyproject.toml`, toml-sort uses its built-in defaults:
 
 ```toml
-# toml-sort default configuration (no explicit config needed)
+# toml-sort default configuration (automatically applied)
 # - Sorts keys alphabetically within sections
 # - Maintains section order as defined
 # - Preserves comments and formatting where possible
 # - Uses consistent indentation and spacing
 ```
 
-Since no explicit `[tool.toml-sort]` section exists in the `pyproject.toml`, toml-sort uses its built-in defaults:
+#### Custom Configuration
 
-- **Key sorting**: Alphabetical within sections
-- **Array formatting**: Multi-line for readability
-- **Comment preservation**: Maintains existing comments
-- **Indentation**: Consistent 2-space indentation
-- **Section ordering**: Preserves original section order
+To customize toml-sort behavior, add a `[tool.toml-sort]` section to your `pyproject.toml`:
+
+```toml
+[tool.toml-sort]
+# Custom toml-sort configuration
+all = true                    # Sort all keys
+in_place = true               # Sort in place
+trailing_comma_inline_array = false
+trailing_comma_multiline_array = true
+overrides."tool.poetry.dependencies".first = ["python"]
+spaces_indent_inline_array = 2
+```
+
+**Common configuration options:**
+
+- **`all = true`**: Sort all keys (default behavior)
+- **`trailing_comma_inline_array`**: Control trailing commas in single-line arrays
+- **`trailing_comma_multiline_array`**: Control trailing commas in multi-line arrays
+- **`spaces_indent_inline_array`**: Set indentation for arrays
+- **`overrides`**: Section-specific sorting rules
+
+See the [toml-sort documentation](https://github.com/pappasam/toml-sort#configuration) for all available options.
 
 ### Automatic Application
 
 toml-sort is applied automatically during the pylint configuration update process:
 
 1. **Update pylint rules**: Modify enable/disable arrays
-2. **Apply toml-sort**: Format the entire file consistently
-3. **Preserve structure**: Maintain comments and section organization
+2. **Apply toml-sort**: Format the entire file using subprocess
+3. **Respect user config**: Use your project's `[tool.toml-sort]` settings
+4. **Preserve structure**: Maintain comments and section organization
 
-This ensures that all changes integrate seamlessly with your existing `pyproject.toml` structure while maintaining professional formatting standards.
+This ensures that all changes integrate seamlessly with your existing `pyproject.toml` structure while following your preferred formatting standards.
 
 ## Contributing
 

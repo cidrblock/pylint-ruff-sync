@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
 
 from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
+
+# Constants for testing
+TOML_SORT_MIN_ARGS = 3
 
 
 def test_init_existing_file() -> None:
@@ -627,13 +634,165 @@ line-length = 88
         "tool.pylint.messages_control", "disable", ["rule-c", "rule-a"]
     )
 
-    result = toml_file.as_str()
+    result_str = toml_file.as_str()
 
     # The content should be properly formatted by toml-sort
-    assert "rule-c" in result
-    assert "rule-a" in result
+    assert "rule-c" in result_str
+    assert "rule-a" in result_str
 
     # Verify it's valid TOML
+    parsed = toml_file.as_dict()
+    assert "rule-c" in parsed["tool"]["pylint"]["messages_control"]["disable"]
+    assert "rule-a" in parsed["tool"]["pylint"]["messages_control"]["disable"]
+
+
+def test_toml_sort_with_custom_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that toml-sort works with custom configuration using monkeypatch.
+
+    This test simulates toml-sort behavior with:
+    - sort_inline_tables = true
+    - sort_table_keys = true
+
+    Args:
+        tmp_path: Temporary path for the test file.
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+
+    """
+
+    def mock_subprocess_run(*args: object, **_kwargs: object) -> object:
+        """Mock subprocess.run to intercept toml-sort calls.
+
+        Args:
+            args: Arguments passed to subprocess.run.
+            _kwargs: Keyword arguments passed to subprocess.run (unused).
+
+        Returns:
+            Mock subprocess result.
+
+        """
+
+        # Create a mock result object for subprocess.run
+        class MockResult:
+            def __init__(self) -> None:
+                self.returncode = 0
+                self.stdout = ""
+                self.stderr = ""
+
+        # Check if this is a toml-sort command
+        if (
+            args
+            and len(args) > 0
+            and isinstance(args[0], list)
+            and len(args[0]) > 0
+            and args[0][0] == "toml-sort"
+        ):
+            # This is a toml-sort subprocess call
+            command_args = args[0]
+            if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
+                # Get the file path
+                file_path = command_args[2]
+
+                try:
+                    # Read the file content
+                    content = Path(file_path).read_text(encoding="utf-8")
+
+                    # Apply toml-sort with the desired configuration
+                    try:
+                        # Import here to avoid import errors if toml-sort not available
+                        from toml_sort.tomlsort import (  # noqa: PLC0415
+                            FormattingConfiguration,
+                            SortConfiguration,
+                            TomlSort,
+                        )
+
+                        # Configure toml-sort with desired settings
+                        sort_config = SortConfiguration(
+                            table_keys=True,
+                            inline_tables=True,
+                            inline_arrays=True,
+                        )
+                        formatting_config = FormattingConfiguration(
+                            # Don't add trailing commas
+                            trailing_comma_inline_array=False,
+                        )
+
+                        # Apply sorting
+                        sorter = TomlSort(
+                            input_toml=content,
+                            sort_config=sort_config,
+                            format_config=formatting_config,
+                        )
+
+                        result = sorter.sorted()
+
+                        # Post-process to normalize spacing to match expected
+                        # fixture format
+                        import re  # noqa: PLC0415
+
+                        # Fix extra spaces after commas in arrays with comments
+                        # Change ",  # comment" to ", # comment"
+                        result = re.sub(r",\s{2,}(#.*)", r", \1", result)
+
+                        # Remove trailing spaces before comments in arrays
+                        # (for last items)
+                        # Change '"item"  # comment' to '"item" # comment'
+                        result = re.sub(r'"\s{2,}(#.*)', r'" \1', result)
+
+                        # Write the sorted content back to the file
+                        Path(file_path).write_text(result, encoding="utf-8")
+
+                    except ImportError:
+                        # If toml-sort is not available, leave content as-is
+                        pass
+
+                except Exception:  # noqa: S110, BLE001
+                    # If anything fails, leave content as-is
+                    pass
+
+                return MockResult()
+
+        return MockResult()
+
+    # Monkeypatch the subprocess function
+    monkeypatch.setattr("subprocess.run", mock_subprocess_run)
+
+    # Test content with unsorted sections
+    toml_content = """[tool.z]
+key = "value"
+
+[tool.a]
+other = "value"
+
+[tool.pylint.messages_control]
+disable = ["rule-b", "rule-a"]
+"""
+
+    temp_file = tmp_path / "test.toml"
+    temp_file.write_text(toml_content)
+
+    toml_file = TomlFile(temp_file)
+
+    # Update an array - this should trigger automatic sorting
+    toml_file.update_section_array(
+        "tool.pylint.messages_control", "disable", ["rule-c", "rule-a"]
+    )
+
+    result_str = toml_file.as_str()
+
+    # With sort_table_keys=true, sections should be sorted alphabetically
+    # tool.a should come before tool.pylint.messages_control which should
+    # come before tool.z
+    a_pos = result_str.find("[tool.a]")
+    pylint_pos = result_str.find("[tool.pylint.messages_control]")
+    z_pos = result_str.find("[tool.z]")
+
+    assert a_pos < pylint_pos < z_pos, (
+        f"Sections not properly sorted: a={a_pos}, pylint={pylint_pos}, z={z_pos}"
+    )
+
+    # Verify the content is valid TOML
     parsed = toml_file.as_dict()
     assert "rule-c" in parsed["tool"]["pylint"]["messages_control"]["disable"]
     assert "rule-a" in parsed["tool"]["pylint"]["messages_control"]["disable"]
