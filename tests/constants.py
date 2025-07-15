@@ -6,65 +6,106 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     import pytest
 
-# Constants
+# Mock GitHub API response for tests
+MOCK_GITHUB_RESPONSE = """[
+  {
+    "name": "disable-next-line",
+    "options": {},
+    "fix": null
+  },
+  {
+    "name": "disable-line",
+    "options": {},
+    "fix": null
+  },
+  {
+    "name": "noqa",
+    "options": {},
+    "fix": null
+  }
+]"""
+
+# Mock pylint command output for tests
+MOCK_PYLINT_OUTPUT = """using config file tests/fixtures/pylint_config.ini
+************* Module test
+test:1:0: C0111: Missing module docstring (missing-docstring)
+test:2:0: C0103: Constant name "x" doesn't conform to UPPER_CASE naming style (invalid-name)
+
+--------------------------------------------------------------------
+Your code has been rated at 5.00/10 (previous run: 5.00/10, +0.00)"""
+
+# Constants for toml-sort mocking
 TOML_SORT_MIN_ARGS = 3
 
-# We're mocking with exactly 6 rules, 3 implemented in ruff, 3 not implemented
-EXPECTED_RULES_COUNT = 6
-EXPECTED_IMPLEMENTED_RULES_COUNT = 3
-EXPECTED_NOT_IMPLEMENTED_RULES_COUNT = 3
 
-# Sample HTML response with some implemented rules (mocked GitHub issue)
-# Contains 6 rules total:
-# - F401 (unused-import): ✓ implemented in ruff
-# - F841 (unused-variable): ✓ implemented in ruff
-# - E501 (line-too-long): ✓ implemented in ruff
-# - C0103 (invalid-name): ✗ not implemented in ruff
-# - C0111 (missing-docstring): ✗ not implemented in ruff
-# - R0903 (too-few-public-methods): ✗ not implemented in ruff
-MOCK_GITHUB_RESPONSE = """
-<html>
-<body>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F401</code> <code>F401</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F841</code> <code>F841</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>E501</code> <code>E501</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0103</code> <code>C0103</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0111</code> <code>C0111</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>R0903</code> <code>R0903</code>
-</li>
-</body>
-</html>
-"""
+def _apply_toml_sort_mock(file_path: str) -> None:
+    """Apply toml-sort with desired configuration to a file.
 
-# Sample pylint output (mocked pylint --list-msgs)
-MOCK_PYLINT_OUTPUT = """
-:unused-import (F401): *Unused import*
-:unused-variable (F841): *Unused variable*
-:line-too-long (E501): *Line too long*
-:invalid-name (C0103): *Invalid name*
-:missing-docstring (C0111): *Missing docstring*
-:too-few-public-methods (R0903): *Too few public methods*
-"""
+    This is extracted to reduce complexity and eliminate code duplication.
+
+    Args:
+        file_path: Path to the TOML file to sort.
+
+    """
+    try:
+        # Read the file content
+        content = Path(file_path).read_text(encoding="utf-8")
+
+        # Apply toml-sort with the desired configuration
+        try:
+            # Import here to avoid import errors if toml-sort not available
+            from toml_sort.tomlsort import (  # noqa: PLC0415
+                FormattingConfiguration,
+                SortConfiguration,
+                TomlSort,
+            )
+
+            # Configure toml-sort with desired settings
+            sort_config = SortConfiguration(
+                table_keys=True,
+                inline_tables=True,
+                inline_arrays=True,
+            )
+            formatting_config = FormattingConfiguration(
+                # Don't add trailing commas
+                trailing_comma_inline_array=False,
+            )
+
+            # Apply sorting
+            sorter = TomlSort(
+                input_toml=content,
+                sort_config=sort_config,
+                format_config=formatting_config,
+            )
+
+            result = sorter.sorted()
+
+            # Post-process to normalize spacing to match expected
+            # fixture format
+            # Fix extra spaces after commas in arrays with comments
+            # Change ",  # comment" to ", # comment"
+            result = re.sub(r",\s{2,}(#.*)", r", \1", result)
+
+            # Remove trailing spaces before comments in arrays
+            # (for last items)
+            # Change '"item"  # comment' to '"item" # comment'
+            result = re.sub(r'"\s{2,}(#.*)', r'" \1', result)
+
+            # Write the sorted content back to the file
+            Path(file_path).write_text(result, encoding="utf-8")
+
+        except ImportError:
+            # If toml-sort is not available, leave content as-is
+            pass
+
+    except Exception:  # noqa: S110, BLE001
+        # If anything fails, leave content as-is
+        pass
 
 
 def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -122,68 +163,11 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
             and len(args[0]) > 0
             and args[0][0] == "toml-sort"
         ):
-            # This is a toml-sort subprocess call
+            # Handle toml-sort subprocess call
             command_args = args[0]
             if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
-                # Get the file path
                 file_path = command_args[2]
-
-                try:
-                    # Read the file content
-                    content = Path(file_path).read_text(encoding="utf-8")
-
-                    # Apply toml-sort with the desired configuration
-                    try:
-                        # Import here to avoid import errors if toml-sort not available
-                        from toml_sort.tomlsort import (  # noqa: PLC0415
-                            FormattingConfiguration,
-                            SortConfiguration,
-                            TomlSort,
-                        )
-
-                        # Configure toml-sort with desired settings
-                        sort_config = SortConfiguration(
-                            table_keys=True,
-                            inline_tables=True,
-                            inline_arrays=True,
-                        )
-                        formatting_config = FormattingConfiguration(
-                            # Don't add trailing commas
-                            trailing_comma_inline_array=False,
-                        )
-
-                        # Apply sorting
-                        sorter = TomlSort(
-                            input_toml=content,
-                            sort_config=sort_config,
-                            format_config=formatting_config,
-                        )
-
-                        result = sorter.sorted()
-
-                        # Post-process to normalize spacing to match expected
-                        # fixture format
-                        # Fix extra spaces after commas in arrays with comments
-                        # Change ",  # comment" to ", # comment"
-                        result = re.sub(r",\s{2,}(#.*)", r", \1", result)
-
-                        # Remove trailing spaces before comments in arrays
-                        # (for last items)
-                        # Change '"item"  # comment' to '"item" # comment'
-                        result = re.sub(r'"\s{2,}(#.*)', r'" \1', result)
-
-                        # Write the sorted content back to the file
-                        Path(file_path).write_text(result, encoding="utf-8")
-
-                    except ImportError:
-                        # If toml-sort is not available, leave content as-is
-                        pass
-
-                except Exception:  # noqa: S110, BLE001
-                    # If anything fails, leave content as-is
-                    pass
-
-                # Return success for toml-sort command
+                _apply_toml_sort_mock(file_path)
                 return MockSubprocessResult(stdout="")
 
         # For other subprocess calls (like pylint), return the default mock

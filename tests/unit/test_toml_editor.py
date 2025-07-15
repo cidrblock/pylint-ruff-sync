@@ -10,9 +10,7 @@ if TYPE_CHECKING:
     import pytest
 
 from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
-
-# Constants for testing
-TOML_SORT_MIN_ARGS = 3
+from tests.constants import TOML_SORT_MIN_ARGS, _apply_toml_sort_mock
 
 
 def test_init_existing_file() -> None:
@@ -665,8 +663,8 @@ def test_toml_sort_with_custom_configuration(
         """Mock subprocess.run to intercept toml-sort calls.
 
         Args:
-            args: Arguments passed to subprocess.run.
-            _kwargs: Keyword arguments passed to subprocess.run (unused).
+            *args: Arguments passed to subprocess.run.
+            **_kwargs: Keyword arguments passed to subprocess.run (unused).
 
         Returns:
             Mock subprocess result.
@@ -688,69 +686,11 @@ def test_toml_sort_with_custom_configuration(
             and len(args[0]) > 0
             and args[0][0] == "toml-sort"
         ):
-            # This is a toml-sort subprocess call
+            # Handle toml-sort subprocess call
             command_args = args[0]
             if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
-                # Get the file path
                 file_path = command_args[2]
-
-                try:
-                    # Read the file content
-                    content = Path(file_path).read_text(encoding="utf-8")
-
-                    # Apply toml-sort with the desired configuration
-                    try:
-                        # Import here to avoid import errors if toml-sort not available
-                        from toml_sort.tomlsort import (  # noqa: PLC0415
-                            FormattingConfiguration,
-                            SortConfiguration,
-                            TomlSort,
-                        )
-
-                        # Configure toml-sort with desired settings
-                        sort_config = SortConfiguration(
-                            table_keys=True,
-                            inline_tables=True,
-                            inline_arrays=True,
-                        )
-                        formatting_config = FormattingConfiguration(
-                            # Don't add trailing commas
-                            trailing_comma_inline_array=False,
-                        )
-
-                        # Apply sorting
-                        sorter = TomlSort(
-                            input_toml=content,
-                            sort_config=sort_config,
-                            format_config=formatting_config,
-                        )
-
-                        result = sorter.sorted()
-
-                        # Post-process to normalize spacing to match expected
-                        # fixture format
-                        import re  # noqa: PLC0415
-
-                        # Fix extra spaces after commas in arrays with comments
-                        # Change ",  # comment" to ", # comment"
-                        result = re.sub(r",\s{2,}(#.*)", r", \1", result)
-
-                        # Remove trailing spaces before comments in arrays
-                        # (for last items)
-                        # Change '"item"  # comment' to '"item" # comment'
-                        result = re.sub(r'"\s{2,}(#.*)', r'" \1', result)
-
-                        # Write the sorted content back to the file
-                        Path(file_path).write_text(result, encoding="utf-8")
-
-                    except ImportError:
-                        # If toml-sort is not available, leave content as-is
-                        pass
-
-                except Exception:  # noqa: S110, BLE001
-                    # If anything fails, leave content as-is
-                    pass
-
+                _apply_toml_sort_mock(file_path)
                 return MockResult()
 
         return MockResult()

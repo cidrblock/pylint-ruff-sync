@@ -29,9 +29,6 @@ def apply_toml_sort_subprocess(content: str, working_directory: Path) -> str:
     Returns:
         Sorted TOML content.
 
-    Raises:
-        subprocess.CalledProcessError: If toml-sort command fails.
-
     """
     if not content.strip():
         return content
