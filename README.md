@@ -1,5 +1,17 @@
 # Pylint-Ruff Sync Precommit Hook
 
+> [!CAUTION] > **This project needs a maintainer!**
+>
+> This repository was created as a proof-of-concept and demonstration project. **Do not use this repository directly** as it may be removed or archived without notice.
+>
+> If you're interested in using this tool:
+>
+> - **Fork this repository** to create your own maintained version
+> - **Consider becoming the maintainer** by reaching out to [@cidrblock](https://github.com/cidrblock)
+> - **Check for community forks** that may have active maintenance
+>
+> This codebase is production-ready with comprehensive tests and documentation, but requires ongoing maintenance for GitHub API changes, ruff updates, and dependency management.
+
 A precommit hook that automatically updates your `pyproject.toml` file to enable only those pylint rules that haven't been implemented by ruff, based on the current status from the [ruff pylint implementation tracking issue](https://github.com/astral-sh/ruff/issues/970).
 
 ## Overview
