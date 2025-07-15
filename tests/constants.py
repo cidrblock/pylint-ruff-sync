@@ -12,35 +12,53 @@ if TYPE_CHECKING:
     import pytest
 
 # Mock GitHub API response for tests
-MOCK_GITHUB_RESPONSE = """[
-  {
-    "name": "disable-next-line",
-    "options": {},
-    "fix": null
-  },
-  {
-    "name": "disable-line",
-    "options": {},
-    "fix": null
-  },
-  {
-    "name": "noqa",
-    "options": {},
-    "fix": null
-  }
-]"""
+MOCK_GITHUB_RESPONSE = """
+<html>
+<body>
+<li class="task-list-item">
+    <input type="checkbox" checked="checked" />
+    <code>F401</code> <code>F401</code>
+</li>
+<li class="task-list-item">
+    <input type="checkbox" checked="checked" />
+    <code>F841</code> <code>F841</code>
+</li>
+<li class="task-list-item">
+    <input type="checkbox" checked="checked" />
+    <code>E501</code> <code>E501</code>
+</li>
+<li class="task-list-item">
+    <input type="checkbox" />
+    <code>C0103</code> <code>C0103</code>
+</li>
+<li class="task-list-item">
+    <input type="checkbox" />
+    <code>C0111</code> <code>C0111</code>
+</li>
+<li class="task-list-item">
+    <input type="checkbox" />
+    <code>R0903</code> <code>R0903</code>
+</li>
+</body>
+</html>
+"""
 
 # Mock pylint command output for tests
-MOCK_PYLINT_OUTPUT = """using config file tests/fixtures/pylint_config.ini
-************* Module test
-test:1:0: C0111: Missing module docstring (missing-docstring)
-test:2:0: C0103: Constant name "x" doesn't conform to UPPER_CASE naming style (invalid-name)
-
---------------------------------------------------------------------
-Your code has been rated at 5.00/10 (previous run: 5.00/10, +0.00)"""
+MOCK_PYLINT_OUTPUT = """
+:invalid-name (C0103): *Invalid name*
+:missing-docstring (C0111): *Missing docstring*
+:line-too-long (E501): *Line too long*
+:unused-import (F401): *Unused import*
+:unused-variable (F841): *Unused variable*
+:too-few-public-methods (R0903): *Too few public methods*
+"""
 
 # Constants for toml-sort mocking
 TOML_SORT_MIN_ARGS = 3
+
+# We're mocking with exactly 6 rules, 3 implemented in ruff, 3 not implemented
+EXPECTED_RULES_COUNT = 6
+EXPECTED_IMPLEMENTED_RULES_COUNT = 3
 
 
 def _apply_toml_sort_mock(file_path: str) -> None:
