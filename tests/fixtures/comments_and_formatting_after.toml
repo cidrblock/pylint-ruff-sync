@@ -9,7 +9,6 @@ description = "Test project"
 name = "test-project"
 version = "0.1.0"
 
-# Development tools configuration
 [tool.black]
 line-length = 88
 target-version = ["py38"]

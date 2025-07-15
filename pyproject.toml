@@ -276,8 +276,8 @@ ignore = ["D203", "D211", "D213", "COM812"]
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "SLF001", "EXE001"]
 "src/pylint_ruff_sync/toml_file.py" = ["S603", "S607"]
+"tests/**" = ["S101", "SLF001", "EXE001"]
 
 [tool.tomlsort]
 in_place = true
