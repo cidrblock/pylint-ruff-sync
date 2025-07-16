@@ -245,3 +245,49 @@ disable = ["existing-rule"]
         assert "C0103" in result_dict["tool"]["pylint"]["messages_control"]["enable"]
     finally:
         temp_path.unlink()
+
+
+def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test that R0917 (too-many-positional-arguments) is correctly detected.
+
+    This test specifically checks for R0917 which has been implemented in ruff
+    but was not being detected due to extra spaces in the GitHub issue format.
+    """
+    # Create a mock response with R0917 using exact GitHub formatting
+    mock_r0917_response = (
+        '{"body": "## Status\\\\n\\\\n### Implemented Rules\\\\n\\\\n'
+        '- [x] `too-many-positional-arguments` /  `R0917` (`PLR0917`)\\\\n"}'
+    )
+
+    class MockSubprocessResult:
+        """Mock subprocess result object."""
+
+        def __init__(self, stdout: str, returncode: int = 0) -> None:
+            self.stdout = stdout
+            self.returncode = returncode
+            self.stderr = ""
+
+    def mock_subprocess_run_r0917(
+        *args: object, **_kwargs: object
+    ) -> MockSubprocessResult:
+        """Mock subprocess.run specifically for R0917 test."""
+        if (
+            args
+            and len(args) > 0
+            and isinstance(args[0], list)
+            and len(args[0]) > 0
+            and args[0][0] == "gh"
+        ):
+            return MockSubprocessResult(stdout=mock_r0917_response)
+        # Return empty result for other commands
+        return MockSubprocessResult(stdout="")
+
+    monkeypatch.setattr("subprocess.run", mock_subprocess_run_r0917)
+
+    extractor = RuffPylintExtractor()
+    implemented_rules = extractor._fetch_from_github()
+
+    # This should find R0917 but currently fails due to regex pattern
+    assert "R0917" in implemented_rules, (
+        f"R0917 should be detected as implemented. Found rules: {implemented_rules}"
+    )

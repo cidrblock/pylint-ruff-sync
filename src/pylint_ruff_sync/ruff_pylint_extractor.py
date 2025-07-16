@@ -174,8 +174,9 @@ class RuffPylintExtractor:
 
             # Pattern to match checked task list items with pylint codes
             # Looks for: - [x] `rule-name` / `E0237` (`PLE0237`)
-            # We want to extract the pylint code (e.g., E0237)
-            pattern = r"- \[x\] `[^`]*` / `([A-Z]\d+)`"
+            # Also handles: - [x] `rule-name` /  `R0917` (`PLR0917`) (note: extra space)
+            # We want to extract the pylint code (e.g., E0237, R0917)
+            pattern = r"- \[x\] `[^`]*` /\s+`([A-Z]\d+)`"
 
             for match in re.finditer(pattern, issue_body):
                 pylint_code = match.group(1)
