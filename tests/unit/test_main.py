@@ -49,7 +49,7 @@ def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     setup_mocks(monkeypatch)
 
     extractor = RuffPylintExtractor()
-    result = extractor.extract_implemented_rules()
+    result = extractor.get_implemented_rules()
 
     # Should find F401, F841, and E501 as implemented (checked checkboxes)
     assert "F401" in result
@@ -144,8 +144,8 @@ def test_main_argument_parsing() -> None:
     assert args.verbose is True
 
     # Test config file argument
-    args = parser.parse_args(["--config", "custom.toml"])
-    assert args.config == Path("custom.toml")
+    args = parser.parse_args(["--config-file", "custom.toml"])
+    assert args.config_file == Path("custom.toml")
 
 
 def test_resolve_rule_identifiers() -> None:

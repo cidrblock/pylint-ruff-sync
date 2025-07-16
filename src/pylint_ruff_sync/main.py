@@ -1,8 +1,4 @@
-"""Main module for pylint-ruff-sync precommit hook.
-
-This module contains the core logic for updating pylint configuration
-to enable only those rules that haven't been implemented in ruff.
-"""
+"""Main module for the pylint-ruff-sync tool."""
 
 from __future__ import annotations
 
@@ -12,129 +8,116 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .pylint_extractor import PylintExtractor
-from .pyproject_updater import PyprojectUpdater
-from .ruff_pylint_extractor import RuffPylintExtractor
-from .toml_file import TomlFile
+from pylint_ruff_sync.pylint_extractor import PylintExtractor
+from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
+from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
+from pylint_ruff_sync.toml_file import TomlFile
 
 if TYPE_CHECKING:
-    from .pylint_rule import PylintRule
+    from pylint_ruff_sync.pylint_rule import PylintRule
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def _setup_argument_parser() -> argparse.ArgumentParser:
-    """Set up and return the argument parser.
+    """Set up command line argument parser.
 
     Returns:
         Configured argument parser.
 
     """
     parser = argparse.ArgumentParser(
-        description=(
-            "Update pylint configuration to enable only rules not implemented in ruff"
-        )
+        description="Sync pylint configuration with ruff implementation status"
     )
+
     parser.add_argument(
-        "--config",
+        "--config-file",
         type=Path,
         default=Path("pyproject.toml"),
-        help="Path to pyproject.toml file (default: pyproject.toml)",
+        help="Path to pyproject.toml file (default: %(default)s)",
     )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be changed without modifying files",
-    )
+
     parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
         help="Enable verbose logging",
     )
+
     parser.add_argument(
-        "--update-cache",
+        "--dry-run",
         action="store_true",
-        help="Update the cached ruff implementation data from GitHub and exit",
+        help="Show what would be changed without making modifications",
     )
-    parser.add_argument(
-        "--cache-path",
-        type=Path,
-        help="Path to cache file for offline usage (optional)",
-    )
+
     return parser
 
 
-def _configure_logging(*, verbose: bool) -> None:
-    """Configure logging based on verbosity level.
+def _setup_logging(*, verbose: bool = False) -> None:
+    """Set up logging configuration.
 
     Args:
-        verbose: Whether to enable verbose logging.
+        verbose: Enable debug level logging if True.
 
     """
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.getLogger().setLevel(level)
-    logger.setLevel(level)
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format="%(levelname)s: %(message)s",
+        handlers=[logging.StreamHandler()],
+    )
 
 
-def _extract_pylint_rules() -> list[PylintRule]:
-    """Extract all pylint rules.
+def _extract_all_pylint_rules() -> list[PylintRule]:
+    """Extract all available pylint rules from the pylint command.
 
     Returns:
-        List of all pylint rules.
+        List of all available pylint rules.
 
     Raises:
-        RuntimeError: If pylint rule extraction fails.
+        RuntimeError: If pylint command execution fails.
 
     """
-    try:
-        extractor = PylintExtractor()
-        return extractor.extract_all_rules()
-    except Exception as e:
-        msg = f"Failed to extract pylint rules: {e}"
-        raise RuntimeError(msg) from e
+    logger.info("Extracting pylint rules from 'pylint --list-msgs'")
+    extractor = PylintExtractor()
+    return extractor.extract_all_rules()
 
 
-def _extract_ruff_implemented_rules(*, cache_path: Path | None = None) -> list[str]:
-    """Extract rules implemented in ruff.
-
-    Args:
-        cache_path: Optional path to cache file for offline usage.
+def _extract_ruff_implemented_rules() -> list[str]:
+    """Extract pylint rules that have been implemented in ruff.
 
     Returns:
-        Set of rule codes implemented in ruff.
+        List of pylint rule codes that are implemented in ruff.
 
     Raises:
-        RuntimeError: If ruff rule extraction fails.
+        subprocess.CalledProcessError: If unable to fetch from GitHub.
+        json.JSONDecodeError: If the JSON response cannot be parsed.
+        KeyError: If the expected keys are missing from the response.
+        Exception: If parsing fails for other reasons.
 
     """
-    try:
-        extractor = RuffPylintExtractor(cache_path=cache_path)
-        return extractor.extract_implemented_rules()
-    except Exception as e:
-        msg = f"Failed to extract ruff-implemented rules: {e}"
-        raise RuntimeError(msg) from e
+    logger.info("Extracting implemented rules from ruff")
+    extractor = RuffPylintExtractor()
+    return extractor.get_implemented_rules()
 
 
-def _categorize_rules(
-    all_rules: list[PylintRule],
-    ruff_implemented: list[str],
-    toml_file: TomlFile,
+def _resolve_rule_identifiers(
+    *, all_rules: list[PylintRule], implemented_codes: list[str], config_file: Path
 ) -> tuple[list[PylintRule], list[PylintRule]]:
-    """Categorize rules into those to disable and enable.
+    """Resolve rule identifiers to determine which rules to enable and disable.
 
     Args:
-        all_rules: List of all pylint rules.
-        ruff_implemented: Set of rule codes implemented in ruff.
-        toml_file: TomlFile instance for checking current config.
+        all_rules: List of all available pylint rules.
+        implemented_codes: List of rule codes implemented in ruff.
+        config_file: Path to the pyproject.toml file to check existing disabled rules.
 
     Returns:
-        Tuple of (disable_rules, enable_rules).
+        Tuple of (rules_to_disable, rules_to_enable).
 
     """
-    # Get currently disabled rules from the file
+    # Load existing configuration to check currently disabled rules
+    toml_file = TomlFile(config_file)
     current_dict = toml_file.as_dict()
     current_disable = (
         current_dict.get("tool", {})
@@ -143,133 +126,132 @@ def _categorize_rules(
         .get("disable", [])
     )
 
-    # Convert to set for easier manipulation
+    # Convert to set for easier checking (includes both rule IDs and names)
     current_disable_set = set(current_disable) if current_disable else set()
 
-    # No rules to disable - we only add "all" and keep existing disabled rules
-    disable_rules: list[PylintRule] = []
+    # Always disable "all" to prevent duplicate rule execution (no PylintRule needed)
+    rules_to_disable: list[PylintRule] = []
 
-    # Rules to enable: those NOT implemented in ruff and not explicitly disabled by user
-    # Check both rule ID and rule name when determining if already disabled
-    enable_rules = [
+    # Get rules to enable (not implemented in ruff AND not explicitly disabled by user)
+    rules_to_enable = [
         rule
         for rule in all_rules
-        if rule.rule_id not in ruff_implemented
-        and rule.rule_id not in current_disable_set
-        and rule.name not in current_disable_set
+        if (
+            rule.rule_id not in implemented_codes  # Not implemented in ruff
+            and rule.rule_id not in current_disable_set  # Not disabled by ID
+            and rule.name not in current_disable_set  # Not disabled by name
+        )
     ]
 
-    return disable_rules, enable_rules
+    return rules_to_disable, rules_to_enable
 
 
-def _update_config(
-    toml_file: TomlFile,
-    disable_rules: list[PylintRule],
-    enable_rules: list[PylintRule],
+def _update_pylint_config(
     *,
-    dry_run: bool,
-) -> None:
-    """Update the pylint configuration.
+    config_file: Path,
+    rules_to_disable: list[PylintRule],
+    rules_to_enable: list[PylintRule],
+    dry_run: bool = False,
+) -> bool:
+    """Update the pylint configuration in pyproject.toml.
 
     Args:
-        toml_file: TomlFile instance to update.
-        disable_rules: Rules to disable.
-        enable_rules: Rules to enable.
-        dry_run: Whether this is a dry run.
-
-    """
-    if dry_run:
-        logger.info("DRY RUN: Would update configuration with:")
-        logger.info("  Rules to disable: %d", len(disable_rules))
-        logger.info("  Rules to enable: %d", len(enable_rules))
-
-        if disable_rules:
-            logger.info(
-                "  Sample disable rules: %s",
-                [rule.rule_id for rule in disable_rules[:5]],
-            )
-        if enable_rules:
-            logger.info(
-                "  Sample enable rules: %s", [rule.rule_id for rule in enable_rules[:5]]
-            )
-        return
-
-    # Update the configuration
-    updater = PyprojectUpdater(toml_file)
-    updater.update_pylint_config(disable_rules, enable_rules)
-    updater.write_config()
-
-    logger.info("Configuration updated successfully")
-    logger.info("  Rules disabled: %d", len(disable_rules))
-    logger.info("  Rules enabled: %d", len(enable_rules))
-
-
-def _update_cache(*, cache_path: Path | None = None) -> int:
-    """Update the ruff implementation cache from GitHub.
-
-    Args:
-        cache_path: Optional path to cache file.
+        config_file: Path to the pyproject.toml file.
+        rules_to_disable: List of rules to disable.
+        rules_to_enable: List of rules to enable.
+        dry_run: If True, only show what would be changed without writing.
 
     Returns:
-        Exit code (0 for success, 1 for failure).
+        True if configuration was updated (or would be updated in dry-run mode).
+
+    Raises:
+        FileNotFoundError: If the configuration file does not exist.
+        ValueError: If the configuration file is invalid.
 
     """
-    try:
-        logger.info("Updating ruff implementation cache...")
-        extractor = RuffPylintExtractor(cache_path=cache_path)
-        rules = extractor.update_cache()
-        logger.info("Successfully updated cache with %d rules", len(rules))
-    except Exception:
-        logger.exception("Failed to update cache")
-        return 1
-    else:
-        return 0
+    logger.info("Updating pylint configuration...")
+
+    if dry_run:
+        logger.info("DRY RUN: Would update configuration with:")
+        logger.info("  Rules to disable: %d", len(rules_to_disable))
+        logger.info("  Rules to enable: %d", len(rules_to_enable))
+        return True
+
+    # Load the TOML file and create updater
+    toml_file = TomlFile(config_file)
+    updater = PyprojectUpdater(toml_file=toml_file)
+
+    # Update the configuration
+    updater.update_pylint_config(
+        disable_rules=rules_to_disable,
+        enable_rules=rules_to_enable,
+    )
+
+    # Write the updated configuration
+    toml_file.write()
+
+    logger.info("Updated configuration written to %s", config_file)
+    logger.info("Pylint configuration updated successfully")
+    logger.info("Enabled %d total rules", len(rules_to_enable))
+
+    return True
 
 
 def main() -> int:
     """Run the pylint-ruff-sync tool.
 
     Returns:
-        Exit code (0 for success, 1 for failure).
+        Exit code (0 for success, non-zero for failure).
 
     """
     parser = _setup_argument_parser()
     args = parser.parse_args()
 
-    _configure_logging(verbose=args.verbose)
-
-    # Handle cache update option
-    if args.update_cache:
-        return _update_cache(cache_path=args.cache_path)
+    _setup_logging(verbose=args.verbose)
 
     try:
-        # Validate config file path
-        if not args.config.exists():
-            logger.error("Configuration file not found: %s", args.config)
+        # Check if config file exists early
+        if not args.config_file.exists():
+            logger.error("Configuration file not found: %s", args.config_file)
             return 1
 
-        # Load the TOML file
-        toml_file = TomlFile(args.config)
-
-        # Extract rules
-        logger.info("Extracting pylint rules...")
-        all_rules = _extract_pylint_rules()
+        # Extract all pylint rules
+        all_rules = _extract_all_pylint_rules()
         logger.info("Found %d total pylint rules", len(all_rules))
 
-        logger.info("Extracting ruff-implemented rules...")
-        ruff_implemented = _extract_ruff_implemented_rules(cache_path=args.cache_path)
+        # Extract implemented rules from ruff
+        ruff_implemented = _extract_ruff_implemented_rules()
         logger.info("Found %d rules implemented in ruff", len(ruff_implemented))
 
-        # Categorize rules
-        disable_rules, enable_rules = _categorize_rules(
-            all_rules, ruff_implemented, toml_file
+        # Resolve which rules to enable/disable
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=ruff_implemented,
+            config_file=args.config_file,
+        )
+
+        logger.info("Total pylint rules: %d", len(all_rules))
+        logger.info("Rules implemented in ruff: %d", len(ruff_implemented))
+        logger.info(
+            "Rules to enable (not implemented in ruff): %d", len(rules_to_enable)
         )
 
         # Update configuration
-        _update_config(toml_file, disable_rules, enable_rules, dry_run=args.dry_run)
+        _update_pylint_config(
+            config_file=args.config_file,
+            rules_to_disable=rules_to_disable,
+            rules_to_enable=rules_to_enable,
+            dry_run=args.dry_run,
+        )
 
+    except FileNotFoundError:
+        logger.exception("Configuration file not found")
+        return 1
+    except ValueError:
+        logger.exception("Invalid configuration")
+        return 1
     except Exception:
-        logger.exception("Failed to update pylint configuration")
+        logger.exception("An unexpected error occurred")
         return 1
     else:
         return 0

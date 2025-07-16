@@ -169,7 +169,6 @@ It fetches the current status from the [ruff pylint tracking issue](https://gith
 - Parsing the JSON response to extract the issue body
 - Using regex patterns to find checked items in the markdown task list
 - Identifying which pylint rules are implemented in ruff
-- **Fallback to cached data** when GitHub CLI is unavailable or fails
 
 ### 3. Configuration Update
 
@@ -197,66 +196,7 @@ Where:
 
 This makes it easy to quickly understand what each rule does and access detailed documentation.
 
-### 5. Offline Fallback
-
-To ensure reliable operation in environments where GitHub CLI is unavailable or fails (like precommit.ci), the tool implements a robust fallback system:
-
-#### Cache Structure
-
-The tool maintains a cache file at `data/ruff_implemented_rules.json` containing:
-
-```json
-{
-  "implemented_rules": ["C0103", "C0105", "C0112", "..."],
-  "source_url": "https://github.com/astral-sh/ruff/issues/970",
-  "last_updated": "2024-01-15T10:30:00Z"
-}
-```
-
-#### Fallback Strategy
-
-1. **Primary**: Fetch latest data using GitHub CLI (`gh issue view`)
-2. **Fallback**: Use cached data when GitHub CLI is unavailable or fails
-3. **Error**: Only fail if both GitHub CLI and cache are unavailable
-
-#### Cache Management
-
-**Manual Cache Updates:**
-
-```bash
-# Update cache with latest GitHub data
-python -m pylint_ruff_sync --update-cache
-
-# Verbose cache update
-python -m pylint_ruff_sync --update-cache --verbose
-```
-
-**Automatic Updates:**
-
-- Weekly GitHub Actions automatically update the cache
-- Creates releases when cache content changes
-- Ensures cache stays current without manual intervention
-
-#### Offline Compatibility
-
-The tool gracefully handles scenarios where GitHub CLI is unavailable:
-
-```
-INFO: Fetching ruff pylint implementation status...
-WARNING: GitHub CLI not found or command failed
-INFO: Attempting to use cached data...
-INFO: Using cached data with 219 rules
-```
-
-This ensures the tool works reliably in:
-
-- **precommit.ci** environments (which restrict external commands)
-- CI environments without GitHub CLI installed
-- Docker containers without `gh` available
-- Corporate networks with restricted tool access
-- Offline development environments
-
-### 6. Surgical Updates
+### 5. Surgical Updates
 
 The tool uses advanced regex patterns to surgically update only the necessary parts:
 
@@ -337,29 +277,24 @@ The tool only reads public issue data, so **no authentication is required**. How
 gh auth login
 ```
 
-#### Fallback Behavior
+#### Error Handling
 
-**When GitHub CLI is unavailable or fails** (such as in precommit.ci environments):
+**When GitHub CLI is unavailable or fails:**
 
-1. **Graceful Degradation**: The tool will fall back to cached rule data
-2. **No Interruption**: Pre-commit hooks continue to work normally
-3. **Cached Data**: Uses the last known good state (219 implemented rules as of latest update)
-4. **Logging**: Clear warnings about using cached data instead of live data
+The tool will fail with a clear error message indicating that GitHub CLI is required. Since precommit.ci supports running the `gh` command, this should not be an issue in most CI environments.
 
-Example output when `gh` is not available:
+If GitHub CLI fails, you will see:
 
 ```
-WARNING: GitHub CLI not found or failed to execute
-INFO: Falling back to cached implementation data
-INFO: Using cached data with 219 implemented rules from package
+ERROR: Failed to fetch GitHub issue using GitHub CLI
+ERROR: Make sure 'gh' is installed and available in PATH
 ```
 
-This ensures the tool works reliably in:
+**Requirements for reliable operation:**
 
-- **precommit.ci** (which restricts external commands)
-- **Docker containers** without `gh` installed
-- **CI environments** with limited tool availability
-- **Offline development** scenarios
+- GitHub CLI (`gh`) must be installed and available in PATH
+- No authentication required (tool only reads public issue data)
+- Internet connection required to fetch current ruff implementation status
 
 ## Project Structure
 
@@ -469,7 +404,7 @@ This project was developed through an innovative collaborative process between [
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
    - **Architecture Refactoring**: Centralized regex patterns into a dedicated `TomlRegex` class for maintainability
-   - **Offline Caching**: Implemented a comprehensive caching solution for precommit.ci compatibility
+   - **GitHub CLI Integration**: Replaced HTTP requests with direct GitHub CLI calls for better reliability
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
 
@@ -491,7 +426,7 @@ This project was developed through an innovative collaborative process between [
 The collaboration resulted in several innovative solutions:
 
 - **Surgical TOML Editing**: Regex-based approach that preserves formatting, comments, and structure
-- **Intelligent Caching**: Multi-tier fallback system (GitHub → package data → error) for offline environments
+- **Direct GitHub Integration**: Real-time fetching of ruff implementation status using GitHub CLI
 - **URL Generation**: Automatic generation of documentation links for pylint rules
 - **Comprehensive Testing**: Test fixtures demonstrating various TOML configurations and edge cases
 
@@ -504,7 +439,7 @@ This project demonstrated the effectiveness of human-AI collaboration where:
 - **Iterative feedback** between human and AI led to robust, production-ready code
 - **Diverse perspectives** (human creativity + AI systematic analysis) resulted in comprehensive solutions
 
-The final result is a production-ready tool with 220 cached ruff implementations, 66 passing tests, and deployment to precommit.ci environments.
+The final result is a production-ready tool with 220 ruff rule implementations detected, 68 passing tests, and deployment to precommit.ci environments.
 
 ## License
 
