@@ -34,6 +34,8 @@ jobs:
 
       - name: Update cache and get summary
         id: update-cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Run the tool once and capture both output and JSON
           uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json | tee /dev/stderr > cache_result.json
@@ -80,7 +82,7 @@ jobs:
       - name: Create Release
         if: steps.update-cache.outputs.has_changes == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "${{ steps.update-cache.outputs.version }}" \
             --title "Cache Update ${{ steps.update-cache.outputs.version }}" \
