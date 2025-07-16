@@ -9,7 +9,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update-cache:
@@ -33,10 +32,6 @@ jobs:
         run: |
           uv sync --all-extras
 
-      - name: Authenticate GitHub CLI
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
       - name: Update cache and get summary
         id: update-cache
         run: |
@@ -47,31 +42,20 @@ jobs:
           # Extract the JSON from the last line of stdout (excluding stderr logs)
           json_output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>/dev/null)
 
-          # Parse JSON and set outputs
-          echo "has_changes=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(str(data["has_changes"]).lower())')" >> $GITHUB_OUTPUT
-          echo "added_count=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["added_count"])')" >> $GITHUB_OUTPUT
-          echo "removed_count=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["removed_count"])')" >> $GITHUB_OUTPUT
-          echo "total_rules=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["total_rules"])')" >> $GITHUB_OUTPUT
+          # Parse JSON and set outputs using jq
+          echo "has_changes=$(echo "$json_output" | jq -r '.has_changes')" >> $GITHUB_OUTPUT
+          echo "total_rules=$(echo "$json_output" | jq -r '.total_rules')" >> $GITHUB_OUTPUT
 
-          # Save release notes to file and output
-          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["release_notes"])' > release_notes.md
+          # Save release notes and commit message
+          echo "$json_output" | jq -r '.release_notes' > release_notes.md
+          echo "$json_output" | jq -r '.commit_message' > commit_message.txt
 
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           cat release_notes.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-          # Save commit message to file and output
-          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["commit_message"])' > commit_message.txt
-
           echo "commit_message<<EOF" >> $GITHUB_OUTPUT
           cat commit_message.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          # Save PR message to file and output (for future use)
-          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["pr_message"])' > pr_message.txt
-
-          echo "pr_message<<EOF" >> $GITHUB_OUTPUT
-          cat pr_message.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Configure git

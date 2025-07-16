@@ -34,7 +34,6 @@ class CacheUpdateResult:
         has_changes: Whether there were any changes in the rule list.
         release_notes: Formatted release notes describing the changes.
         commit_message: Pre-formatted commit message for git operations.
-        pr_message: Pre-formatted pull request message for PR creation.
 
     """
 
@@ -44,7 +43,6 @@ class CacheUpdateResult:
     has_changes: bool
     release_notes: str
     commit_message: str
-    pr_message: str
 
 
 class RuffPylintExtractor:
@@ -170,14 +168,8 @@ class RuffPylintExtractor:
             total_rules=len(new_rules),
         )
 
-        # Generate commit and PR messages
+        # Generate commit message
         commit_message = self._generate_commit_message(
-            rules_added=rules_added,
-            rules_removed=rules_removed,
-            total_rules=len(new_rules),
-        )
-
-        pr_message = self._generate_pr_message(
             rules_added=rules_added,
             rules_removed=rules_removed,
             total_rules=len(new_rules),
@@ -199,7 +191,6 @@ class RuffPylintExtractor:
             has_changes=has_changes,
             release_notes=release_notes,
             commit_message=commit_message,
-            pr_message=pr_message,
         )
 
         if has_changes:
@@ -335,35 +326,6 @@ class RuffPylintExtractor:
 
         # Load and substitute template
         template_path = Path(__file__).parent / "data" / "commit_message_template.txt"
-        with template_path.open("r", encoding="utf-8") as f:
-            template_content = f.read()
-
-        template = Template(template_content)
-        return template.substitute(
-            added_count=len(rules_added),
-            removed_count=len(rules_removed),
-            total_rules=total_rules,
-            timestamp=timestamp,
-        )
-
-    def _generate_pr_message(
-        self, rules_added: list[str], rules_removed: list[str], total_rules: int
-    ) -> str:
-        """Generate pull request message for the cache update.
-
-        Args:
-            rules_added: List of rules that were added.
-            rules_removed: List of rules that were removed.
-            total_rules: Total number of rules after update.
-
-        Returns:
-            Formatted pull request message string.
-
-        """
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        # Load and substitute template
-        template_path = Path(__file__).parent / "data" / "pr_message_template.txt"
         with template_path.open("r", encoding="utf-8") as f:
             template_content = f.read()
 
