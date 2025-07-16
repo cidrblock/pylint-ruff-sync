@@ -43,15 +43,7 @@ jobs:
           if [ -f src/pylint_ruff_sync/data/ruff_implemented_rules.json ]; then
             echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
             # Extract current implemented rules for comparison
-            python -c "
-            import json
-            with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
-                data = json.load(f)
-                rules = sorted(data.get('implemented_rules', []))
-                with open('current_rules.txt', 'w') as out:
-                    for rule in rules:
-                        out.write(rule + '\n')
-            "
+            python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); rules = sorted(data.get("implemented_rules", [])); [open("current_rules.txt", "w").write(rule + "\n") for rule in rules]'
           else
             echo "hash=none" >> $GITHUB_OUTPUT
             touch current_rules.txt
@@ -63,35 +55,14 @@ jobs:
 
       - name: Add timestamp to cache
         run: |
-          python -c "
-          import json
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          cache_file = Path('src/pylint_ruff_sync/data/ruff_implemented_rules.json')
-          if cache_file.exists():
-              with cache_file.open('r') as f:
-                  data = json.load(f)
-              data['last_updated'] = datetime.now(timezone.utc).isoformat()
-              with cache_file.open('w') as f:
-                  json.dump(data, f, indent=2, sort_keys=True)
-                  f.write('\n')  # Ensure trailing newline
-          "
+          python3 -c 'import json; from datetime import datetime, timezone; from pathlib import Path; cache_file = Path("src/pylint_ruff_sync/data/ruff_implemented_rules.json"); data = json.load(cache_file.open("r")) if cache_file.exists() else {}; data.update({"last_updated": datetime.now(timezone.utc).isoformat()}); f = cache_file.open("w"); json.dump(data, f, indent=2, sort_keys=True); f.write("\n"); f.close()'
 
       - name: Get new cache hash and rules
         id: new-state
         run: |
           echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
           # Extract new implemented rules for comparison
-          python -c "
-          import json
-          with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
-              data = json.load(f)
-              rules = sorted(data.get('implemented_rules', []))
-              with open('new_rules.txt', 'w') as out:
-                  for rule in rules:
-                      out.write(rule + '\n')
-          "
+          python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); rules = sorted(data.get("implemented_rules", [])); [open("new_rules.txt", "w").write(rule + "\n") for rule in rules]'
 
       - name: Analyze rule changes
         id: rule-changes
@@ -144,12 +115,7 @@ jobs:
         id: rule-count
         if: steps.changes.outputs.changed == 'true'
         run: |
-          count=$(python -c "
-          import json
-          with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
-              data = json.load(f)
-              print(len(data['implemented_rules']))
-          ")
+          count=$(python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); print(len(data["implemented_rules"]))')
           echo "count=$count" >> $GITHUB_OUTPUT
 
       - name: Configure git
