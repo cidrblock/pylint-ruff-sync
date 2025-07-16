@@ -485,7 +485,7 @@ def test_main_with_update_cache(
     result = main()
 
     # Should exit successfully (return 0)
-    assert result == 0
+    assert not result
 
     # Cache file should be created
     assert cache_file.exists()
