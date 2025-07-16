@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -11,7 +12,9 @@ from typing import TYPE_CHECKING
 from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
+from pylint_ruff_sync.ruff_pylint_extractor import (
+    RuffPylintExtractor,
+)
 from pylint_ruff_sync.toml_file import TomlFile
 
 if TYPE_CHECKING:
@@ -242,8 +245,32 @@ def _update_cache(cache_path: Path) -> None:
     """
     logger.info("Updating cache from GitHub...")
     extractor = RuffPylintExtractor(cache_path=cache_path)
-    extractor.update_cache()
-    logger.info("Cache updated successfully at %s", cache_path)
+    result = extractor.update_cache()
+
+    # Emit JSON summary for GitHub Actions consumption
+    summary = {
+        "has_changes": result.has_changes,
+        "rules_added": result.rules_added,
+        "rules_removed": result.rules_removed,
+        "added_count": len(result.rules_added),
+        "removed_count": len(result.rules_removed),
+        "total_rules": result.total_rules,
+        "release_notes": result.release_notes,
+    }
+
+    print("=== CACHE_UPDATE_RESULT ===")  # noqa: T201
+    print(json.dumps(summary, indent=2, sort_keys=True))  # noqa: T201
+    print("=== END_CACHE_UPDATE_RESULT ===")  # noqa: T201
+
+    if result.has_changes:
+        logger.info(
+            "Cache updated successfully with %d changes (+%d -%d)",
+            len(result.rules_added) + len(result.rules_removed),
+            len(result.rules_added),
+            len(result.rules_removed),
+        )
+    else:
+        logger.info("Cache updated successfully - no rule changes detected")
 
 
 def main() -> int:

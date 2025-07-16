@@ -37,186 +37,85 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Get current cache hash and rules
-        id: current-state
+      - name: Update cache and get summary
+        id: update-cache
         run: |
-          if [ -f src/pylint_ruff_sync/data/ruff_implemented_rules.json ]; then
-            echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-            # Extract current implemented rules for comparison
-            python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); rules = sorted(data.get("implemented_rules", [])); [open("current_rules.txt", "w").write(rule + "\n") for rule in rules]'
+          # Run the tool and capture its output
+          output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>&1)
+          echo "$output"
+
+          # Extract the JSON summary from the output
+          json_start=$(echo "$output" | grep -n "=== CACHE_UPDATE_RESULT ===" | cut -d: -f1)
+          json_end=$(echo "$output" | grep -n "=== END_CACHE_UPDATE_RESULT ===" | cut -d: -f1)
+
+          if [ -n "$json_start" ] && [ -n "$json_end" ]; then
+            json_start=$((json_start + 1))
+            json_end=$((json_end - 1))
+            json_content=$(echo "$output" | sed -n "${json_start},${json_end}p")
+
+            # Parse JSON and set outputs
+            echo "has_changes=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(str(data["has_changes"]).lower())')" >> $GITHUB_OUTPUT
+            echo "added_count=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["added_count"])')" >> $GITHUB_OUTPUT
+            echo "removed_count=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["removed_count"])')" >> $GITHUB_OUTPUT
+            echo "total_rules=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["total_rules"])')" >> $GITHUB_OUTPUT
+
+            # Save release notes to file
+            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["release_notes"])' > release_notes.md
+
+            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+            cat release_notes.md >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           else
-            echo "hash=none" >> $GITHUB_OUTPUT
-            touch current_rules.txt
+            echo "Failed to extract JSON summary from tool output"
+            exit 1
           fi
-
-      - name: Update cache
-        run: |
-          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json
-
-      - name: Add timestamp to cache
-        run: |
-          python3 -c 'import json; from datetime import datetime, timezone; from pathlib import Path; cache_file = Path("src/pylint_ruff_sync/data/ruff_implemented_rules.json"); data = json.load(cache_file.open("r")) if cache_file.exists() else {}; data.update({"last_updated": datetime.now(timezone.utc).isoformat()}); f = cache_file.open("w"); json.dump(data, f, indent=2, sort_keys=True); f.write("\n"); f.close()'
-
-      - name: Get new cache hash and rules
-        id: new-state
-        run: |
-          echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
-          # Extract new implemented rules for comparison
-          python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); rules = sorted(data.get("implemented_rules", [])); [open("new_rules.txt", "w").write(rule + "\n") for rule in rules]'
-
-      - name: Analyze rule changes
-        id: rule-changes
-        run: |
-          # Compare rule lists to find additions and removals
-          if [ -f current_rules.txt ] && [ -f new_rules.txt ]; then
-            # Find added rules (in new but not in current)
-            comm -13 current_rules.txt new_rules.txt > added_rules.txt
-            # Find removed rules (in current but not in new)
-            comm -23 current_rules.txt new_rules.txt > removed_rules.txt
-
-            added_count=$(wc -l < added_rules.txt)
-            removed_count=$(wc -l < removed_rules.txt)
-
-            echo "added_count=$added_count" >> $GITHUB_OUTPUT
-            echo "removed_count=$removed_count" >> $GITHUB_OUTPUT
-
-            # Create formatted change lists
-            if [ $added_count -gt 0 ]; then
-              echo "added_rules<<EOF" >> $GITHUB_OUTPUT
-              cat added_rules.txt >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            fi
-
-            if [ $removed_count -gt 0 ]; then
-              echo "removed_rules<<EOF" >> $GITHUB_OUTPUT
-              cat removed_rules.txt >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "added_count=0" >> $GITHUB_OUTPUT
-            echo "removed_count=0" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Check for changes
-        id: changes
-        run: |
-          added_count=${{ steps.rule-changes.outputs.added_count }}
-          removed_count=${{ steps.rule-changes.outputs.removed_count }}
-
-          if [ "$added_count" -gt 0 ] || [ "$removed_count" -gt 0 ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Rule changes detected: +$added_count -$removed_count"
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No rule changes detected"
-          fi
-
-      - name: Get rule count
-        id: rule-count
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          count=$(python3 -c 'import json; data = json.load(open("src/pylint_ruff_sync/data/ruff_implemented_rules.json")); print(len(data["implemented_rules"]))')
-          echo "count=$count" >> $GITHUB_OUTPUT
 
       - name: Configure git
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update-cache.outputs.has_changes == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit changes
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update-cache.outputs.has_changes == 'true'
         run: |
           git add src/pylint_ruff_sync/data/ruff_implemented_rules.json
           git commit -m "Update ruff implementation cache
 
-          - Updated with ${{ steps.rule-count.outputs.count }} implemented rules
-          - Cache updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Rules added: +${{ steps.update-cache.outputs.added_count }}
+          - Rules removed: -${{ steps.update-cache.outputs.removed_count }}
+          - Total rules: ${{ steps.update-cache.outputs.total_rules }}
           - Source: https://github.com/astral-sh/ruff/issues/970" || echo "No changes to commit"
 
       - name: Push changes
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update-cache.outputs.has_changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git push origin HEAD:${GITHUB_REF#refs/heads/}
 
-      - name: Generate release notes
-        id: release-notes
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          # Get the current UTC timestamp
-          CACHE_UPDATED_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          added_count=${{ steps.rule-changes.outputs.added_count }}
-          removed_count=${{ steps.rule-changes.outputs.removed_count }}
-
-          cat > release_notes.md << EOF
-          ## Ruff Implementation Cache Update
-
-          This release contains an updated cache of pylint rules implemented in Ruff.
-
-          **Statistics:**
-          - Total implemented rules: ${{ steps.rule-count.outputs.count }}
-          - Rules added: +${added_count}
-          - Rules removed: -${removed_count}
-          - Cache updated: ${CACHE_UPDATED_TIME}
-          - Source: https://github.com/astral-sh/ruff/issues/970
-
-          **Rule Changes:**
-          EOF
-
-          # Add details about added rules
-          if [ $added_count -gt 0 ]; then
-            echo "" >> release_notes.md
-            echo "### ✅ Added Rules (${added_count})" >> release_notes.md
-            echo "\`\`\`" >> release_notes.md
-            cat added_rules.txt >> release_notes.md
-            echo "\`\`\`" >> release_notes.md
-          fi
-
-          # Add details about removed rules
-          if [ $removed_count -gt 0 ]; then
-            echo "" >> release_notes.md
-            echo "### ❌ Removed Rules (${removed_count})" >> release_notes.md
-            echo "\`\`\`" >> release_notes.md
-            cat removed_rules.txt >> release_notes.md
-            echo "\`\`\`" >> release_notes.md
-          fi
-
-          cat >> release_notes.md << EOF
-
-          **Technical Details:**
-          - Cache file: \`src/pylint_ruff_sync/data/ruff_implemented_rules.json\`
-          - This update ensures that the tool works correctly in offline environments like precommit.ci
-
-          EOF
-
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Get version for release
         id: version
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update-cache.outputs.has_changes == 'true'
         run: |
           # Generate version in YY.MM.DD.HHMM format
           version="$(date +%y.%m.%d.%H%M)"
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: steps.changes.outputs.changed == 'true'
+        if: steps.update-cache.outputs.has_changes == 'true'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.version.outputs.version }}
           release_name: "Cache Update ${{ steps.version.outputs.version }}"
-          body: ${{ steps.release-notes.outputs.notes }}
+          body: ${{ steps.update-cache.outputs.release_notes }}
           draft: false
           prerelease: false
 
       - name: No changes detected
-        if: steps.changes.outputs.changed == 'false'
+        if: steps.update-cache.outputs.has_changes == 'false'
         run: |
           echo "No changes detected in ruff implementation cache"
-          echo "Current cache is up to date with ${{ steps.rule-count.outputs.count || 'unknown' }} rules"
+          echo "Current cache is up to date with ${{ steps.update-cache.outputs.total_rules }} rules"

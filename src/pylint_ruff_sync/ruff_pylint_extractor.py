@@ -6,7 +6,10 @@ import json
 import logging
 import re
 import subprocess
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,6 +20,17 @@ RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
 RUFF_PYLINT_ISSUE_NUMBER = "970"
 # GitHub repository for ruff
 RUFF_REPO = "astral-sh/ruff"
+
+
+@dataclass
+class CacheUpdateResult:
+    """Result of a cache update operation."""
+
+    rules_added: list[str]
+    rules_removed: list[str]
+    total_rules: int
+    has_changes: bool
+    release_notes: str
 
 
 class RuffPylintExtractor:
@@ -113,17 +127,166 @@ class RuffPylintExtractor:
         except OSError as e:
             logger.warning("Failed to save cache to %s: %s", self.cache_path, e)
 
-    def update_cache(self) -> list[str]:
-        """Fetch latest data from GitHub and update cache.
+    def update_cache(self) -> CacheUpdateResult:
+        """Fetch latest data from GitHub, compare with existing cache, and update.
 
         Returns:
-            List of implemented rule codes.
+            CacheUpdateResult with detailed information about what changed.
 
         """
         logger.info("Updating cache from %s", self.issue_url)
-        rules = self._fetch_from_github()
-        self._save_cache(rules)
-        return rules
+
+        # Load existing rules for comparison
+        old_rules = self._load_cache() or []
+        old_rules_set = set(old_rules)
+
+        # Fetch new rules from GitHub
+        new_rules = self._fetch_from_github()
+        new_rules_set = set(new_rules)
+
+        # Calculate changes
+        rules_added = sorted(new_rules_set - old_rules_set)
+        rules_removed = sorted(old_rules_set - new_rules_set)
+        has_changes = bool(rules_added or rules_removed)
+
+        # Generate release notes
+        release_notes = self._generate_release_notes(
+            rules_added=rules_added,
+            rules_removed=rules_removed,
+            total_rules=len(new_rules),
+        )
+
+        # Save updated cache with timestamp only if there were changes
+        self._save_cache_with_changes(
+            rules=new_rules,
+            rules_added=rules_added,
+            rules_removed=rules_removed,
+            has_changes=has_changes,
+            release_notes=release_notes,
+        )
+
+        result = CacheUpdateResult(
+            rules_added=rules_added,
+            rules_removed=rules_removed,
+            total_rules=len(new_rules),
+            has_changes=has_changes,
+            release_notes=release_notes,
+        )
+
+        if has_changes:
+            logger.info(
+                "Cache updated with changes: +%d -%d rules",
+                len(rules_added),
+                len(rules_removed),
+            )
+        else:
+            logger.info("No changes detected in rule list")
+
+        return result
+
+    def _generate_release_notes(
+        self, rules_added: list[str], rules_removed: list[str], total_rules: int
+    ) -> str:
+        """Generate release notes for the cache update.
+
+        Args:
+            rules_added: List of rules that were added.
+            rules_removed: List of rules that were removed.
+            total_rules: Total number of rules after update.
+
+        Returns:
+            Formatted release notes string.
+
+        """
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        release_notes = f"""## Ruff Implementation Cache Update
+
+This release contains an updated cache of pylint rules implemented in Ruff.
+
+**Statistics:**
+- Total implemented rules: {total_rules}
+- Rules added: +{len(rules_added)}
+- Rules removed: -{len(rules_removed)}
+- Cache updated: {timestamp}
+- Source: https://github.com/astral-sh/ruff/issues/970
+
+**Rule Changes:**
+"""
+
+        if rules_added:
+            release_notes += f"\n### ✅ Added Rules ({len(rules_added)})\n```\n"
+            release_notes += "\n".join(rules_added)
+            release_notes += "\n```\n"
+
+        if rules_removed:
+            release_notes += f"\n### ❌ Removed Rules ({len(rules_removed)})\n```\n"
+            release_notes += "\n".join(rules_removed)
+            release_notes += "\n```\n"
+
+        if not rules_added and not rules_removed:
+            release_notes += "\nNo rule changes in this update.\n"
+
+        release_notes += """
+**Technical Details:**
+- Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
+- This update ensures that the tool works correctly in offline environments like \
+precommit.ci
+"""
+
+        return release_notes.strip()
+
+    def _save_cache_with_changes(
+        self,
+        rules: list[str],
+        rules_added: list[str],
+        rules_removed: list[str],
+        *,
+        has_changes: bool,
+        release_notes: str,
+    ) -> None:
+        """Save implemented rules to cache file with change tracking.
+
+        Args:
+            rules: List of implemented rule codes to cache.
+            rules_added: List of rules that were added.
+            rules_removed: List of rules that were removed.
+            has_changes: Whether there were any changes.
+            release_notes: Generated release notes.
+
+        """
+        if self.cache_path is None:
+            logger.warning("No cache path specified, cannot save cache")
+            return
+
+        try:
+            # Ensure cache directory exists
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+            cache_data: dict[str, Any] = {
+                "implemented_rules": rules,
+                "source_url": self.issue_url,
+                "change_summary": {
+                    "rules_added": rules_added,
+                    "rules_removed": rules_removed,
+                    "total_rules": len(rules),
+                    "has_changes": has_changes,
+                    "release_notes": release_notes,
+                },
+            }
+
+            # Only add timestamp if there were actual changes
+            if has_changes:
+                cache_data["last_updated"] = datetime.now(UTC).isoformat()
+
+            with self.cache_path.open("w", encoding="utf-8") as f:
+                json.dump(cache_data, f, indent=2, sort_keys=True)
+                f.write("\n")  # Ensure trailing newline
+
+            logger.info("Saved %d rules to cache: %s", len(rules), self.cache_path)
+
+        except OSError as e:
+            logger.warning("Failed to save cache to %s: %s", self.cache_path, e)
 
     def _fetch_from_github(self) -> list[str]:
         """Fetch the ruff pylint implementation status from GitHub issue.
