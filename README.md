@@ -165,10 +165,11 @@ The script runs `pylint --list-msgs` to extract all available pylint rules with 
 
 It fetches the current status from the [ruff pylint tracking issue](https://github.com/astral-sh/ruff/issues/970) by:
 
-- Making an HTTP request to the GitHub issue
-- Parsing the HTML with BeautifulSoup
-- Extracting checked items from the task list
-- Identifying which pylint rules are implemented
+- Using GitHub CLI: `gh issue view 970 --repo astral-sh/ruff --json body`
+- Parsing the JSON response to extract the issue body
+- Using regex patterns to find checked items in the markdown task list
+- Identifying which pylint rules are implemented in ruff
+- **Fallback to cached data** when GitHub CLI is unavailable or fails
 
 ### 3. Configuration Update
 
@@ -196,9 +197,9 @@ Where:
 
 This makes it easy to quickly understand what each rule does and access detailed documentation.
 
-### 5. Offline Caching
+### 5. Offline Fallback
 
-To ensure reliable operation in environments without internet access (like precommit.ci), the tool implements a robust caching system:
+To ensure reliable operation in environments where GitHub CLI is unavailable or fails (like precommit.ci), the tool implements a robust fallback system:
 
 #### Cache Structure
 
@@ -214,9 +215,9 @@ The tool maintains a cache file at `data/ruff_implemented_rules.json` containing
 
 #### Fallback Strategy
 
-1. **Primary**: Fetch latest data from GitHub issue
-2. **Fallback**: Use cached data when GitHub is unreachable
-3. **Error**: Only fail if both GitHub and cache are unavailable
+1. **Primary**: Fetch latest data using GitHub CLI (`gh issue view`)
+2. **Fallback**: Use cached data when GitHub CLI is unavailable or fails
+3. **Error**: Only fail if both GitHub CLI and cache are unavailable
 
 #### Cache Management
 
@@ -238,21 +239,22 @@ python -m pylint_ruff_sync --update-cache --verbose
 
 #### Offline Compatibility
 
-The tool gracefully handles offline scenarios:
+The tool gracefully handles scenarios where GitHub CLI is unavailable:
 
 ```
 INFO: Fetching ruff pylint implementation status...
-WARNING: Failed to fetch from GitHub: Connection timeout
+WARNING: GitHub CLI not found or command failed
 INFO: Attempting to use cached data...
-INFO: Using cached data with 220 rules
+INFO: Using cached data with 219 rules
 ```
 
 This ensures the tool works reliably in:
 
-- CI environments without internet access
-- Corporate networks with restricted access
+- **precommit.ci** environments (which restrict external commands)
+- CI environments without GitHub CLI installed
+- Docker containers without `gh` available
+- Corporate networks with restricted tool access
 - Offline development environments
-- precommit.ci which blocks external requests
 
 ### 6. Surgical Updates
 
@@ -305,8 +307,59 @@ This hook works seamlessly with:
 
 - Python 3.8+
 - pylint 2.15.0+
-- requests 2.28.0+
-- beautifulsoup4 4.11.0+
+- **GitHub CLI (`gh`)** - for fetching live ruff implementation status
+
+### GitHub CLI Dependency
+
+This tool uses the [GitHub CLI (`gh`)](https://cli.github.com/) to fetch the current ruff pylint implementation status from [GitHub issue #970](https://github.com/astral-sh/ruff/issues/970).
+
+#### Installation
+
+**macOS:**
+
+```bash
+brew install gh
+```
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt install gh
+```
+
+**Other platforms:** See the [official installation guide](https://github.com/cli/cli#installation)
+
+#### Authentication
+
+The tool only reads public issue data, so **no authentication is required**. However, if you want to authenticate to avoid rate limits:
+
+```bash
+gh auth login
+```
+
+#### Fallback Behavior
+
+**When GitHub CLI is unavailable or fails** (such as in precommit.ci environments):
+
+1. **Graceful Degradation**: The tool will fall back to cached rule data
+2. **No Interruption**: Pre-commit hooks continue to work normally
+3. **Cached Data**: Uses the last known good state (219 implemented rules as of latest update)
+4. **Logging**: Clear warnings about using cached data instead of live data
+
+Example output when `gh` is not available:
+
+```
+WARNING: GitHub CLI not found or failed to execute
+INFO: Falling back to cached implementation data
+INFO: Using cached data with 219 implemented rules from package
+```
+
+This ensures the tool works reliably in:
+
+- **precommit.ci** (which restricts external commands)
+- **Docker containers** without `gh` installed
+- **CI environments** with limited tool availability
+- **Offline development** scenarios
 
 ## Project Structure
 
@@ -411,6 +464,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -418,6 +472,7 @@ This project was developed through an innovative collaborative process between [
    - **Offline Caching**: Implemented a comprehensive caching solution for precommit.ci compatibility
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback
