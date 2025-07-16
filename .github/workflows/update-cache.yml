@@ -94,6 +94,29 @@ jobs:
           ")
           echo "count=$count" >> $GITHUB_OUTPUT
 
+      - name: Configure git
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git add src/pylint_ruff_sync/data/ruff_implemented_rules.json
+          git commit -m "Update ruff implementation cache
+
+          - Updated with ${{ steps.rule-count.outputs.count }} implemented rules
+          - Cache updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Source: https://github.com/astral-sh/ruff/issues/970" || echo "No changes to commit"
+
+      - name: Push changes
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+
       - name: Generate release notes
         id: release-notes
         if: steps.changes.outputs.changed == 'true'
@@ -118,30 +141,6 @@ jobs:
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           cat release_notes.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create Pull Request
-        if: steps.changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: |
-            Update ruff implementation cache
-
-            - Updated with ${{ steps.rule-count.outputs.count }} implemented rules
-            - Cache updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            - Source: https://github.com/astral-sh/ruff/issues/970
-          title: "Update ruff implementation cache"
-          body: |
-            This PR updates the cached ruff implementation data.
-
-            **Changes:**
-            - Updated `src/pylint_ruff_sync/data/ruff_implemented_rules.json` with latest data from GitHub
-            - Total implemented rules: ${{ steps.rule-count.outputs.count }}
-            - Last updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-            This ensures the tool works correctly in offline environments like precommit.ci.
-          branch: update-cache-${{ github.run_number }}
-          delete-branch: true
 
       - name: Get version for release
         id: version
