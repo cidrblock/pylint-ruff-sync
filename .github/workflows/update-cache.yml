@@ -34,7 +34,8 @@ jobs:
           uv sync --all-extras
 
       - name: Authenticate GitHub CLI
-        run: gh auth login --with-token < ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
       - name: Get current cache hash
         id: current-hash
