@@ -86,7 +86,7 @@ jobs:
         run: |
           gh release create "${{ steps.update-cache.outputs.version }}" \
             --title "Cache Update ${{ steps.update-cache.outputs.version }}" \
-            --notes "${{ steps.update-cache.outputs.release_notes }}"
+            --notes-file release_notes.md
 
       - name: No changes detected
         if: steps.update-cache.outputs.has_changes == 'false'
