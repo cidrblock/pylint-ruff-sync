@@ -272,20 +272,20 @@ class RuffPylintExtractor:
     def _save_cache_with_changes(
         self,
         rules: list[str],
-        rules_added: list[str],
-        rules_removed: list[str],
+        rules_added: list[str],  # noqa: ARG002
+        rules_removed: list[str],  # noqa: ARG002
         *,
         has_changes: bool,
-        release_notes: str,
+        release_notes: str,  # noqa: ARG002
     ) -> None:
-        """Save implemented rules to cache file with change tracking.
+        """Save implemented rules to cache file.
 
         Args:
             rules: List of implemented rule codes to cache.
-            rules_added: List of rules that were added.
-            rules_removed: List of rules that were removed.
+            rules_added: List of rules that were added (unused).
+            rules_removed: List of rules that were removed (unused).
             has_changes: Whether there were any changes.
-            release_notes: Generated release notes.
+            release_notes: Generated release notes (unused).
 
         """
         if self.cache_path is None:
@@ -299,13 +299,6 @@ class RuffPylintExtractor:
             cache_data: dict[str, Any] = {
                 "implemented_rules": rules,
                 "source_url": self.issue_url,
-                "change_summary": {
-                    "rules_added": rules_added,
-                    "rules_removed": rules_removed,
-                    "total_rules": len(rules),
-                    "has_changes": has_changes,
-                    "release_notes": release_notes,
-                },
             }
 
             # Only add timestamp if there were actual changes
