@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import subprocess
 import tempfile
 from pathlib import Path
+from typing import Never
 
 import pytest  # noqa: TC002
 
 from pylint_ruff_sync.main import (
     _resolve_rule_identifiers,
     _setup_argument_parser,
+    main,
 )
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
@@ -389,3 +393,107 @@ disable = []
 
     finally:
         Path(tmp_file.name).unlink()
+
+
+def test_cache_arguments() -> None:
+    """Test that cache-related arguments are properly handled."""
+    parser = _setup_argument_parser()
+
+    # Test --update-cache argument
+    args = parser.parse_args(["--update-cache"])
+    assert args.update_cache is True
+
+    # Test --cache-path argument
+    args = parser.parse_args(["--cache-path", "test.json"])
+    assert args.cache_path == Path("test.json")
+
+    # Test both arguments together
+    args = parser.parse_args(["--update-cache", "--cache-path", "cache.json"])
+    assert args.update_cache is True
+    assert args.cache_path == Path("cache.json")
+
+
+def test_extractor_with_cache_path(tmp_path: Path) -> None:
+    """Test RuffPylintExtractor initialization with cache_path.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    cache_path = tmp_path / "test_cache.json"
+    extractor = RuffPylintExtractor(cache_path=cache_path)
+
+    assert extractor.cache_path == cache_path
+
+
+def test_cache_fallback_functionality(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test cache fallback when GitHub CLI fails.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+
+    """
+    # Create a temporary cache file
+    cache_file = tmp_path / "test_cache.json"
+    cache_data = {
+        "implemented_rules": ["C0103", "E1101", "W0102"],
+        "source_url": "https://example.com",
+        "last_updated": None,
+    }
+    with cache_file.open("w") as f:
+        json.dump(cache_data, f)
+
+    # Mock subprocess.run to simulate GitHub CLI failure
+    def mock_subprocess_run(*_args: object, **_kwargs: object) -> Never:
+        raise subprocess.CalledProcessError(1, "gh", "command failed")
+
+    monkeypatch.setattr("subprocess.run", mock_subprocess_run)
+
+    # Test fallback to cache
+    extractor = RuffPylintExtractor(cache_path=cache_file)
+    rules = extractor.get_implemented_rules()
+
+    assert rules == ["C0103", "E1101", "W0102"]
+
+
+def test_main_with_update_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Test main function with --update-cache argument.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Setup mocks for GitHub CLI
+    setup_mocks(monkeypatch)
+
+    # Create temporary cache file path
+    cache_file = tmp_path / "test_cache.json"
+
+    # Mock sys.argv to simulate --update-cache
+    monkeypatch.setattr(
+        "sys.argv",
+        ["pylint-ruff-sync", "--update-cache", "--cache-path", str(cache_file)],
+    )
+
+    # Run main function
+    result = main()
+
+    # Should exit successfully (return 0)
+    assert result == 0
+
+    # Cache file should be created
+    assert cache_file.exists()
+
+    # Check cache content
+    with cache_file.open() as f:
+        cache_data = json.load(f)
+
+    assert "implemented_rules" in cache_data
+    assert isinstance(cache_data["implemented_rules"], list)
+    assert len(cache_data["implemented_rules"]) > 0

@@ -314,24 +314,66 @@ The tool only reads public issue data, so **no authentication is required**. How
 gh auth login
 ```
 
+#### Caching and Offline Support
+
+The tool includes sophisticated caching to ensure reliable operation in offline environments:
+
+**Automatic Caching:**
+
+- Fetched data is automatically cached for future offline use
+- Cache includes 220+ implemented rules as of the latest update
+- Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
+
+**Manual Cache Updates:**
+
+```bash
+# Update cache manually
+pylint-ruff-sync --update-cache
+
+# Update cache to custom location
+pylint-ruff-sync --update-cache --cache-path /path/to/cache.json
+
+# Use custom cache for operations
+pylint-ruff-sync --cache-path /path/to/cache.json --config-file pyproject.toml
+```
+
+**Fallback Behavior:**
+
+The tool gracefully handles scenarios where GitHub CLI is unavailable:
+
+```
+INFO: Fetching ruff pylint implementation status...
+WARNING: Failed to fetch from GitHub: command failed
+INFO: Attempting to use cached data...
+INFO: Using cached data with 220 rules
+```
+
+This ensures the tool works reliably in:
+
+- **precommit.ci** environments (which may restrict external commands)
+- CI environments without GitHub CLI installed
+- Docker containers without `gh` available
+- Corporate networks with restricted tool access
+- Offline development environments
+
 #### Error Handling
 
-**When GitHub CLI is unavailable or fails:**
+**When GitHub CLI is unavailable and no cache exists:**
 
-The tool will fail with a clear error message indicating that GitHub CLI is required. Since precommit.ci supports running the `gh` command, this should not be an issue in most CI environments.
-
-If GitHub CLI fails, you will see:
+The tool will fail with a clear error message indicating that GitHub CLI is required or cached data is needed.
 
 ```
 ERROR: Failed to fetch GitHub issue using GitHub CLI
+ERROR: No cache available and GitHub fetch failed
 ERROR: Make sure 'gh' is installed and available in PATH
 ```
 
 **Requirements for reliable operation:**
 
-- GitHub CLI (`gh`) must be installed and available in PATH
-- No authentication required (tool only reads public issue data)
-- Internet connection required to fetch current ruff implementation status
+- **Primary:** GitHub CLI (`gh`) must be installed and available in PATH
+- **Fallback:** Cached data available when GitHub CLI fails
+- **Authentication:** None required (tool only reads public issue data)
+- **Network:** Internet connection preferred for live data, cached data for offline use
 
 ## Project Structure
 
@@ -436,6 +478,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -443,6 +486,7 @@ This project was developed through an innovative collaborative process between [
    - **GitHub CLI Integration**: Replaced HTTP requests with direct GitHub CLI calls for better reliability
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback
