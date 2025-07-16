@@ -19,11 +19,21 @@ class RuleExtractor(Protocol):
 
     @property
     def issue_url(self) -> str:
-        """URL of the GitHub issue being tracked."""
+        """URL of the GitHub issue being tracked.
+
+        Returns:
+            The GitHub issue URL.
+
+        """
         ...
 
     def get_implemented_rules(self) -> list[str]:
-        """Get list of implemented rule codes."""
+        """Get list of implemented rule codes.
+
+        Returns:
+            List of implemented rule codes.
+
+        """
         ...
 
 
