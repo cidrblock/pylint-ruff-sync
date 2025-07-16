@@ -64,6 +64,7 @@ jobs:
               data['last_updated'] = datetime.now(timezone.utc).isoformat()
               with cache_file.open('w') as f:
                   json.dump(data, f, indent=2, sort_keys=True)
+                  f.write('\n')  # Ensure trailing newline
           "
 
       - name: Get new cache hash
@@ -146,8 +147,8 @@ jobs:
         id: version
         if: steps.changes.outputs.changed == 'true'
         run: |
-          # Generate version in vYY.MM.DD format
-          version="v$(date +%y.%m.%d)"
+          # Generate version in YY.MM.DD.HHMM format
+          version="$(date +%y.%m.%d.%H%M)"
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create Release
