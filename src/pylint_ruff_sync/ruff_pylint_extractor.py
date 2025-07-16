@@ -32,6 +32,8 @@ class CacheUpdateResult:
         total_rules: Total number of rules after the update.
         has_changes: Whether there were any changes in the rule list.
         release_notes: Formatted release notes describing the changes.
+        commit_message: Pre-formatted commit message for git operations.
+        pr_message: Pre-formatted pull request message for PR creation.
 
     """
 
@@ -40,6 +42,8 @@ class CacheUpdateResult:
     total_rules: int
     has_changes: bool
     release_notes: str
+    commit_message: str
+    pr_message: str
 
 
 class RuffPylintExtractor:
@@ -165,6 +169,19 @@ class RuffPylintExtractor:
             total_rules=len(new_rules),
         )
 
+        # Generate commit and PR messages
+        commit_message = self._generate_commit_message(
+            rules_added=rules_added,
+            rules_removed=rules_removed,
+            total_rules=len(new_rules),
+        )
+
+        pr_message = self._generate_pr_message(
+            rules_added=rules_added,
+            rules_removed=rules_removed,
+            total_rules=len(new_rules),
+        )
+
         # Save updated cache with timestamp only if there were changes
         self._save_cache_with_changes(
             rules=new_rules,
@@ -180,6 +197,8 @@ class RuffPylintExtractor:
             total_rules=len(new_rules),
             has_changes=has_changes,
             release_notes=release_notes,
+            commit_message=commit_message,
+            pr_message=pr_message,
         )
 
         if has_changes:
@@ -296,6 +315,65 @@ precommit.ci
 
         except OSError as e:
             logger.warning("Failed to save cache to %s: %s", self.cache_path, e)
+
+    def _generate_commit_message(
+        self, rules_added: list[str], rules_removed: list[str], total_rules: int
+    ) -> str:
+        """Generate commit message for the cache update.
+
+        Args:
+            rules_added: List of rules that were added.
+            rules_removed: List of rules that were removed.
+            total_rules: Total number of rules after update.
+
+        Returns:
+            Formatted commit message string.
+
+        """
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        return f"""Update ruff implementation cache
+
+- Rules added: +{len(rules_added)}
+- Rules removed: -{len(rules_removed)}
+- Total rules: {total_rules}
+- Cache updated: {timestamp}
+- Source: https://github.com/astral-sh/ruff/issues/970"""
+
+    def _generate_pr_message(
+        self, rules_added: list[str], rules_removed: list[str], total_rules: int
+    ) -> str:
+        """Generate pull request message for the cache update.
+
+        Args:
+            rules_added: List of rules that were added.
+            rules_removed: List of rules that were removed.
+            total_rules: Total number of rules after update.
+
+        Returns:
+            Formatted pull request message string.
+
+        """
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        pr_title = "Update ruff implementation cache"
+
+        pr_body = f"""This PR updates the cached ruff implementation data.
+
+**Changes:**
+- Rules added: +{len(rules_added)}
+- Rules removed: -{len(rules_removed)}
+- Total rules: {total_rules}
+- Last updated: {timestamp}
+
+**Files Changed:**
+- Updated `src/pylint_ruff_sync/data/ruff_implemented_rules.json` with latest data \
+from GitHub
+- Source: https://github.com/astral-sh/ruff/issues/970
+
+This ensures the tool works correctly in offline environments like precommit.ci."""
+
+        return f"title: {pr_title}\nbody: {pr_body}"
 
     def _fetch_from_github(self) -> list[str]:
         """Fetch the ruff pylint implementation status from GitHub issue.

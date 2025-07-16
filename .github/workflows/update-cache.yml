@@ -65,6 +65,20 @@ jobs:
             echo "release_notes<<EOF" >> $GITHUB_OUTPUT
             cat release_notes.md >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
+
+            # Save commit message to file and output
+            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["commit_message"])' > commit_message.txt
+
+            echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+            cat commit_message.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+
+            # Save PR message to file and output (for future use)
+            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["pr_message"])' > pr_message.txt
+
+            echo "pr_message<<EOF" >> $GITHUB_OUTPUT
+            cat pr_message.txt >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "Failed to extract JSON summary from tool output"
             exit 1
@@ -80,12 +94,7 @@ jobs:
         if: steps.update-cache.outputs.has_changes == 'true'
         run: |
           git add src/pylint_ruff_sync/data/ruff_implemented_rules.json
-          git commit -m "Update ruff implementation cache
-
-          - Rules added: +${{ steps.update-cache.outputs.added_count }}
-          - Rules removed: -${{ steps.update-cache.outputs.removed_count }}
-          - Total rules: ${{ steps.update-cache.outputs.total_rules }}
-          - Source: https://github.com/astral-sh/ruff/issues/970" || echo "No changes to commit"
+          git commit -m "${{ steps.update-cache.outputs.commit_message }}" || echo "No changes to commit"
 
       - name: Push changes
         if: steps.update-cache.outputs.has_changes == 'true'

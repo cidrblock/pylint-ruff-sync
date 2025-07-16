@@ -256,6 +256,8 @@ def _update_cache(cache_path: Path) -> None:
         "removed_count": len(result.rules_removed),
         "total_rules": result.total_rules,
         "release_notes": result.release_notes,
+        "commit_message": result.commit_message,
+        "pr_message": result.pr_message,
     }
 
     print("=== CACHE_UPDATE_RESULT ===")  # noqa: T201
