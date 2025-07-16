@@ -248,10 +248,11 @@ disable = ["existing-rule"]
 
 
 def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test that R0917 (too-many-positional-arguments) is correctly detected.
+    """Test that R0917 is specifically detected from GitHub issue content.
 
-    This test specifically checks for R0917 which has been implemented in ruff
-    but was not being detected due to extra spaces in the GitHub issue format.
+    Args:
+        monkeypatch: pytest fixture for mocking.
+
     """
     # Create a mock response with R0917 using exact GitHub formatting
     mock_r0917_response = (
@@ -260,9 +261,16 @@ def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     class MockSubprocessResult:
-        """Mock subprocess result object."""
+        """Mock subprocess.run result."""
 
-        def __init__(self, stdout: str, returncode: int = 0) -> None:
+        def __init__(self, returncode: int, stdout: str) -> None:
+            """Initialize mock result.
+
+            Args:
+                returncode: The return code of the process.
+                stdout: The stdout output of the process.
+
+            """
             self.stdout = stdout
             self.returncode = returncode
             self.stderr = ""
@@ -270,7 +278,16 @@ def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     def mock_subprocess_run_r0917(
         *args: object, **_kwargs: object
     ) -> MockSubprocessResult:
-        """Mock subprocess.run specifically for R0917 test."""
+        """Mock subprocess.run for R0917 test case.
+
+        Args:
+            *args: Command arguments (unused).
+            **_kwargs: Keyword arguments (unused).
+
+        Returns:
+            MockSubprocessResult with R0917 issue data.
+
+        """
         if (
             args
             and len(args) > 0
@@ -278,9 +295,9 @@ def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
             and len(args[0]) > 0
             and args[0][0] == "gh"
         ):
-            return MockSubprocessResult(stdout=mock_r0917_response)
+            return MockSubprocessResult(returncode=0, stdout=mock_r0917_response)
         # Return empty result for other commands
-        return MockSubprocessResult(stdout="")
+        return MockSubprocessResult(returncode=0, stdout="")
 
     monkeypatch.setattr("subprocess.run", mock_subprocess_run_r0917)
 

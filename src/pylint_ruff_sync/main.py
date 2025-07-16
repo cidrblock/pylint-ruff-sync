@@ -70,13 +70,10 @@ def _setup_logging(*, verbose: bool = False) -> None:
 
 
 def _extract_all_pylint_rules() -> list[PylintRule]:
-    """Extract all available pylint rules from the pylint command.
+    """Extract all available pylint rules from the configuration.
 
     Returns:
-        List of all available pylint rules.
-
-    Raises:
-        RuntimeError: If pylint command execution fails.
+        List of PylintRule objects representing all available pylint rules.
 
     """
     logger.info("Extracting pylint rules from 'pylint --list-msgs'")
@@ -85,16 +82,10 @@ def _extract_all_pylint_rules() -> list[PylintRule]:
 
 
 def _extract_ruff_implemented_rules() -> list[str]:
-    """Extract pylint rules that have been implemented in ruff.
+    """Extract the list of pylint rules implemented in ruff from GitHub.
 
     Returns:
         List of pylint rule codes that are implemented in ruff.
-
-    Raises:
-        subprocess.CalledProcessError: If unable to fetch from GitHub.
-        json.JSONDecodeError: If the JSON response cannot be parsed.
-        KeyError: If the expected keys are missing from the response.
-        Exception: If parsing fails for other reasons.
 
     """
     logger.info("Extracting implemented rules from ruff")
@@ -163,10 +154,6 @@ def _update_pylint_config(
 
     Returns:
         True if configuration was updated (or would be updated in dry-run mode).
-
-    Raises:
-        FileNotFoundError: If the configuration file does not exist.
-        ValueError: If the configuration file is invalid.
 
     """
     logger.info("Updating pylint configuration...")

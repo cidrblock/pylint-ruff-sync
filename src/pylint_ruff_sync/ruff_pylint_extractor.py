@@ -31,16 +31,15 @@ class RuffPylintExtractor:
         self.issue_url = issue_url
 
     def _fetch_from_github(self) -> list[str]:
-        """Fetch implemented rules from GitHub issue using GitHub CLI.
+        """Fetch the ruff pylint implementation status from GitHub issue.
 
         Returns:
-            List of implemented rule codes.
+            List of implemented pylint rule codes.
 
         Raises:
-            subprocess.CalledProcessError: If unable to fetch the GitHub issue.
+            subprocess.CalledProcessError: If the gh command fails.
             json.JSONDecodeError: If the JSON response cannot be parsed.
             KeyError: If the expected keys are missing from the response.
-            Exception: If parsing fails for other reasons.
 
         """
         logger.info(
@@ -108,12 +107,6 @@ class RuffPylintExtractor:
 
         Returns:
             List of implemented pylint rule codes.
-
-        Raises:
-            subprocess.CalledProcessError: If unable to fetch from GitHub.
-            json.JSONDecodeError: If the JSON response cannot be parsed.
-            KeyError: If the expected keys are missing from the response.
-            Exception: If parsing fails for other reasons.
 
         """
         return self._fetch_from_github()
