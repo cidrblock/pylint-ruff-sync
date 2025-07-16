@@ -9,6 +9,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from string import Template
 from typing import Any
 
 # Configure logging
@@ -228,41 +229,41 @@ class RuffPylintExtractor:
         """
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        release_notes = f"""## Ruff Implementation Cache Update
-
-This release contains an updated cache of pylint rules implemented in Ruff.
-
-**Statistics:**
-- Total implemented rules: {total_rules}
-- Rules added: +{len(rules_added)}
-- Rules removed: -{len(rules_removed)}
-- Cache updated: {timestamp}
-- Source: https://github.com/astral-sh/ruff/issues/970
-
-**Rule Changes:**
-"""
+        # Build rule changes section
+        rule_changes_parts = []
 
         if rules_added:
-            release_notes += f"\n### ✅ Added Rules ({len(rules_added)})\n```\n"
-            release_notes += "\n".join(rules_added)
-            release_notes += "\n```\n"
+            rule_changes_parts.append(
+                f"### ✅ Added Rules ({len(rules_added)})\n```\n"
+                + "\n".join(rules_added)
+                + "\n```"
+            )
 
         if rules_removed:
-            release_notes += f"\n### ❌ Removed Rules ({len(rules_removed)})\n```\n"
-            release_notes += "\n".join(rules_removed)
-            release_notes += "\n```\n"
+            rule_changes_parts.append(
+                f"### ❌ Removed Rules ({len(rules_removed)})\n```\n"
+                + "\n".join(rules_removed)
+                + "\n```"
+            )
 
         if not rules_added and not rules_removed:
-            release_notes += "\nNo rule changes in this update.\n"
+            rule_changes_parts.append("No rule changes in this update.")
 
-        release_notes += """
-**Technical Details:**
-- Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
-- This update ensures that the tool works correctly in offline environments like \
-precommit.ci
-"""
+        rule_changes_section = "\n\n".join(rule_changes_parts)
 
-        return release_notes.strip()
+        # Load and substitute template
+        template_path = Path(__file__).parent / "data" / "release_notes_template.txt"
+        with template_path.open("r", encoding="utf-8") as f:
+            template_content = f.read()
+
+        template = Template(template_content)
+        return template.substitute(
+            total_rules=total_rules,
+            added_count=len(rules_added),
+            removed_count=len(rules_removed),
+            timestamp=timestamp,
+            rule_changes_section=rule_changes_section,
+        )
 
     def _save_cache_with_changes(
         self,
@@ -332,13 +333,18 @@ precommit.ci
         """
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        return f"""Update ruff implementation cache
+        # Load and substitute template
+        template_path = Path(__file__).parent / "data" / "commit_message_template.txt"
+        with template_path.open("r", encoding="utf-8") as f:
+            template_content = f.read()
 
-- Rules added: +{len(rules_added)}
-- Rules removed: -{len(rules_removed)}
-- Total rules: {total_rules}
-- Cache updated: {timestamp}
-- Source: https://github.com/astral-sh/ruff/issues/970"""
+        template = Template(template_content)
+        return template.substitute(
+            added_count=len(rules_added),
+            removed_count=len(rules_removed),
+            total_rules=total_rules,
+            timestamp=timestamp,
+        )
 
     def _generate_pr_message(
         self, rules_added: list[str], rules_removed: list[str], total_rules: int
@@ -356,24 +362,18 @@ precommit.ci
         """
         timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        pr_title = "Update ruff implementation cache"
+        # Load and substitute template
+        template_path = Path(__file__).parent / "data" / "pr_message_template.txt"
+        with template_path.open("r", encoding="utf-8") as f:
+            template_content = f.read()
 
-        pr_body = f"""This PR updates the cached ruff implementation data.
-
-**Changes:**
-- Rules added: +{len(rules_added)}
-- Rules removed: -{len(rules_removed)}
-- Total rules: {total_rules}
-- Last updated: {timestamp}
-
-**Files Changed:**
-- Updated `src/pylint_ruff_sync/data/ruff_implemented_rules.json` with latest data \
-from GitHub
-- Source: https://github.com/astral-sh/ruff/issues/970
-
-This ensures the tool works correctly in offline environments like precommit.ci."""
-
-        return f"title: {pr_title}\nbody: {pr_body}"
+        template = Template(template_content)
+        return template.substitute(
+            added_count=len(rules_added),
+            removed_count=len(rules_removed),
+            total_rules=total_rules,
+            timestamp=timestamp,
+        )
 
     def _fetch_from_github(self) -> list[str]:
         """Fetch the ruff pylint implementation status from GitHub issue.

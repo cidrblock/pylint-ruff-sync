@@ -260,9 +260,7 @@ def _update_cache(cache_path: Path) -> None:
         "pr_message": result.pr_message,
     }
 
-    print("=== CACHE_UPDATE_RESULT ===")  # noqa: T201
     print(json.dumps(summary, indent=2, sort_keys=True))  # noqa: T201
-    print("=== END_CACHE_UPDATE_RESULT ===")  # noqa: T201
 
     if result.has_changes:
         logger.info(

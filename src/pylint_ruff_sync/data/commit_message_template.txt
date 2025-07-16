@@ -1,0 +1,7 @@
+Update ruff implementation cache
+
+- Rules added: +$added_count
+- Rules removed: -$removed_count
+- Total rules: $total_rules
+- Cache updated: $timestamp
+- Source: https://github.com/astral-sh/ruff/issues/970

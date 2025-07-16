@@ -44,45 +44,35 @@ jobs:
           output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>&1)
           echo "$output"
 
-          # Extract the JSON summary from the output
-          json_start=$(echo "$output" | grep -n "=== CACHE_UPDATE_RESULT ===" | cut -d: -f1)
-          json_end=$(echo "$output" | grep -n "=== END_CACHE_UPDATE_RESULT ===" | cut -d: -f1)
+          # Extract the JSON from the last line of stdout (excluding stderr logs)
+          json_output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>/dev/null)
 
-          if [ -n "$json_start" ] && [ -n "$json_end" ]; then
-            json_start=$((json_start + 1))
-            json_end=$((json_end - 1))
-            json_content=$(echo "$output" | sed -n "${json_start},${json_end}p")
+          # Parse JSON and set outputs
+          echo "has_changes=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(str(data["has_changes"]).lower())')" >> $GITHUB_OUTPUT
+          echo "added_count=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["added_count"])')" >> $GITHUB_OUTPUT
+          echo "removed_count=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["removed_count"])')" >> $GITHUB_OUTPUT
+          echo "total_rules=$(echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["total_rules"])')" >> $GITHUB_OUTPUT
 
-            # Parse JSON and set outputs
-            echo "has_changes=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(str(data["has_changes"]).lower())')" >> $GITHUB_OUTPUT
-            echo "added_count=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["added_count"])')" >> $GITHUB_OUTPUT
-            echo "removed_count=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["removed_count"])')" >> $GITHUB_OUTPUT
-            echo "total_rules=$(echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["total_rules"])')" >> $GITHUB_OUTPUT
+          # Save release notes to file and output
+          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["release_notes"])' > release_notes.md
 
-            # Save release notes to file
-            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["release_notes"])' > release_notes.md
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-            echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-            cat release_notes.md >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          # Save commit message to file and output
+          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["commit_message"])' > commit_message.txt
 
-            # Save commit message to file and output
-            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["commit_message"])' > commit_message.txt
+          echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+          cat commit_message.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-            echo "commit_message<<EOF" >> $GITHUB_OUTPUT
-            cat commit_message.txt >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+          # Save PR message to file and output (for future use)
+          echo "$json_output" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["pr_message"])' > pr_message.txt
 
-            # Save PR message to file and output (for future use)
-            echo "$json_content" | python3 -c 'import json, sys; data=json.load(sys.stdin); print(data["pr_message"])' > pr_message.txt
-
-            echo "pr_message<<EOF" >> $GITHUB_OUTPUT
-            cat pr_message.txt >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "Failed to extract JSON summary from tool output"
-            exit 1
-          fi
+          echo "pr_message<<EOF" >> $GITHUB_OUTPUT
+          cat pr_message.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Configure git
         if: steps.update-cache.outputs.has_changes == 'true'

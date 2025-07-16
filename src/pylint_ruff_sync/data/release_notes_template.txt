@@ -1,0 +1,17 @@
+## Ruff Implementation Cache Update
+
+This release contains an updated cache of pylint rules implemented in Ruff.
+
+**Statistics:**
+- Total implemented rules: $total_rules
+- Rules added: +$added_count
+- Rules removed: -$removed_count
+- Cache updated: $timestamp
+- Source: https://github.com/astral-sh/ruff/issues/970
+
+**Rule Changes:**
+$rule_changes_section
+
+**Technical Details:**
+- Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
+- This update ensures that the tool works correctly in offline environments like precommit.ci

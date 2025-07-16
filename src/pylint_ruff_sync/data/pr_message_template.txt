@@ -1,0 +1,14 @@
+title: Update ruff implementation cache
+body: This PR updates the cached ruff implementation data.
+
+**Changes:**
+- Rules added: +$added_count
+- Rules removed: -$removed_count
+- Total rules: $total_rules
+- Last updated: $timestamp
+
+**Files Changed:**
+- Updated `src/pylint_ruff_sync/data/ruff_implemented_rules.json` with latest data from GitHub
+- Source: https://github.com/astral-sh/ruff/issues/970
+
+This ensures the tool works correctly in offline environments like precommit.ci.
