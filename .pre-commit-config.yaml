@@ -69,9 +69,7 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies:
-          - beautifulsoup4
           - pytest
-          - types-requests
           - toml-sort
         args: []
   - repo: https://github.com/jsh9/pydoclint
@@ -105,7 +103,5 @@ repos:
         args:
           - --output-format=colorized
         additional_dependencies:
-          - beautifulsoup4
-          - requests
           - pytest
           - toml-sort

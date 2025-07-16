@@ -4,26 +4,19 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
+import re
+import subprocess
 from pathlib import Path
-
-try:
-    import requests
-    from bs4 import BeautifulSoup, Tag
-except ImportError:
-    sys.exit(1)
-
-
-# We'll use __file__ approach for package data access for simplicity
-
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # GitHub issue URL for ruff pylint implementation tracking
 RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
-# Minimum number of code elements expected in an implemented rule list item
-MIN_CODE_ELEMENTS = 2
+# GitHub issue number for ruff pylint implementation tracking
+RUFF_PYLINT_ISSUE_NUMBER = "970"
+# GitHub repository for ruff
+RUFF_REPO = "astral-sh/ruff"
 
 
 class RuffPylintExtractor:
@@ -133,13 +126,13 @@ class RuffPylintExtractor:
         return rules
 
     def _fetch_from_github(self) -> list[str]:
-        """Fetch implemented rules from GitHub issue.
+        """Fetch implemented rules from GitHub issue using GitHub CLI.
 
         Returns:
             List of implemented rule codes.
 
         Raises:
-            requests.RequestException: If unable to fetch the GitHub issue.
+            subprocess.CalledProcessError: If unable to fetch the GitHub issue.
             Exception: If parsing fails.
 
         """
@@ -147,60 +140,60 @@ class RuffPylintExtractor:
             logger.info(
                 "Fetching ruff pylint implementation status from %s", self.issue_url
             )
-            response = requests.get(self.issue_url, timeout=30)
-            response.raise_for_status()
 
-            soup = BeautifulSoup(markup=response.content, features="html.parser")
-            li_tags = soup.find_all("li")
+            # Use GitHub CLI to fetch the issue body as JSON
+            result = subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "gh",
+                    "issue",
+                    "view",
+                    RUFF_PYLINT_ISSUE_NUMBER,
+                    "--repo",
+                    RUFF_REPO,
+                    "--json",
+                    "body",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=30,
+            )
 
+            # Parse the JSON response
+            issue_data = json.loads(result.stdout)
+            issue_body = issue_data.get("body", "")
+
+            if not issue_body:
+                logger.warning("Issue body is empty")
+                return []
+
+            # Extract implemented rules using regex
             implemented_rules = set()
 
-            for li in li_tags:
-                # Only process Tag objects that have attrs and children
-                if (
-                    isinstance(li, Tag)
-                    and hasattr(li, "attrs")
-                    and "class" in li.attrs
-                    and "task-list-item" in li.attrs["class"]
-                ):
-                    names = [
-                        child.name
-                        for child in li.children
-                        if hasattr(child, "name") and child.name
-                    ]
-                    if "input" in names and "code" in names:
-                        # Check if the checkbox is checked
-                        checked = [
-                            child.attrs.get("checked")
-                            for child in li.children
-                            if hasattr(child, "name")
-                            and child.name == "input"
-                            and hasattr(child, "attrs")
-                            and "checked" in child.attrs
-                        ]
-                        if checked:
-                            codes = [
-                                child.text
-                                for child in li.children
-                                if hasattr(child, "name") and child.name == "code"
-                            ]
-                            if len(codes) >= MIN_CODE_ELEMENTS:
-                                pylint_code = codes[
-                                    1
-                                ]  # Second code element is the pylint code
-                                implemented_rules.add(pylint_code)
-                                logger.debug("Found implemented rule: %s", pylint_code)
+            # Pattern to match checked task list items with pylint codes
+            # Looks for: - [x] `ruff_code` `pylint_code` description
+            pattern = r"- \[x\] `[^`]*` `([^`]+)`"
+
+            for match in re.finditer(pattern, issue_body):
+                pylint_code = match.group(1)
+                # Validate that it looks like a pylint code (letter followed by digits)
+                if re.match(r"^[A-Z]\d+$", pylint_code):
+                    implemented_rules.add(pylint_code)
+                    logger.debug("Found implemented rule: %s", pylint_code)
 
             logger.info(
                 "Found %d implemented pylint rules in ruff", len(implemented_rules)
             )
             return sorted(implemented_rules)
 
-        except requests.RequestException:
-            logger.exception("Failed to fetch GitHub issue")
+        except subprocess.CalledProcessError as e:
+            logger.exception("Failed to fetch GitHub issue via gh CLI: %s", e.stderr)
+            raise
+        except (json.JSONDecodeError, KeyError):
+            logger.exception("Failed to parse GitHub issue response")
             raise
         except Exception:
-            logger.exception("Failed to parse GitHub issue")
+            logger.exception("Failed to extract rules from GitHub issue")
             raise
 
     def extract_implemented_rules(self) -> list[str]:
@@ -213,7 +206,7 @@ class RuffPylintExtractor:
             List of pylint rule codes that are implemented in ruff.
 
         Raises:
-            requests.RequestException: If unable to fetch from GitHub and no cache
+            subprocess.CalledProcessError: If unable to fetch from GitHub and no cache
                 available.
             Exception: If both GitHub fetch and cache loading fail.
 
@@ -223,7 +216,7 @@ class RuffPylintExtractor:
             rules = self._fetch_from_github()
             # Save to cache for future offline use
             self._save_cache(rules)
-        except (requests.RequestException, Exception) as e:
+        except (subprocess.CalledProcessError, Exception) as e:
             logger.warning("Failed to fetch from GitHub: %s", e)
             logger.info("Attempting to use cached data...")
 

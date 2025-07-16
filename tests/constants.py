@@ -11,37 +11,15 @@ import pytest
 if TYPE_CHECKING:
     import pytest
 
-# Mock GitHub API response for tests
-MOCK_GITHUB_RESPONSE = """
-<html>
-<body>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F401</code> <code>F401</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>F841</code> <code>F841</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" checked="checked" />
-    <code>E501</code> <code>E501</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0103</code> <code>C0103</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>C0111</code> <code>C0111</code>
-</li>
-<li class="task-list-item">
-    <input type="checkbox" />
-    <code>R0903</code> <code>R0903</code>
-</li>
-</body>
-</html>
-"""
+# Mock GitHub CLI response for tests - should be the body content from the issue
+MOCK_GITHUB_CLI_RESPONSE = (
+    '{"body": "## Status\\n\\nThis issue tracks implementation of pylint rules '
+    "in ruff.\\n\\n### Implemented Rules\\n\\n- [x] `F401` `F401` unused-import\\n"
+    "- [x] `F841` `F841` unused-variable\\n- [x] `E501` `E501` line-too-long\\n\\n"
+    "### Not Yet Implemented\\n\\n- [ ] `C0103` `C0103` invalid-name\\n"
+    "- [ ] `C0111` `C0111` missing-docstring\\n"
+    '- [ ] `R0903` `R0903` too-few-public-methods"}'
+)
 
 # Mock pylint command output for tests
 MOCK_PYLINT_OUTPUT = """
@@ -134,45 +112,37 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     """
 
-    # Mock the GitHub API call
-    class MockResponse:
-        """Mock response object for GitHub API calls."""
-
-        def __init__(self, content: str) -> None:
-            """Initialize with content string.
-
-            Args:
-                content: The response content as string.
-
-            """
-            self.content = content.encode("utf-8")
-
-        def raise_for_status(self) -> None:
-            """Mock method that does nothing."""
-
-    def mock_requests_get(*_args: object, **_kwargs: object) -> MockResponse:
-        return MockResponse(MOCK_GITHUB_RESPONSE)
-
-    monkeypatch.setattr("requests.get", mock_requests_get)
-
     # Mock the pylint command output
     class MockSubprocessResult:
         """Mock subprocess result object."""
 
-        def __init__(self, stdout: str) -> None:
+        def __init__(self, stdout: str, returncode: int = 0) -> None:
             """Initialize with stdout string.
 
             Args:
                 stdout: The subprocess stdout as string.
+                returncode: The return code.
 
             """
             self.stdout = stdout
-            self.returncode = 0
+            self.returncode = returncode
             self.stderr = ""
 
-    mock_result = MockSubprocessResult(stdout=MOCK_PYLINT_OUTPUT)
+    mock_pylint_result = MockSubprocessResult(stdout=MOCK_PYLINT_OUTPUT)
+    mock_gh_result = MockSubprocessResult(stdout=MOCK_GITHUB_CLI_RESPONSE)
 
     def mock_subprocess_run(*args: object, **_kwargs: object) -> MockSubprocessResult:
+        # Check if this is a gh CLI command
+        if (
+            args
+            and len(args) > 0
+            and isinstance(args[0], list)
+            and len(args[0]) > 0
+            and args[0][0] == "gh"
+        ):
+            # Return mock GitHub CLI response
+            return mock_gh_result
+
         # Check if this is a toml-sort command
         if (
             args
@@ -189,7 +159,7 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
                 return MockSubprocessResult(stdout="")
 
         # For other subprocess calls (like pylint), return the default mock
-        return mock_result
+        return mock_pylint_result
 
     def mock_shutil_which(_cmd: str) -> str:
         return "/usr/bin/pylint"
