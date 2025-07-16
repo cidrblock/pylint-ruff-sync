@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pylint_ruff_sync.cache_manager import CacheManager
 from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
@@ -104,18 +105,15 @@ def _extract_all_pylint_rules() -> list[PylintRule]:
     return extractor.extract_all_rules()
 
 
-def _extract_ruff_implemented_rules(cache_path: Path | None = None) -> list[str]:
-    """Extract the list of pylint rules implemented in ruff from GitHub.
-
-    Args:
-        cache_path: Path to a local cache file to use instead of fetching from GitHub.
+def _extract_ruff_implemented_rules() -> list[str]:
+    """Extract pylint rule codes that have been implemented in ruff.
 
     Returns:
         List of pylint rule codes that are implemented in ruff.
 
     """
     logger.info("Extracting implemented rules from ruff")
-    extractor = RuffPylintExtractor(cache_path=cache_path)
+    extractor = RuffPylintExtractor()
     return extractor.get_implemented_rules()
 
 
@@ -236,7 +234,7 @@ def _update_pylint_config(
     return True
 
 
-def _update_cache(cache_path: Path) -> None:
+def update_cache_from_github(cache_path: Path) -> None:
     """Update the cached ruff implementation data from GitHub.
 
     Args:
@@ -244,8 +242,9 @@ def _update_cache(cache_path: Path) -> None:
 
     """
     logger.info("Updating cache from GitHub...")
-    extractor = RuffPylintExtractor(cache_path=cache_path)
-    result = extractor.update_cache()
+    extractor = RuffPylintExtractor()
+    cache_manager = CacheManager(cache_path=cache_path, extractor=extractor)
+    result = cache_manager.update_cache()
 
     # Emit JSON summary for GitHub Actions consumption
     summary = {
@@ -293,7 +292,7 @@ def main() -> int:
 
         # Handle --update-cache argument
         if args.update_cache:
-            _update_cache(
+            update_cache_from_github(
                 args.cache_path if args.cache_path else Path("ruff_implemented.json")
             )
             return 0
@@ -303,7 +302,7 @@ def main() -> int:
         logger.info("Found %d total pylint rules", len(all_rules))
 
         # Extract implemented rules from ruff
-        ruff_implemented = _extract_ruff_implemented_rules(args.cache_path)
+        ruff_implemented = _extract_ruff_implemented_rules()
         logger.info("Found %d rules implemented in ruff", len(ruff_implemented))
 
         # Resolve which rules to enable/disable

@@ -18,7 +18,10 @@ from pylint_ruff_sync.main import (
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pylint_rule import PylintRule
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
+from pylint_ruff_sync.ruff_pylint_extractor import (
+    RUFF_PYLINT_ISSUE_URL,
+    RuffPylintExtractor,
+)
 from pylint_ruff_sync.toml_file import TomlFile
 from tests.constants import (
     EXPECTED_IMPLEMENTED_RULES_COUNT,
@@ -413,38 +416,19 @@ def test_cache_arguments() -> None:
     assert args.cache_path == Path("cache.json")
 
 
-def test_extractor_with_cache_path(tmp_path: Path) -> None:
-    """Test RuffPylintExtractor initialization with cache_path.
+def test_extractor_with_cache_path() -> None:
+    """Test RuffPylintExtractor initialization."""
+    extractor = RuffPylintExtractor()
+    assert extractor.issue_url == RUFF_PYLINT_ISSUE_URL
+
+
+def test_cache_fallback_functionality(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test package data fallback when GitHub CLI fails.
 
     Args:
-        tmp_path: Pytest temporary directory fixture.
-
-    """
-    cache_path = tmp_path / "test_cache.json"
-    extractor = RuffPylintExtractor(cache_path=cache_path)
-
-    assert extractor.cache_path == cache_path
-
-
-def test_cache_fallback_functionality(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Test cache fallback when GitHub CLI fails.
-
-    Args:
-        tmp_path: Pytest temporary directory fixture.
         monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
-    # Create a temporary cache file
-    cache_file = tmp_path / "test_cache.json"
-    cache_data = {
-        "implemented_rules": ["C0103", "E1101", "W0102"],
-        "source_url": "https://example.com",
-        "last_updated": None,
-    }
-    with cache_file.open("w") as f:
-        json.dump(cache_data, f)
 
     # Mock subprocess.run to simulate GitHub CLI failure
     def mock_subprocess_run(*_args: object, **_kwargs: object) -> Never:
@@ -452,11 +436,14 @@ def test_cache_fallback_functionality(
 
     monkeypatch.setattr("subprocess.run", mock_subprocess_run)
 
-    # Test fallback to cache
-    extractor = RuffPylintExtractor(cache_path=cache_file)
+    # Test fallback to package data
+    extractor = RuffPylintExtractor()
     rules = extractor.get_implemented_rules()
 
-    assert rules == ["C0103", "E1101", "W0102"]
+    # Should fall back to package data
+    assert isinstance(rules, list)
+    assert len(rules) > 0
+    assert all(isinstance(rule, str) for rule in rules)
 
 
 def test_main_with_update_cache(
