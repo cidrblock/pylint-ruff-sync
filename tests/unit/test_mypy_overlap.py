@@ -77,7 +77,7 @@ def test_mypy_overlap_rules_format() -> None:
 def test_mypy_overlap_categories() -> None:
     """Test that mypy overlap rules cover expected categories."""
     # Count rules by category (first letter)
-    categories = {}
+    categories: dict[str, int] = {}
     for rule_code in MYPY_OVERLAP_RULES:
         category = rule_code[0]
         categories[category] = categories.get(category, 0) + 1

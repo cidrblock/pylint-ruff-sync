@@ -344,7 +344,7 @@ def test_mypy_overlap_filtering() -> None:
         ),  # not mypy overlap
     ]
 
-    implemented_codes = []  # None implemented in ruff
+    implemented_codes: list[str] = []  # None implemented in ruff
 
     # Create temporary config file with no disabled rules
     with tempfile.NamedTemporaryFile(
