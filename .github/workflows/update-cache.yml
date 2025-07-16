@@ -35,20 +35,19 @@ jobs:
       - name: Update cache and get summary
         id: update-cache
         run: |
-          # Run the tool and capture its output
-          output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>&1)
-          echo "$output"
+          # Run the tool and show output for debugging
+          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json
 
-          # Extract the JSON from the last line of stdout (excluding stderr logs)
-          json_output=$(uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>/dev/null)
+          # Run once more and save JSON output to temp file
+          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>/dev/null > cache_result.json
 
           # Parse JSON and set outputs using jq
-          echo "has_changes=$(echo "$json_output" | jq -r '.has_changes')" >> $GITHUB_OUTPUT
-          echo "total_rules=$(echo "$json_output" | jq -r '.total_rules')" >> $GITHUB_OUTPUT
+          echo "has_changes=$(jq -r '.has_changes' cache_result.json)" >> $GITHUB_OUTPUT
+          echo "total_rules=$(jq -r '.total_rules' cache_result.json)" >> $GITHUB_OUTPUT
 
-          # Save release notes and commit message
-          echo "$json_output" | jq -r '.release_notes' > release_notes.md
-          echo "$json_output" | jq -r '.commit_message' > commit_message.txt
+          # Save release notes and commit message using jq
+          jq -r '.release_notes' cache_result.json > release_notes.md
+          jq -r '.commit_message' cache_result.json > commit_message.txt
 
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
           cat release_notes.md >> $GITHUB_OUTPUT
@@ -57,6 +56,9 @@ jobs:
           echo "commit_message<<EOF" >> $GITHUB_OUTPUT
           cat commit_message.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
+          # Clean up temp file
+          rm cache_result.json
 
       - name: Configure git
         if: steps.update-cache.outputs.has_changes == 'true'

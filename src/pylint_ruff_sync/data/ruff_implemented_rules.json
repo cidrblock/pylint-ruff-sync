@@ -1,5 +1,13 @@
 {
+  "change_summary": {
+    "has_changes": false,
+    "release_notes": "## Ruff Implementation Cache Update\n\nThis release contains an updated cache of pylint rules implemented in Ruff.\n\n**Statistics:**\n- Total implemented rules: 220\n- Rules added: +0\n- Rules removed: -0\n- Cache updated: 2025-07-16 17:29:33 UTC\n- Source: https://github.com/astral-sh/ruff/issues/970\n\n**Rule Changes:**\nNo rule changes in this update.\n\n**Technical Details:**\n- Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`\n- This update ensures that the tool works correctly in offline environments like precommit.ci\n",
+    "rules_added": [],
+    "rules_removed": [],
+    "total_rules": 220
+  },
   "implemented_rules": [
+    "C0103",
     "C0105",
     "C0112",
     "C0113",
@@ -220,6 +228,5 @@
     "W3201",
     "W3301"
   ],
-  "last_updated": null,
   "source_url": "https://github.com/astral-sh/ruff/issues/970"
 }
