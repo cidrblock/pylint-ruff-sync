@@ -24,7 +24,16 @@ RUFF_REPO = "astral-sh/ruff"
 
 @dataclass
 class CacheUpdateResult:
-    """Result of a cache update operation."""
+    """Result of a cache update operation.
+
+    Attributes:
+        rules_added: List of pylint rule codes that were added.
+        rules_removed: List of pylint rule codes that were removed.
+        total_rules: Total number of rules after the update.
+        has_changes: Whether there were any changes in the rule list.
+        release_notes: Formatted release notes describing the changes.
+
+    """
 
     rules_added: list[str]
     rules_removed: list[str]
