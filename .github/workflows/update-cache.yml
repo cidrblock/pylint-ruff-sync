@@ -122,19 +122,22 @@ jobs:
         id: release-notes
         if: steps.changes.outputs.changed == 'true'
         run: |
-          cat > release_notes.md << 'EOF'
+          # Get the current UTC timestamp
+          CACHE_UPDATED_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          cat > release_notes.md << EOF
           ## Ruff Implementation Cache Update
 
           This release contains an updated cache of pylint rules implemented in Ruff.
 
           **Statistics:**
           - Total implemented rules: ${{ steps.rule-count.outputs.count }}
-          - Cache updated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Cache updated: ${CACHE_UPDATED_TIME}
           - Source: https://github.com/astral-sh/ruff/issues/970
 
           **What's Changed:**
           - Updated ruff implementation data from upstream GitHub issue
-          - Cache file: `src/pylint_ruff_sync/data/ruff_implemented_rules.json`
+          - Cache file: \`src/pylint_ruff_sync/data/ruff_implemented_rules.json\`
 
           This update ensures that the tool works correctly in offline environments like precommit.ci.
           EOF
