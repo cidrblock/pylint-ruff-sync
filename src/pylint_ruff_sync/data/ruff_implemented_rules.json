@@ -1,5 +1,6 @@
 {
   "implemented_rules": [
+    "C0103",
     "C0105",
     "C0112",
     "C0113",
@@ -220,6 +221,6 @@
     "W3201",
     "W3301"
   ],
-  "last_updated": "2025-07-16T18:33:58.086871+00:00",
+  "last_updated": "2025-07-16T18:38:00.213839+00:00",
   "source_url": "https://github.com/astral-sh/ruff/issues/970"
 }
