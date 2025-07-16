@@ -88,6 +88,43 @@ pylint-ruff-sync --verbose
 
 # Custom config file
 pylint-ruff-sync --config-file path/to/pyproject.toml
+
+# Disable mypy overlap filtering (include all rules)
+pylint-ruff-sync --disable-mypy-overlap
+```
+
+## Mypy Integration
+
+By default, `pylint-ruff-sync` automatically excludes pylint rules that overlap with mypy functionality. This prevents redundant checking when you're already using mypy for type checking.
+
+### Mypy Overlap Rules
+
+The tool automatically filters out 78 pylint rules that have equivalent functionality in mypy, including:
+
+- **Type checking errors** (E1101: no-member, E1102: not-callable, etc.)
+- **Attribute access issues** (E0237: assigning-non-slot, E0202: method-hidden)
+- **Function signature problems** (W0221: arguments-differ, W0222: signature-differs)
+- **Import and module issues** (E0401: import-error, E0402: relative-beyond-top-level)
+- **Assignment and value errors** (E1128: assignment-from-none, E0601: used-before-assignment)
+
+The complete list is based on research from the [antonagestam/pylint-mypy-overlap](https://github.com/antonagestam/pylint-mypy-overlap) repository and [ruff issue #970](https://github.com/astral-sh/ruff/issues/970#issuecomment-1565594417).
+
+### Disabling Mypy Overlap Filtering
+
+If you want to include mypy overlap rules (for example, if you're not using mypy), use the `--disable-mypy-overlap` flag:
+
+```bash
+# Include all rules, even those that overlap with mypy
+pylint-ruff-sync --disable-mypy-overlap
+```
+
+### Logging
+
+When mypy overlap filtering is active, the tool will log how many rules were excluded:
+
+```
+INFO: Excluded 12 rules that overlap with mypy functionality
+INFO: Use --disable-mypy-overlap to include these rules
 ```
 
 ## Configuration
@@ -399,6 +436,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -406,6 +444,7 @@ This project was developed through an innovative collaborative process between [
    - **GitHub CLI Integration**: Replaced HTTP requests with direct GitHub CLI calls for better reliability
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback

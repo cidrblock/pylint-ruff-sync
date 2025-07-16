@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
@@ -49,6 +50,13 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Show what would be changed without making modifications",
+    )
+
+    parser.add_argument(
+        "--disable-mypy-overlap",
+        action="store_true",
+        help="Disable filtering of pylint rules that overlap with mypy functionality. "
+        "By default, rules that mypy already covers are excluded from being enabled.",
     )
 
     return parser
@@ -94,7 +102,11 @@ def _extract_ruff_implemented_rules() -> list[str]:
 
 
 def _resolve_rule_identifiers(
-    *, all_rules: list[PylintRule], implemented_codes: list[str], config_file: Path
+    *,
+    all_rules: list[PylintRule],
+    implemented_codes: list[str],
+    config_file: Path,
+    disable_mypy_overlap: bool = False,
 ) -> tuple[list[PylintRule], list[PylintRule]]:
     """Resolve rule identifiers to determine which rules to enable and disable.
 
@@ -102,6 +114,7 @@ def _resolve_rule_identifiers(
         all_rules: List of all available pylint rules.
         implemented_codes: List of rule codes implemented in ruff.
         config_file: Path to the pyproject.toml file to check existing disabled rules.
+        disable_mypy_overlap: If False (default), exclude rules that overlap with mypy.
 
     Returns:
         Tuple of (rules_to_disable, rules_to_enable).
@@ -120,6 +133,9 @@ def _resolve_rule_identifiers(
     # Convert to set for easier checking (includes both rule IDs and names)
     current_disable_set = set(current_disable) if current_disable else set()
 
+    # Get mypy overlap rules if filtering is enabled
+    mypy_overlap_rules = set() if disable_mypy_overlap else get_mypy_overlap_rules()
+
     # Always disable "all" to prevent duplicate rule execution (no PylintRule needed)
     rules_to_disable: list[PylintRule] = []
 
@@ -131,8 +147,26 @@ def _resolve_rule_identifiers(
             rule.rule_id not in implemented_codes  # Not implemented in ruff
             and rule.rule_id not in current_disable_set  # Not disabled by ID
             and rule.name not in current_disable_set  # Not disabled by name
+            and rule.rule_id not in mypy_overlap_rules  # Not overlapping with mypy
         )
     ]
+
+    # Log mypy overlap filtering if enabled
+    if not disable_mypy_overlap:
+        mypy_filtered_count = sum(
+            1
+            for rule in all_rules
+            if rule.rule_id in mypy_overlap_rules
+            and rule.rule_id not in implemented_codes
+            and rule.rule_id not in current_disable_set
+            and rule.name not in current_disable_set
+        )
+        if mypy_filtered_count > 0:
+            logger.info(
+                "Excluded %d rules that overlap with mypy functionality",
+                mypy_filtered_count,
+            )
+            logger.info("Use --disable-mypy-overlap to include these rules")
 
     return rules_to_disable, rules_to_enable
 
@@ -215,6 +249,7 @@ def main() -> int:
             all_rules=all_rules,
             implemented_codes=ruff_implemented,
             config_file=args.config_file,
+            disable_mypy_overlap=args.disable_mypy_overlap,
         )
 
         logger.info("Total pylint rules: %d", len(all_rules))

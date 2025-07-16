@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest  # noqa: TC002
 
 from pylint_ruff_sync.main import (
+    _resolve_rule_identifiers,
     _setup_argument_parser,
 )
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
@@ -308,3 +309,83 @@ def test_r0917_specific_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "R0917" in implemented_rules, (
         f"R0917 should be detected as implemented. Found rules: {implemented_rules}"
     )
+
+
+def test_disable_mypy_overlap_argument() -> None:
+    """Test that the --disable-mypy-overlap argument is parsed correctly."""
+    parser = _setup_argument_parser()
+
+    # Test disable mypy overlap argument
+    args = parser.parse_args(["--disable-mypy-overlap"])
+    assert args.disable_mypy_overlap is True
+
+    # Test default mypy overlap behavior
+    args = parser.parse_args([])
+    assert args.disable_mypy_overlap is False
+
+
+def test_mypy_overlap_filtering() -> None:
+    """Test that mypy overlap rules are filtered correctly."""
+    # Create test rules including known mypy overlap rules
+    all_rules = [
+        PylintRule(
+            rule_id="E1101", name="no-member", description="No member"
+        ),  # mypy overlap
+        PylintRule(
+            rule_id="E1102", name="not-callable", description="Not callable"
+        ),  # mypy overlap
+        PylintRule(
+            rule_id="R0903",
+            name="too-few-public-methods",
+            description="Too few methods",
+        ),  # not mypy overlap
+        PylintRule(
+            rule_id="C0103", name="invalid-name", description="Invalid name"
+        ),  # not mypy overlap
+    ]
+
+    implemented_codes = []  # None implemented in ruff
+
+    # Create temporary config file with no disabled rules
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = []
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        # Test with mypy overlap filtering enabled (default)
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=implemented_codes,
+            config_file=config_file,
+            disable_mypy_overlap=False,
+        )
+
+        enabled_rule_ids = {rule.rule_id for rule in rules_to_enable}
+        # Should exclude mypy overlap rules
+        assert "E1101" not in enabled_rule_ids
+        assert "E1102" not in enabled_rule_ids
+        # Should include non-mypy overlap rules
+        assert "R0903" in enabled_rule_ids
+        assert "C0103" in enabled_rule_ids
+
+        # Test with mypy overlap filtering disabled
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=implemented_codes,
+            config_file=config_file,
+            disable_mypy_overlap=True,
+        )
+
+        enabled_rule_ids = {rule.rule_id for rule in rules_to_enable}
+        # Should include all rules when filtering is disabled
+        assert "E1101" in enabled_rule_ids
+        assert "E1102" in enabled_rule_ids
+        assert "R0903" in enabled_rule_ids
+        assert "C0103" in enabled_rule_ids
+
+    finally:
+        Path(tmp_file.name).unlink()
