@@ -37,13 +37,24 @@ jobs:
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
 
-      - name: Get current cache hash
-        id: current-hash
+      - name: Get current cache hash and rules
+        id: current-state
         run: |
           if [ -f src/pylint_ruff_sync/data/ruff_implemented_rules.json ]; then
             echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+            # Extract current implemented rules for comparison
+            python -c "
+            import json
+            with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
+                data = json.load(f)
+                rules = sorted(data.get('implemented_rules', []))
+                with open('current_rules.txt', 'w') as out:
+                    for rule in rules:
+                        out.write(rule + '\n')
+            "
           else
             echo "hash=none" >> $GITHUB_OUTPUT
+            touch current_rules.txt
           fi
 
       - name: Update cache
@@ -67,20 +78,66 @@ jobs:
                   f.write('\n')  # Ensure trailing newline
           "
 
-      - name: Get new cache hash
-        id: new-hash
+      - name: Get new cache hash and rules
+        id: new-state
         run: |
           echo "hash=$(sha256sum src/pylint_ruff_sync/data/ruff_implemented_rules.json | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+          # Extract new implemented rules for comparison
+          python -c "
+          import json
+          with open('src/pylint_ruff_sync/data/ruff_implemented_rules.json') as f:
+              data = json.load(f)
+              rules = sorted(data.get('implemented_rules', []))
+              with open('new_rules.txt', 'w') as out:
+                  for rule in rules:
+                      out.write(rule + '\n')
+          "
+
+      - name: Analyze rule changes
+        id: rule-changes
+        run: |
+          # Compare rule lists to find additions and removals
+          if [ -f current_rules.txt ] && [ -f new_rules.txt ]; then
+            # Find added rules (in new but not in current)
+            comm -13 current_rules.txt new_rules.txt > added_rules.txt
+            # Find removed rules (in current but not in new)
+            comm -23 current_rules.txt new_rules.txt > removed_rules.txt
+
+            added_count=$(wc -l < added_rules.txt)
+            removed_count=$(wc -l < removed_rules.txt)
+
+            echo "added_count=$added_count" >> $GITHUB_OUTPUT
+            echo "removed_count=$removed_count" >> $GITHUB_OUTPUT
+
+            # Create formatted change lists
+            if [ $added_count -gt 0 ]; then
+              echo "added_rules<<EOF" >> $GITHUB_OUTPUT
+              cat added_rules.txt >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+
+            if [ $removed_count -gt 0 ]; then
+              echo "removed_rules<<EOF" >> $GITHUB_OUTPUT
+              cat removed_rules.txt >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "added_count=0" >> $GITHUB_OUTPUT
+            echo "removed_count=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Check for changes
         id: changes
         run: |
-          if [ "${{ steps.current-hash.outputs.hash }}" != "${{ steps.new-hash.outputs.hash }}" ]; then
+          added_count=${{ steps.rule-changes.outputs.added_count }}
+          removed_count=${{ steps.rule-changes.outputs.removed_count }}
+
+          if [ "$added_count" -gt 0 ] || [ "$removed_count" -gt 0 ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Cache has changed, will create release"
+            echo "Rule changes detected: +$added_count -$removed_count"
           else
             echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No changes detected in cache"
+            echo "No rule changes detected"
           fi
 
       - name: Get rule count
@@ -124,6 +181,8 @@ jobs:
         run: |
           # Get the current UTC timestamp
           CACHE_UPDATED_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          added_count=${{ steps.rule-changes.outputs.added_count }}
+          removed_count=${{ steps.rule-changes.outputs.removed_count }}
 
           cat > release_notes.md << EOF
           ## Ruff Implementation Cache Update
@@ -132,14 +191,38 @@ jobs:
 
           **Statistics:**
           - Total implemented rules: ${{ steps.rule-count.outputs.count }}
+          - Rules added: +${added_count}
+          - Rules removed: -${removed_count}
           - Cache updated: ${CACHE_UPDATED_TIME}
           - Source: https://github.com/astral-sh/ruff/issues/970
 
-          **What's Changed:**
-          - Updated ruff implementation data from upstream GitHub issue
-          - Cache file: \`src/pylint_ruff_sync/data/ruff_implemented_rules.json\`
+          **Rule Changes:**
+          EOF
 
-          This update ensures that the tool works correctly in offline environments like precommit.ci.
+          # Add details about added rules
+          if [ $added_count -gt 0 ]; then
+            echo "" >> release_notes.md
+            echo "### ✅ Added Rules (${added_count})" >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+            cat added_rules.txt >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+          fi
+
+          # Add details about removed rules
+          if [ $removed_count -gt 0 ]; then
+            echo "" >> release_notes.md
+            echo "### ❌ Removed Rules (${removed_count})" >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+            cat removed_rules.txt >> release_notes.md
+            echo "\`\`\`" >> release_notes.md
+          fi
+
+          cat >> release_notes.md << EOF
+
+          **Technical Details:**
+          - Cache file: \`src/pylint_ruff_sync/data/ruff_implemented_rules.json\`
+          - This update ensures that the tool works correctly in offline environments like precommit.ci
+
           EOF
 
           echo "notes<<EOF" >> $GITHUB_OUTPUT
