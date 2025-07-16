@@ -34,6 +34,7 @@ class CacheUpdateResult:
         has_changes: Whether there were any changes in the rule list.
         release_notes: Formatted release notes describing the changes.
         commit_message: Pre-formatted commit message for git operations.
+        version: Version string in YY.MM.DD.HHMMSS format.
 
     """
 
@@ -43,6 +44,7 @@ class CacheUpdateResult:
     has_changes: bool
     release_notes: str
     commit_message: str
+    version: str
 
 
 class RuffPylintExtractor:
@@ -146,6 +148,11 @@ class RuffPylintExtractor:
             CacheUpdateResult with detailed information about what changed.
 
         """
+        # Generate consistent timestamp for this update session
+        timestamp = datetime.now(UTC)
+        timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
+        version = timestamp.strftime("%y.%m.%d.%H%M%S")
+
         logger.info("Updating cache from %s", self.issue_url)
 
         # Load existing rules for comparison
@@ -166,6 +173,7 @@ class RuffPylintExtractor:
             rules_added=rules_added,
             rules_removed=rules_removed,
             total_rules=len(new_rules),
+            timestamp=timestamp_str,
         )
 
         # Generate commit message
@@ -173,6 +181,7 @@ class RuffPylintExtractor:
             rules_added=rules_added,
             rules_removed=rules_removed,
             total_rules=len(new_rules),
+            timestamp=timestamp_str,
         )
 
         # Save updated cache with timestamp only if there were changes
@@ -191,6 +200,7 @@ class RuffPylintExtractor:
             has_changes=has_changes,
             release_notes=release_notes,
             commit_message=commit_message,
+            version=version,
         )
 
         if has_changes:
@@ -205,7 +215,11 @@ class RuffPylintExtractor:
         return result
 
     def _generate_release_notes(
-        self, rules_added: list[str], rules_removed: list[str], total_rules: int
+        self,
+        rules_added: list[str],
+        rules_removed: list[str],
+        total_rules: int,
+        timestamp: str,
     ) -> str:
         """Generate release notes for the cache update.
 
@@ -213,13 +227,12 @@ class RuffPylintExtractor:
             rules_added: List of rules that were added.
             rules_removed: List of rules that were removed.
             total_rules: Total number of rules after update.
+            timestamp: Formatted timestamp string to use.
 
         Returns:
             Formatted release notes string.
 
         """
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-
         # Build rule changes section
         rule_changes_parts = []
 
@@ -309,7 +322,11 @@ class RuffPylintExtractor:
             logger.warning("Failed to save cache to %s: %s", self.cache_path, e)
 
     def _generate_commit_message(
-        self, rules_added: list[str], rules_removed: list[str], total_rules: int
+        self,
+        rules_added: list[str],
+        rules_removed: list[str],
+        total_rules: int,
+        timestamp: str,
     ) -> str:
         """Generate commit message for the cache update.
 
@@ -317,13 +334,12 @@ class RuffPylintExtractor:
             rules_added: List of rules that were added.
             rules_removed: List of rules that were removed.
             total_rules: Total number of rules after update.
+            timestamp: Formatted timestamp string to use.
 
         Returns:
             Formatted commit message string.
 
         """
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
-
         # Load and substitute template
         template_path = Path(__file__).parent / "data" / "commit_message_template.txt"
         with template_path.open("r", encoding="utf-8") as f:

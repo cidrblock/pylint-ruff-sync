@@ -257,6 +257,7 @@ def _update_cache(cache_path: Path) -> None:
         "total_rules": result.total_rules,
         "release_notes": result.release_notes,
         "commit_message": result.commit_message,
+        "version": result.version,
     }
 
     print(json.dumps(summary, indent=2, sort_keys=True))  # noqa: T201

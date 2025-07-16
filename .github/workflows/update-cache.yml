@@ -35,15 +35,13 @@ jobs:
       - name: Update cache and get summary
         id: update-cache
         run: |
-          # Run the tool and show output for debugging
-          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json
-
-          # Run once more and save JSON output to temp file
-          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json 2>/dev/null > cache_result.json
+          # Run the tool once and capture both output and JSON
+          uv run python -m pylint_ruff_sync --update-cache --cache-path src/pylint_ruff_sync/data/ruff_implemented_rules.json | tee /dev/stderr > cache_result.json
 
           # Parse JSON and set outputs using jq
           echo "has_changes=$(jq -r '.has_changes' cache_result.json)" >> $GITHUB_OUTPUT
           echo "total_rules=$(jq -r '.total_rules' cache_result.json)" >> $GITHUB_OUTPUT
+          echo "version=$(jq -r '.version' cache_result.json)" >> $GITHUB_OUTPUT
 
           # Save release notes and commit message using jq
           jq -r '.release_notes' cache_result.json > release_notes.md
@@ -79,22 +77,14 @@ jobs:
         run: |
           git push origin HEAD:${GITHUB_REF#refs/heads/}
 
-      - name: Get version for release
-        id: version
-        if: steps.update-cache.outputs.has_changes == 'true'
-        run: |
-          # Generate version in YY.MM.DD.HHMM format
-          version="$(date +%y.%m.%d.%H%M)"
-          echo "version=$version" >> $GITHUB_OUTPUT
-
       - name: Create Release
         if: steps.update-cache.outputs.has_changes == 'true'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          release_name: "Cache Update ${{ steps.version.outputs.version }}"
+          tag_name: ${{ steps.update-cache.outputs.version }}
+          release_name: "Cache Update ${{ steps.update-cache.outputs.version }}"
           body: ${{ steps.update-cache.outputs.release_notes }}
           draft: false
           prerelease: false
