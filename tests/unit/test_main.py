@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-import pytest
+import pytest  # noqa: TC002
 
 from pylint_ruff_sync.main import (
     _setup_argument_parser,
@@ -24,9 +23,6 @@ from tests.constants import (
 
 # Constants for test expectations
 EXPECTED_DISABLE_LIST_LENGTH = 3
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def test_pylint_rule_init() -> None:

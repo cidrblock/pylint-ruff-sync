@@ -6,19 +6,19 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pytest
-
 if TYPE_CHECKING:
     import pytest
 
 # Mock GitHub CLI response for tests - should be the body content from the issue
 MOCK_GITHUB_CLI_RESPONSE = (
     '{"body": "## Status\\n\\nThis issue tracks implementation of pylint rules '
-    "in ruff.\\n\\n### Implemented Rules\\n\\n- [x] `F401` `F401` unused-import\\n"
-    "- [x] `F841` `F841` unused-variable\\n- [x] `E501` `E501` line-too-long\\n\\n"
-    "### Not Yet Implemented\\n\\n- [ ] `C0103` `C0103` invalid-name\\n"
-    "- [ ] `C0111` `C0111` missing-docstring\\n"
-    '- [ ] `R0903` `R0903` too-few-public-methods"}'
+    "in ruff.\\n\\n### Implemented Rules\\n\\n"
+    "- [x] `unused-import` / `F401` (`PYF401`)\\n"
+    "- [x] `unused-variable` / `F841` (`PYF841`)\\n"
+    "- [x] `line-too-long` / `E501` (`PYE501`)\\n\\n"
+    "### Not Yet Implemented\\n\\n- [ ] `invalid-name` / `C0103` (`PYC0103`)\\n"
+    "- [ ] `missing-docstring` / `C0111` (`PYC0111`)\\n"
+    '- [ ] `too-few-public-methods` / `R0903` (`PYR0903`)"}'
 )
 
 # Mock pylint command output for tests

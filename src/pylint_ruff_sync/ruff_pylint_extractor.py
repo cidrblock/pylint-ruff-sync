@@ -133,7 +133,9 @@ class RuffPylintExtractor:
 
         Raises:
             subprocess.CalledProcessError: If unable to fetch the GitHub issue.
-            Exception: If parsing fails.
+            json.JSONDecodeError: If the JSON response cannot be parsed.
+            KeyError: If the expected keys are missing from the response.
+            Exception: If parsing fails for other reasons.
 
         """
         try:
@@ -171,8 +173,9 @@ class RuffPylintExtractor:
             implemented_rules = set()
 
             # Pattern to match checked task list items with pylint codes
-            # Looks for: - [x] `ruff_code` `pylint_code` description
-            pattern = r"- \[x\] `[^`]*` `([^`]+)`"
+            # Looks for: - [x] `rule-name` / `E0237` (`PLE0237`)
+            # We want to extract the pylint code (e.g., E0237)
+            pattern = r"- \[x\] `[^`]*` / `([A-Z]\d+)`"
 
             for match in re.finditer(pattern, issue_body):
                 pylint_code = match.group(1)
@@ -229,5 +232,5 @@ class RuffPylintExtractor:
             # If both fail, re-raise the original exception
             logger.exception("No cache available and GitHub fetch failed")
             raise
-        else:
-            return rules
+
+        return rules
