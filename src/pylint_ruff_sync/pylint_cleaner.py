@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -53,14 +52,16 @@ class PylintCleaner:
     comments and maintaining code formatting.
     """
 
-    def __init__(self, *, project_root: Path, rules: Rules) -> None:
+    def __init__(self, *, config_file: Path, project_root: Path, rules: Rules) -> None:
         """Initialize the PylintCleaner.
 
         Args:
+            config_file: Path to the configuration file (e.g., pyproject.toml).
             project_root: Root directory of the project to clean.
             rules: Rules instance containing all rule information.
 
         """
+        self.config_file = config_file
         self.project_root = project_root
         self.rules = rules
         self._disable_patterns = self._compile_disable_patterns()
@@ -94,7 +95,7 @@ class PylintCleaner:
         ]
 
     def _detect_useless_suppressions(self) -> dict[Path, list[tuple[int, str]]]:
-        """Run pylint with useless-suppression to detect unnecessary disable comments.
+        """Detect useless pylint suppressions using pylint's built-in check.
 
         Returns:
             Dictionary mapping file paths to lists of (line_number, rule_name) tuples
@@ -106,40 +107,31 @@ class PylintCleaner:
         )
 
         try:
-            # Create a temporary pylint config that enables only useless-suppression
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".toml", delete=False
-            ) as temp_config:
-                temp_config.write(
-                    "[tool.pylint.messages_control]\n"
-                    'disable = ["all"]\n'
-                    'enable = ["useless-suppression"]\n'
-                )
-                temp_config_path = Path(temp_config.name)
+            # Build pylint command that uses provided config but enables only useless-suppression
+            cmd = [
+                "pylint",
+                "--output-format=parseable",
+                "--disable=all",
+                "--enable=useless-suppression",
+                str(self.project_root),
+            ]
 
-            try:
-                # Run pylint with the temporary config
-                # Note: Using trusted pylint command from user's environment
-                result = subprocess.run(  # noqa: S603
-                    [
-                        "pylint",
-                        "--rcfile",
-                        str(temp_config_path),
-                        "--output-format=parseable",
-                        str(self.project_root),
-                    ],
-                    capture_output=True,
-                    check=False,  # Don't raise on non-zero exit (expected)
-                    cwd=self.project_root,
-                    text=True,
-                    timeout=120,
-                )
+            # Use the provided config file if it exists
+            if self.config_file.exists():
+                cmd.insert(1, f"--rcfile={self.config_file}")
 
-                return self._parse_pylint_output(output=result.stdout)
+            # Run pylint with the modified configuration
+            # Note: Using trusted pylint command from user's environment
+            result = subprocess.run(  # noqa: S603
+                cmd,
+                capture_output=True,
+                check=False,  # Don't raise on non-zero exit (expected)
+                cwd=self.project_root,
+                text=True,
+                timeout=120,
+            )
 
-            finally:
-                # Clean up temporary config file
-                temp_config_path.unlink()
+            return self._parse_pylint_output(output=result.stdout)
 
         except (subprocess.TimeoutExpired, OSError) as e:
             logger.warning("Failed to run pylint useless-suppression check: %s", e)

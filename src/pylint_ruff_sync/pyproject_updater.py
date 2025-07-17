@@ -1,22 +1,15 @@
-"""PyprojectUpdater class definition."""
+"""Updates pyproject.toml with optimized pylint configuration."""
 
 from __future__ import annotations
 
 import logging
-import subprocess
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
-from .pylint_cleaner import PylintCleaner
-from .rule import Rule, RuleSource
+from .message_generator import MessageGenerator
+from .rule import Rule, Rules, RuleSource
 from .toml_file import SimpleArrayWithComments, TomlFile
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from .message_generator import MessageGenerator
-    from .rule import Rules
-
-# Configure logging
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +28,6 @@ class PyprojectUpdater:
         config_file: Path,
         rules: Rules,
         dry_run: bool = False,
-        enable_pylint_cleaner: bool = True,
         message_generator: MessageGenerator | None = None,
     ) -> None:
         """Initialize the PyprojectUpdater.
@@ -45,15 +37,12 @@ class PyprojectUpdater:
             rules: Rules instance containing all rule information.
             dry_run: If True, don't actually modify the file, just log what would
                 be done.
-            enable_pylint_cleaner: If True, run PylintCleaner to remove unnecessary
-                disable comments after updating configuration.
             message_generator: Optional MessageGenerator for dry-run messages.
 
         """
         self.rules = rules
         self.config_file = config_file
         self.dry_run = dry_run
-        self.enable_pylint_cleaner = enable_pylint_cleaner
         self.message_generator = message_generator
         self.toml_file = TomlFile(file_path=config_file)
 
@@ -61,8 +50,7 @@ class PyprojectUpdater:
         """Update the pylint configuration with optimized rule settings.
 
         Automatically determines which rules to enable/disable based on ruff
-        implementation status and current configuration. Optionally runs
-        PylintCleaner to remove unnecessary disable comments.
+        implementation status and current configuration.
 
         Args:
             disable_mypy_overlap: If False (default), exclude rules that overlap
@@ -92,10 +80,6 @@ class PyprojectUpdater:
                     len(unknown_disabled_rules),
                 )
                 logger.info("  - Rules to enable: %d", len(rules_to_enable))
-
-            # Run PylintCleaner in dry-run mode if enabled
-            if self.enable_pylint_cleaner:
-                self._run_pylint_cleaner(dry_run=True)
             return
 
         # Step 1: Update disable array with "all" and collected disable rules
@@ -107,44 +91,6 @@ class PyprojectUpdater:
         # Step 3: Save the file
         self.save()
         logger.info("Configuration updated successfully")
-
-        # Step 4: Run PylintCleaner to remove unnecessary disable comments
-        if self.enable_pylint_cleaner:
-            self._run_pylint_cleaner(dry_run=False)
-
-    def _run_pylint_cleaner(self, *, dry_run: bool) -> None:
-        """Run PylintCleaner to remove unnecessary pylint disable comments.
-
-        Args:
-            dry_run: If True, only report what would be changed without modifying files.
-
-        """
-        try:
-            project_root = self.config_file.parent
-            cleaner = PylintCleaner(project_root=project_root, rules=self.rules)
-            modifications = cleaner.clean_files(dry_run=dry_run)
-
-            if modifications:
-                total_lines = sum(modifications.values())
-                if dry_run:
-                    logger.info(
-                        "PylintCleaner would modify %d lines across %d files",
-                        total_lines,
-                        len(modifications),
-                    )
-                else:
-                    logger.info(
-                        "PylintCleaner cleaned %d lines across %d files",
-                        total_lines,
-                        len(modifications),
-                    )
-            else:
-                logger.info("PylintCleaner found no unnecessary disable comments")
-
-        except (subprocess.CalledProcessError, OSError, ValueError) as e:
-            logger.warning("PylintCleaner failed: %s", e)
-            if not dry_run:
-                logger.info("Configuration update completed despite cleaner failure")
 
     def _resolve_rule_identifiers(
         self, *, disable_mypy_overlap: bool = False

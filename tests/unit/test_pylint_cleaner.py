@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from pylint_ruff_sync.pylint_cleaner import DisableComment, PylintCleaner
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
 
 
 @pytest.fixture
@@ -54,30 +49,29 @@ def mock_rules() -> Rules:
 
 
 @pytest.fixture
-def temp_project_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for testing.
-
-    Yields:
-        Path: Path to temporary directory.
-
-    """
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield Path(temp_dir)
-
-
-@pytest.fixture
-def pylint_cleaner(temp_project_dir: Path, mock_rules: Rules) -> PylintCleaner:
+def pylint_cleaner(tmp_path: Path, mock_rules: Rules) -> PylintCleaner:
     """Create a PylintCleaner instance for testing.
 
     Args:
-        temp_project_dir: Temporary project directory.
+        tmp_path: Temporary project directory from pytest.
         mock_rules: Mock rules object.
 
     Returns:
         PylintCleaner instance.
 
     """
-    return PylintCleaner(project_root=temp_project_dir, rules=mock_rules)
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["C0103", "W0613"]
+""")
+
+    return PylintCleaner(
+        config_file=config_file,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
 
 
 def test_disable_comment_dataclass() -> None:
@@ -356,19 +350,19 @@ other.py:5:1: R0903: Useless suppression of 'missing-function-docstring'
 
 def test_clean_files_dry_run(
     pylint_cleaner: PylintCleaner,
-    temp_project_dir: Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test clean_files in dry-run mode.
 
     Args:
         pylint_cleaner: PylintCleaner instance.
-        temp_project_dir: Temporary project directory.
+        tmp_path: Temporary project directory.
         monkeypatch: Pytest monkeypatch fixture.
 
     """
     # Create a test file
-    test_file = temp_project_dir / "test.py"
+    test_file = tmp_path / "test.py"
     test_file.write_text("x = eval('1')  # pylint: disable=eval-used\n")
 
     # Mock the useless suppressions detection
@@ -393,19 +387,19 @@ def test_clean_files_dry_run(
 
 def test_clean_files_actual_modification(
     pylint_cleaner: PylintCleaner,
-    temp_project_dir: Path,
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test clean_files with actual file modification.
 
     Args:
         pylint_cleaner: PylintCleaner instance.
-        temp_project_dir: Temporary project directory.
+        tmp_path: Temporary project directory.
         monkeypatch: Pytest monkeypatch fixture.
 
     """
     # Create a test file
-    test_file = temp_project_dir / "test.py"
+    test_file = tmp_path / "test.py"
     test_file.write_text("x = eval('1')  # pylint: disable=eval-used\n")
 
     # Mock the useless suppressions detection

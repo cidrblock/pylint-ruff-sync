@@ -1,4 +1,4 @@
-"""Main module for the pylint-ruff-sync tool."""
+"""Main module for pylint-ruff-sync application."""
 
 from __future__ import annotations
 
@@ -8,13 +8,14 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pylint_ruff_sync.data_collector import DataCollector
-from pylint_ruff_sync.message_generator import MessageGenerator
-from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.rules_cache_manager import RulesCacheManager
+from .data_collector import DataCollector
+from .message_generator import MessageGenerator
+from .pylint_cleaner import PylintCleaner
+from .pyproject_updater import PyprojectUpdater
+from .rules_cache_manager import RulesCacheManager
 
 if TYPE_CHECKING:
-    from pylint_ruff_sync.rule import Rules
+    from .rule import Rules
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -138,16 +139,62 @@ class Application:
         rules = self.extract_all_rules()
         message_generator = self.get_message_generator() if dry_run else None
 
-        # Determine if pylint cleaner should be enabled
-        enable_pylint_cleaner = not getattr(self.args, "disable_pylint_cleaner", False)
-
         return PyprojectUpdater(
             config_file=config_file,
             dry_run=dry_run,
-            enable_pylint_cleaner=enable_pylint_cleaner,
             message_generator=message_generator,
             rules=rules,
         )
+
+    def run_pylint_cleaner(
+        self,
+        config_file: Path,
+        *,
+        dry_run: bool = False,
+    ) -> None:
+        """Run PylintCleaner to remove unnecessary pylint disable comments.
+
+        Args:
+            config_file: Path to configuration file.
+            dry_run: Whether to run in dry-run mode.
+
+        """
+        # Skip if disabled via CLI argument
+        if getattr(self.args, "disable_pylint_cleaner", False):
+            logger.info("PylintCleaner disabled via --disable-pylint-cleaner")
+            return
+
+        try:
+            project_root = config_file.parent
+            rules = self.extract_all_rules()
+            cleaner = PylintCleaner(
+                config_file=config_file,
+                project_root=project_root,
+                rules=rules,
+            )
+            modifications = cleaner.clean_files(dry_run=dry_run)
+
+            if modifications:
+                total_lines = sum(modifications.values())
+                if dry_run:
+                    logger.info(
+                        "PylintCleaner would modify %d lines across %d files",
+                        total_lines,
+                        len(modifications),
+                    )
+                else:
+                    logger.info(
+                        "PylintCleaner cleaned %d lines across %d files",
+                        total_lines,
+                        len(modifications),
+                    )
+            else:
+                logger.info("PylintCleaner found no unnecessary disable comments")
+
+        except Exception as e:
+            logger.warning("PylintCleaner failed: %s", e)
+            if not dry_run:
+                logger.info("Operation completed despite cleaner failure")
 
     def run(self) -> int:
         """Run the application with the provided arguments.
@@ -173,6 +220,12 @@ class Application:
                 dry_run=self.args.dry_run,
             )
             updater.update(disable_mypy_overlap=self.args.disable_mypy_overlap)
+
+            # Run PylintCleaner after configuration update
+            self.run_pylint_cleaner(
+                config_file=self.args.config_file,
+                dry_run=self.args.dry_run,
+            )
 
         except KeyboardInterrupt:
             logger.info("Operation cancelled by user")

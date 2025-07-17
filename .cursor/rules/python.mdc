@@ -60,6 +60,7 @@ alwaysApply: true
 - Always use uv instead of pip
 - Never install a python package outside of the workspace virtual environment
 - Minimize the project dependencies
+- **MANDATORY: Maintain Separation of Concerns using class based design principals**
 
 ## Git & Pre-commit Workflow (MANDATORY SEQUENCE)
 
