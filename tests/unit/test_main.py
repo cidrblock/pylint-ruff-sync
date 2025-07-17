@@ -296,7 +296,7 @@ disable = [
     result = main()
 
     # Should exit successfully (return 0)
-    assert result == 0
+    assert not result
 
     # Check that config file was updated
     assert config_file.exists()
