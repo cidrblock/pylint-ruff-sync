@@ -94,10 +94,10 @@ class RuffPylintExtractor:
 
         Note:
             This method is kept for compatibility but does nothing in the simplified
-            extractor. Cache management is now handled by CacheManager.
+            extractor. Cache management is now handled by RulesCacheManager.
 
         """
-        # This method is now handled by CacheManager
+        # This method is now handled by RulesCacheManager
         # Kept for compatibility with get_implemented_rules method
 
     def _test_github_access(self) -> bool:
