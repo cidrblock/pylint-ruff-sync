@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -174,21 +173,15 @@ class Application:
 
             # Run PylintCleaner after configuration update if enabled
             if not getattr(self.args, "disable_pylint_cleaner", False):
-                try:
-                    project_root = self.args.config_file.parent
-                    rules = self.extract_all_rules()
-                    cleaner = PylintCleaner(
-                        config_file=self.args.config_file,
-                        dry_run=self.args.dry_run,
-                        project_root=project_root,
-                        rules=rules,
-                    )
-                    cleaner.run()
-
-                except (subprocess.CalledProcessError, OSError, ValueError) as e:
-                    logger.warning("PylintCleaner failed: %s", e)
-                    if not self.args.dry_run:
-                        logger.info("Operation completed despite cleaner failure")
+                project_root = self.args.config_file.parent
+                rules = self.extract_all_rules()
+                cleaner = PylintCleaner(
+                    config_file=self.args.config_file,
+                    dry_run=self.args.dry_run,
+                    project_root=project_root,
+                    rules=rules,
+                )
+                cleaner.run()
             else:
                 logger.info("PylintCleaner disabled via --disable-pylint-cleaner")
 

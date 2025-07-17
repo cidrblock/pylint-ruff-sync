@@ -84,26 +84,33 @@ class PylintCleaner:
         """
         logger.info("Running PylintCleaner to remove unnecessary disable comments")
 
-        modifications = self.clean_files(dry_run=self.dry_run)
+        try:
+            modifications = self.clean_files(dry_run=self.dry_run)
 
-        if modifications:
-            total_lines = sum(modifications.values())
-            if self.dry_run:
-                logger.info(
-                    "PylintCleaner would modify %d lines across %d files",
-                    total_lines,
-                    len(modifications),
-                )
+            if modifications:
+                total_lines = sum(modifications.values())
+                if self.dry_run:
+                    logger.info(
+                        "PylintCleaner would modify %d lines across %d files",
+                        total_lines,
+                        len(modifications),
+                    )
+                else:
+                    logger.info(
+                        "PylintCleaner cleaned %d lines across %d files",
+                        total_lines,
+                        len(modifications),
+                    )
             else:
-                logger.info(
-                    "PylintCleaner cleaned %d lines across %d files",
-                    total_lines,
-                    len(modifications),
-                )
-        else:
-            logger.info("PylintCleaner found no unnecessary disable comments")
+                logger.info("PylintCleaner found no unnecessary disable comments")
 
-        return modifications
+            return modifications
+
+        except (subprocess.CalledProcessError, OSError, ValueError) as e:
+            logger.warning("PylintCleaner failed: %s", e)
+            if not self.dry_run:
+                logger.info("Operation completed despite cleaner failure")
+            return {}
 
     def _compile_disable_patterns(self) -> list[re.Pattern[str]]:
         """Compile regex patterns for detecting pylint disable comments.
@@ -146,14 +153,30 @@ class PylintCleaner:
         )
 
         try:
+            # Get Python files tracked by git
+            git_result = subprocess.run(
+                ["git", "ls-files", "*.py"],
+                capture_output=True,
+                check=True,
+                cwd=self.project_root,
+                text=True,
+                timeout=30,
+            )
+
+            python_files = git_result.stdout.strip().split("\n")
+            python_files = [f for f in python_files if f.strip()]
+
+            if not python_files:
+                logger.info("No Python files found in git repository")
+                return {}
+
             # Run pylint with user's config, enabling only useless-suppression
             cmd = [
                 "pylint",
                 "--output-format=parseable",
                 "--disable=all",
                 "--enable=useless-suppression",
-                str(self.project_root),
-            ]
+            ] + python_files
 
             # Run pylint with the user's configuration
             # Note: Using trusted pylint command from user's environment
@@ -168,7 +191,7 @@ class PylintCleaner:
 
             return self._parse_pylint_output(output=result.stdout)
 
-        except (subprocess.TimeoutExpired, OSError) as e:
+        except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError) as e:
             logger.warning("Failed to run pylint useless-suppression check: %s", e)
             return {}
 
