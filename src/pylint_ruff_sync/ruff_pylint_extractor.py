@@ -20,13 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class RuffPylintExtractor:
-    """Extract pylint rules implementation status from ruff.
-
-    Attributes:
-        rules: Rules object to populate with ruff implementation data.
-        issue_url: GitHub issue URL for ruff pylint implementation tracking.
-
-    """
+    """Extract pylint rules implementation status from ruff."""
 
     def __init__(self, rules: Rules) -> None:
         """Initialize the RuffPylintExtractor with a Rules object.

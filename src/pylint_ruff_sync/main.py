@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 from pylint_ruff_sync.data_collector import DataCollector
-from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
 from pylint_ruff_sync.toml_file import TomlFile
@@ -226,10 +225,7 @@ def _resolve_rule_identifiers(
     current_disable_set = set(current_disable) if current_disable else set()
     current_enable_set = set(current_enable) if current_enable else set()
 
-    # Always identify mypy overlap rules, but filtering depends on disable_mypy_overlap
-    # flag
-    mypy_overlap_rules = get_mypy_overlap_rules()
-    all_rules.update_mypy_overlap_status(mypy_overlap_rules)
+    # Note: mypy overlap status is already set by DataCollector
 
     # Get optimized disable list
     rules_to_disable, unknown_disabled_rules = all_rules.get_optimized_disable_list(

@@ -14,6 +14,7 @@ from pylint_ruff_sync.main import (
     _setup_argument_parser,
     main,
 )
+from pylint_ruff_sync.mypy_overlap import MypyOverlapExtractor
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
@@ -240,6 +241,11 @@ def test_mypy_overlap_filtering() -> None:
     rules.add_rule(
         Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
     )  # not mypy overlap
+
+    # Apply mypy overlap status using the extractor
+
+    mypy_extractor = MypyOverlapExtractor(rules)
+    mypy_extractor.extract()
 
     # Create temporary config file with no disabled rules
     with tempfile.NamedTemporaryFile(

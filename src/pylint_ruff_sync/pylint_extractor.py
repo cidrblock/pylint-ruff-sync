@@ -13,12 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class PylintExtractor:
-    """Extract pylint rules and information.
-
-    Attributes:
-        rules: Rules object to populate with pylint rule data.
-
-    """
+    """Extract pylint rules and information."""
 
     def __init__(self, rules: Rules) -> None:
         """Initialize the PylintExtractor with a Rules object.

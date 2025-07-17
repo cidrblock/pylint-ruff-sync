@@ -7,7 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
+from pylint_ruff_sync.mypy_overlap import MypyOverlapExtractor
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 from pylint_ruff_sync.rule import Rules
@@ -109,8 +109,8 @@ class DataCollector:
         logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
 
         # Step 4: Update mypy overlap status
-        mypy_overlap_rules = get_mypy_overlap_rules()
-        rules.update_mypy_overlap_status(mypy_overlap_rules)
+        mypy_extractor = MypyOverlapExtractor(rules)
+        mypy_extractor.extract()
 
         return rules
 
@@ -139,8 +139,8 @@ class DataCollector:
             logger.info("Loaded %d rules from cache", len(rules))
 
             # Still need to apply mypy overlap to cached rules
-            mypy_overlap_rules = get_mypy_overlap_rules()
-            rules.update_mypy_overlap_status(mypy_overlap_rules)
+            mypy_extractor = MypyOverlapExtractor(rules)
+            mypy_extractor.extract()
 
         except Exception as exc:
             msg = f"Failed to load rules from cache: {exc}"
