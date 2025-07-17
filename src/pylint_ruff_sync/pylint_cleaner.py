@@ -16,6 +16,12 @@ if TYPE_CHECKING:
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Constants for regex group indices
+GROUP_BEFORE_PYLINT = 2
+GROUP_RULES_TEXT = 3
+GROUP_AFTER_PYLINT = 4
+MIN_GROUPS_FOR_DISABLE = 3
+
 
 @dataclass
 class DisableComment:
@@ -40,11 +46,11 @@ class DisableComment:
 
 
 class PylintCleaner:
-    """Removes unnecessary pylint disable comments based on useless-suppression analysis.
+    """Removes unnecessary pylint disable comments.
 
-    This class runs pylint with useless-suppression enabled to identify disable
-    comments that are no longer necessary, then surgically removes them while
-    preserving other tool comments and maintaining code formatting.
+    Uses useless-suppression analysis to identify disable comments that are no
+    longer necessary, then surgically removes them while preserving other tool
+    comments and maintaining code formatting.
     """
 
     def __init__(self, *, project_root: Path, rules: Rules) -> None:
@@ -66,41 +72,26 @@ class PylintCleaner:
             List of compiled regex patterns for different disable comment formats.
 
         """
-        patterns = [
-            # Example 1: Single line with rule name
-            # x = eval("1 + 2")  # pylint: disable=eval-used
+        return [
+            # Single line with rule name or code
             re.compile(
                 r"^(.*?)\s*#\s*(.*)?\s*pylint:\s*disable=([a-zA-Z0-9_,-]+)\s*(.*?)$"
             ),
-            # Example 2: Single line with rule code
-            # y = eval("3 + 4")  # pylint: disable=W0123
+            # Multiple rules by name or code
             re.compile(
                 r"^(.*?)\s*#\s*(.*)?\s*pylint:\s*disable=([A-Z]\d+(?:,[A-Z]\d+)*)\s*(.*?)$"
             ),
-            # Example 3: Multiple rules by name
-            # def foo(bar):  # pylint: disable=unused-argument,missing-function-docstring
-            re.compile(
-                r"^(.*?)\s*#\s*(.*)?\s*pylint:\s*disable=([a-zA-Z0-9_,-]+)\s*(.*?)$"
-            ),
-            # Example 4: Multiple rules by code
-            # def bar(baz):  # pylint: disable=W0613,C0116
-            re.compile(
-                r"^(.*?)\s*#\s*(.*)?\s*pylint:\s*disable=([A-Z]\d+(?:,[A-Z]\d+)*)\s*(.*?)$"
-            ),
-            # Example 5: Mixed with other tools
-            # z = eval("5 + 6")  # pylint: disable=eval-used
+            # Mixed with other tools
             re.compile(
                 r"^(.*?)\s*#\s*(.*?)\s*pylint:\s*disable=([a-zA-Z0-9_,-]+)\s*(.*?)$"
             ),
-            # Example 6: File-level disable
-            # # pylint: skip-file
+            # File-level disable
             re.compile(r"^#\s*pylint:\s*skip-file\s*(.*)$"),
             # General pylint disable pattern (catch-all)
             re.compile(
                 r"^(.*?)\s*#\s*(.*?)\s*pylint:\s*disable=([a-zA-Z0-9_,\s-]+)\s*(.*?)$"
             ),
         ]
-        return patterns
 
     def _detect_useless_suppressions(self) -> dict[Path, list[tuple[int, str]]]:
         """Run pylint with useless-suppression to detect unnecessary disable comments.
@@ -108,9 +99,6 @@ class PylintCleaner:
         Returns:
             Dictionary mapping file paths to lists of (line_number, rule_name) tuples
             for useless suppressions.
-
-        Raises:
-            subprocess.CalledProcessError: If pylint command fails unexpectedly.
 
         """
         logger.info(
@@ -131,7 +119,8 @@ class PylintCleaner:
 
             try:
                 # Run pylint with the temporary config
-                result = subprocess.run(
+                # Note: Using trusted pylint command from user's environment
+                result = subprocess.run(  # noqa: S603
                     [
                         "pylint",
                         "--rcfile",
@@ -140,7 +129,7 @@ class PylintCleaner:
                         str(self.project_root),
                     ],
                     capture_output=True,
-                    check=False,  # Don't raise on non-zero exit (expected for violations)
+                    check=False,  # Don't raise on non-zero exit (expected)
                     cwd=self.project_root,
                     text=True,
                     timeout=120,
@@ -216,19 +205,24 @@ class PylintCleaner:
                         original_line=line_content,
                         pylint_rules=["skip-file"],
                         other_tools_content=match.group(1)
-                        if match.lastindex >= 1
+                        if match.lastindex and match.lastindex >= 1
                         else "",
                         comment_format="skip-file",
                     )
 
                 # For regular disable patterns
-                if match.lastindex >= 3:
-                    code_part = (
-                        line_content[: match.start()] if match.start() > 0 else ""
+                if match.lastindex and match.lastindex >= MIN_GROUPS_FOR_DISABLE:
+                    before_pylint = (
+                        match.group(GROUP_BEFORE_PYLINT)
+                        if match.lastindex >= GROUP_BEFORE_PYLINT
+                        else ""
                     )
-                    before_pylint = match.group(2) if match.lastindex >= 2 else ""
-                    rules_text = match.group(3)
-                    after_pylint = match.group(4) if match.lastindex >= 4 else ""
+                    rules_text = match.group(GROUP_RULES_TEXT)
+                    after_pylint = (
+                        match.group(GROUP_AFTER_PYLINT)
+                        if match.lastindex >= GROUP_AFTER_PYLINT
+                        else ""
+                    )
 
                     # Parse comma-separated rules
                     pylint_rules = [
@@ -246,7 +240,7 @@ class PylintCleaner:
 
         return None
 
-    def _remove_useless_rules_from_comment(
+    def _remove_useless_rules_from_comment(  # noqa: PLR0911
         self, *, disable_comment: DisableComment, useless_rules: list[str]
     ) -> str | None:
         """Remove useless rules from a disable comment, preserving necessary ones.
@@ -289,10 +283,13 @@ class PylintCleaner:
 
         if disable_comment.other_tools_content.strip():
             # Preserve other tool comments
-            return f"{code_part}# {disable_comment.other_tools_content}  # pylint: disable={remaining_rules_text}"
+            return (
+                f"{code_part}# {disable_comment.other_tools_content}  "
+                f"# pylint: disable={remaining_rules_text}"
+            )
         return f"{code_part}# pylint: disable={remaining_rules_text}"
 
-    def clean_files(self, *, dry_run: bool = False) -> dict[Path, int]:
+    def clean_files(self, *, dry_run: bool = False) -> dict[Path, int]:  # noqa: C901, PLR0912, PLR0915
         """Clean unnecessary pylint disable comments from project files.
 
         Args:
@@ -385,8 +382,8 @@ class PylintCleaner:
                             new_content += "\n"  # Preserve trailing newline
                         file_path.write_text(new_content, encoding="utf-8")
                         logger.info("Cleaned %d lines in %s", modified_lines, file_path)
-                    except OSError as e:
-                        logger.error("Failed to write file %s: %s", file_path, e)
+                    except OSError:
+                        logger.exception("Failed to write file %s", file_path)
 
         total_modified = sum(modifications.values())
         if dry_run:

@@ -1,14 +1,18 @@
-"""Unit tests for PylintCleaner class."""
+"""Unit tests for PylintCleaner class."""  # pylint: disable=redefined-outer-name
 
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from pylint_ruff_sync.pylint_cleaner import DisableComment, PylintCleaner
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 @pytest.fixture
@@ -50,11 +54,11 @@ def mock_rules() -> Rules:
 
 
 @pytest.fixture
-def temp_project_dir() -> Path:
+def temp_project_dir() -> Generator[Path, None, None]:
     """Create a temporary directory for testing.
 
-    Returns:
-        Path to temporary directory.
+    Yields:
+        Path: Path to temporary directory.
 
     """
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -80,7 +84,7 @@ def test_disable_comment_dataclass() -> None:
     """Test DisableComment dataclass creation."""
     comment = DisableComment(
         file_path=Path("test.py"),
-        line_number=10,
+        line_number=EXAMPLE_LINE_NUMBER,
         original_line="x = eval('1')  # pylint: disable=eval-used",
         pylint_rules=["eval-used"],
         other_tools_content="",
@@ -88,12 +92,14 @@ def test_disable_comment_dataclass() -> None:
     )
 
     assert comment.file_path == Path("test.py")
-    assert comment.line_number == 10
+    assert comment.line_number == EXAMPLE_LINE_NUMBER
     assert comment.pylint_rules == ["eval-used"]
     assert comment.comment_format == "inline"
 
 
-def test_compile_disable_patterns(pylint_cleaner: PylintCleaner) -> None:
+def test_compile_disable_patterns(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test that disable patterns are compiled correctly.
 
     Args:
@@ -109,7 +115,9 @@ def test_compile_disable_patterns(pylint_cleaner: PylintCleaner) -> None:
     assert matched
 
 
-def test_parse_disable_comment_simple(pylint_cleaner: PylintCleaner) -> None:
+def test_parse_disable_comment_simple(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test parsing a simple disable comment.
 
     Args:
@@ -129,7 +137,9 @@ def test_parse_disable_comment_simple(pylint_cleaner: PylintCleaner) -> None:
     assert comment.original_line == line
 
 
-def test_parse_disable_comment_multiple_rules(pylint_cleaner: PylintCleaner) -> None:
+def test_parse_disable_comment_multiple_rules(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test parsing disable comment with multiple rules.
 
     Args:
@@ -146,10 +156,12 @@ def test_parse_disable_comment_multiple_rules(pylint_cleaner: PylintCleaner) -> 
     assert comment is not None
     assert "missing-function-docstring" in comment.pylint_rules
     assert "unused-argument" in comment.pylint_rules
-    assert len(comment.pylint_rules) == 2
+    assert len(comment.pylint_rules) == EXPECTED_RULE_COUNT
 
 
-def test_parse_disable_comment_with_noqa(pylint_cleaner: PylintCleaner) -> None:
+def test_parse_disable_comment_with_noqa(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test parsing disable comment mixed with noqa.
 
     Args:
@@ -168,7 +180,9 @@ def test_parse_disable_comment_with_noqa(pylint_cleaner: PylintCleaner) -> None:
     assert "noqa" in comment.other_tools_content
 
 
-def test_parse_disable_comment_skip_file(pylint_cleaner: PylintCleaner) -> None:
+def test_parse_disable_comment_skip_file(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test parsing skip-file comment.
 
     Args:
@@ -187,7 +201,9 @@ def test_parse_disable_comment_skip_file(pylint_cleaner: PylintCleaner) -> None:
     assert comment.comment_format == "skip-file"
 
 
-def test_remove_useless_rules_partial(pylint_cleaner: PylintCleaner) -> None:
+def test_remove_useless_rules_partial(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test removing some but not all rules from a disable comment.
 
     Args:
@@ -197,7 +213,9 @@ def test_remove_useless_rules_partial(pylint_cleaner: PylintCleaner) -> None:
     comment = DisableComment(
         file_path=Path("test.py"),
         line_number=1,
-        original_line="def foo():  # pylint: disable=missing-function-docstring,unused-argument",
+        original_line=(
+            "def foo():  # pylint: disable=missing-function-docstring,unused-argument"
+        ),
         pylint_rules=["missing-function-docstring", "unused-argument"],
         other_tools_content="",
         comment_format="inline",
@@ -216,7 +234,9 @@ def test_remove_useless_rules_partial(pylint_cleaner: PylintCleaner) -> None:
     assert "pylint: disable=" in result
 
 
-def test_remove_useless_rules_all(pylint_cleaner: PylintCleaner) -> None:
+def test_remove_useless_rules_all(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test removing all rules from a disable comment.
 
     Args:
@@ -245,7 +265,9 @@ def test_remove_useless_rules_all(pylint_cleaner: PylintCleaner) -> None:
     assert "pylint" not in result
 
 
-def test_remove_useless_rules_preserve_noqa(pylint_cleaner: PylintCleaner) -> None:
+def test_remove_useless_rules_preserve_noqa(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test preserving noqa when removing pylint rules.
 
     Args:
@@ -273,7 +295,9 @@ def test_remove_useless_rules_preserve_noqa(pylint_cleaner: PylintCleaner) -> No
     assert "pylint" not in result
 
 
-def test_remove_useless_rules_skip_file(pylint_cleaner: PylintCleaner) -> None:
+def test_remove_useless_rules_skip_file(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test removing skip-file comment.
 
     Args:
@@ -300,7 +324,9 @@ def test_remove_useless_rules_skip_file(pylint_cleaner: PylintCleaner) -> None:
     assert result is None
 
 
-def test_parse_pylint_output(pylint_cleaner: PylintCleaner) -> None:
+def test_parse_pylint_output(
+    pylint_cleaner: PylintCleaner,
+) -> None:
     """Test parsing pylint useless-suppression output.
 
     Args:
@@ -314,18 +340,18 @@ other.py:5:1: R0903: Useless suppression of 'missing-function-docstring'
 
     result = pylint_cleaner._parse_pylint_output(output=output)
 
-    assert len(result) == 2  # Two files
+    assert len(result) == EXPECTED_FILE_COUNT  # Two files
     assert Path("test.py") in result
     assert Path("other.py") in result
 
     test_py_suppressions = result[Path("test.py")]
-    assert len(test_py_suppressions) == 2
-    assert (10, "eval-used") in test_py_suppressions
-    assert (15, "unused-argument") in test_py_suppressions
+    assert len(test_py_suppressions) == EXPECTED_SUPPRESSION_COUNT
+    assert (EXAMPLE_LINE_10, "eval-used") in test_py_suppressions
+    assert (EXAMPLE_LINE_15, "unused-argument") in test_py_suppressions
 
     other_py_suppressions = result[Path("other.py")]
     assert len(other_py_suppressions) == 1
-    assert (5, "missing-function-docstring") in other_py_suppressions
+    assert (EXAMPLE_LINE_5, "missing-function-docstring") in other_py_suppressions
 
 
 def test_clean_files_dry_run(
@@ -401,3 +427,13 @@ def test_clean_files_actual_modification(
     content = test_file.read_text()
     assert "pylint: disable=eval-used" not in content
     assert "x = eval('1')" in content
+
+
+# Constants for test values
+EXAMPLE_LINE_NUMBER = 10
+EXPECTED_RULE_COUNT = 2
+EXPECTED_FILE_COUNT = 2
+EXPECTED_SUPPRESSION_COUNT = 2
+EXAMPLE_LINE_5 = 5
+EXAMPLE_LINE_10 = 10
+EXAMPLE_LINE_15 = 15

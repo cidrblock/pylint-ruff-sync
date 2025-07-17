@@ -103,3 +103,5 @@ words:
   - dependendices
   - monkeypatch
   - levelname
+  - parseable
+  - lastindex

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 from typing import TYPE_CHECKING, Any
 
 from .pylint_cleaner import PylintCleaner
@@ -140,7 +141,7 @@ class PyprojectUpdater:
             else:
                 logger.info("PylintCleaner found no unnecessary disable comments")
 
-        except Exception as e:
+        except (subprocess.CalledProcessError, OSError, ValueError) as e:
             logger.warning("PylintCleaner failed: %s", e)
             if not dry_run:
                 logger.info("Configuration update completed despite cleaner failure")
