@@ -13,7 +13,12 @@ class TomlSortMockProtocol(Protocol):
     """Protocol for toml sort mock function."""
 
     def __call__(self, *, file_path: str) -> None:
-        """Apply toml sort mock to file path."""
+        """Apply toml sort mock to file path.
+
+        Args:
+            file_path: Path to the file to sort.
+
+        """
         ...
 
 
@@ -33,8 +38,8 @@ class MockSubprocessResult:
         self.stderr = ""
 
 
-@pytest.fixture
-def mock_github_response() -> str:
+@pytest.fixture(name="mock_github_response")
+def _mock_github_response() -> str:
     """Mock GitHub CLI response for tests.
 
     Returns:
@@ -53,8 +58,8 @@ def mock_github_response() -> str:
     )
 
 
-@pytest.fixture
-def mock_pylint_output() -> str:
+@pytest.fixture(name="mock_pylint_output")
+def _mock_pylint_output() -> str:
     """Mock pylint command output for tests.
 
     Returns:
@@ -71,8 +76,8 @@ def mock_pylint_output() -> str:
 """
 
 
-@pytest.fixture
-def toml_sort_mock() -> TomlSortMockProtocol:
+@pytest.fixture(name="toml_sort_mock")
+def _toml_sort_mock() -> TomlSortMockProtocol:
     """Apply toml-sort with desired configuration to a file.
 
     Returns:
@@ -145,8 +150,8 @@ def toml_sort_mock() -> TomlSortMockProtocol:
     return _apply_toml_sort_mock
 
 
-@pytest.fixture
-def mocked_subprocess(
+@pytest.fixture(name="mocked_subprocess")
+def _mocked_subprocess(
     *,
     monkeypatch: pytest.MonkeyPatch,
     mock_github_response: str,

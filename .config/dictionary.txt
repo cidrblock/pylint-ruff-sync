@@ -11,3 +11,4 @@ pydocstyle
 pylint
 testpaths
 tomlsort
+usefixtures
