@@ -319,6 +319,6 @@ pylint-ruff-sync --dry-run --verbose
 
 ## License and Attribution
 
-This project was developed through collaborative human-AI pair programming between [Bradley Thornton (cidrblock)](https://github.com/cidrblock) and Claude 4 Sonnet AI, demonstrating modern software development practices and architectural excellence.
+This project was developed through collaborative human-AI pair programming between [Bradley Thornton (cidrblock)](https://github.com/cidrblock) and Claude 4 Sonnet AI.
 
 Licensed under the MIT License. See LICENSE file for details.
