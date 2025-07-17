@@ -69,7 +69,9 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_section_pattern(section_path="tool.pylint.messages_control")
+            >>> pattern = regex.build_section_pattern(
+            ...     section_path="tool.pylint.messages_control"
+            ... )
             >>> bool(pattern.search("[tool.pylint.messages_control]"))
             True
             >>> bool(pattern.search("[other.section]"))
@@ -105,7 +107,9 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_key_in_section_pattern(section_path="tool.pylint", key="disable")
+            >>> pattern = regex.build_key_in_section_pattern(
+            ...     section_path="tool.pylint", key="disable"
+            ... )
             >>> text = '''[tool.pylint]
             ... disable = ["rule1", "rule2"]
             ... enable = ["rule3"]'''
@@ -178,7 +182,9 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_section_content_pattern(section_path="tool.pylint")
+            >>> pattern = regex.build_section_content_pattern(
+            ...     section_path="tool.pylint"
+            ... )
             >>> text = '''[tool.pylint]
             ... disable = ["rule1"]
             ... enable = ["rule2"]

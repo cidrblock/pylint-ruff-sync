@@ -31,7 +31,8 @@ EXPECTED_DISABLE_LIST_LENGTH = 3
 
 def test_rule_init() -> None:
     """Test Rule initialization."""
-    rule = Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
+    rule = Rule(
+        pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
     )
     assert rule.code == "C0103"
     assert rule.name == "invalid-name"
@@ -100,13 +101,22 @@ def test_update_pylint_config() -> None:
         rules = Rules()
 
         test_rules = [
-            Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import",
+            Rule(
+                pylint_id="F401",
+                pylint_name="unused-import",
+                description="Unused import",
                 is_implemented_in_ruff=True,
             ),
-            Rule(pylint_id="F841", pylint_name="unused-variable", description="Unused variable",
+            Rule(
+                pylint_id="F841",
+                pylint_name="unused-variable",
+                description="Unused variable",
                 is_implemented_in_ruff=True,
             ),
-            Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name",
+            Rule(
+                pylint_id="C0103",
+                pylint_name="invalid-name",
+                description="Invalid name",
                 is_implemented_in_ruff=False,
             ),
         ]
@@ -153,10 +163,16 @@ def test_update_pylint_config_dry_run() -> None:
         rules = Rules()
 
         test_rules = [
-            Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import",
+            Rule(
+                pylint_id="F401",
+                pylint_name="unused-import",
+                description="Unused import",
                 is_implemented_in_ruff=True,
             ),
-            Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name",
+            Rule(
+                pylint_id="C0103",
+                pylint_name="invalid-name",
+                description="Invalid name",
                 is_implemented_in_ruff=False,
             ),
         ]
@@ -198,14 +214,20 @@ def test_resolve_rule_identifiers() -> None:
     """Test resolving rule identifiers to rule codes."""
     # Create test rules
     rules = Rules()
-    rules.add_rule(rule=
-        Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import")
+    rules.add_rule(
+        rule=Rule(
+            pylint_id="F401", pylint_name="unused-import", description="Unused import"
+        )
     )
-    rules.add_rule(rule=
-        Rule(pylint_id="E501", pylint_name="line-too-long", description="Line too long")
+    rules.add_rule(
+        rule=Rule(
+            pylint_id="E501", pylint_name="line-too-long", description="Line too long"
+        )
     )
-    rules.add_rule(rule=
-        Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
+    rules.add_rule(
+        rule=Rule(
+            pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
+        )
     )
 
     extractor = PylintExtractor(rules=rules)

@@ -329,11 +329,15 @@ def test_key_exists_in_section() -> None:
 
     # Key doesn't exist in specified section
     assert not regex.key_exists_in_section(
-        toml_content, "tool.pylint.messages_control", "line-length"
+        content=toml_content,
+        section_path="tool.pylint.messages_control",
+        key="line-length",
     )
-    assert not regex.key_exists_in_section(toml_content, "tool.black", "disable")
     assert not regex.key_exists_in_section(
-        toml_content, "nonexistent.section", "disable"
+        content=toml_content, section_path="tool.black", key="disable"
+    )
+    assert not regex.key_exists_in_section(
+        content=toml_content, section_path="nonexistent.section", key="disable"
     )
 
 
@@ -511,17 +515,25 @@ def test_regex_patterns_with_complex_toml() -> None:
 
     # Test finding keys in sections
     assert regex.key_exists_in_section(
-        complex_toml, "tool.pylint.messages_control", "disable"
+        content=complex_toml, section_path="tool.pylint.messages_control", key="disable"
     )
     assert regex.key_exists_in_section(
-        complex_toml, "tool.pylint.messages_control", "enable"
+        content=complex_toml, section_path="tool.pylint.messages_control", key="enable"
     )
-    assert regex.key_exists_in_section(complex_toml, "tool.ruff", "line-length")
-    assert regex.key_exists_in_section(complex_toml, "tool.ruff.lint", "select")
+    assert regex.key_exists_in_section(
+        content=complex_toml, section_path="tool.ruff", key="line-length"
+    )
+    assert regex.key_exists_in_section(
+        content=complex_toml, section_path="tool.ruff.lint", key="select"
+    )
 
     # Test that keys are section-specific
-    assert not regex.key_exists_in_section(complex_toml, "tool.ruff", "disable")
-    assert not regex.key_exists_in_section(complex_toml, "tool.black", "select")
+    assert not regex.key_exists_in_section(
+        content=complex_toml, section_path="tool.ruff", key="disable"
+    )
+    assert not regex.key_exists_in_section(
+        content=complex_toml, section_path="tool.black", key="select"
+    )
 
     # Test replacing multiline array
     result = regex.replace_key_in_section(
@@ -541,25 +553,39 @@ def test_regex_patterns_edge_cases() -> None:
 
     # Test with minimal whitespace
     minimal_toml = "[tool.test]\nkey=value\nother=data"
-    assert regex.key_exists_in_section(minimal_toml, "tool.test", "key")
-    assert regex.key_exists_in_section(minimal_toml, "tool.test", "other")
+    assert regex.key_exists_in_section(
+        content=minimal_toml, section_path="tool.test", key="key"
+    )
+    assert regex.key_exists_in_section(
+        content=minimal_toml, section_path="tool.test", key="other"
+    )
 
     # Test with excessive whitespace
-    spaced_toml = IndentedMultiline("""
+    spaced_toml = IndentedMultiline(
+        content="""
         [tool.test]
 
         key   =   value
 
         other =    data
 
-        """)
-    assert regex.key_exists_in_section(spaced_toml, "tool.test", "key")
-    assert regex.key_exists_in_section(spaced_toml, "tool.test", "other")
+        """
+    )
+    assert regex.key_exists_in_section(
+        content=spaced_toml, section_path="tool.test", key="key"
+    )
+    assert regex.key_exists_in_section(
+        content=spaced_toml, section_path="tool.test", key="other"
+    )
 
     # Test with tabs
     tabbed_toml = "[tool.test]\n\tkey\t=\tvalue\n\tother\t=\tdata"
-    assert regex.key_exists_in_section(tabbed_toml, "tool.test", "key")
-    assert regex.key_exists_in_section(tabbed_toml, "tool.test", "other")
+    assert regex.key_exists_in_section(
+        content=tabbed_toml, section_path="tool.test", key="key"
+    )
+    assert regex.key_exists_in_section(
+        content=tabbed_toml, section_path="tool.test", key="other"
+    )
 
 
 def test_global_toml_regex_instance() -> None:
@@ -571,7 +597,7 @@ enable = ["rule2"]
 
     # Test using the global instance
     assert TOML_REGEX.key_exists_in_section(
-        toml_content, "tool.pylint.messages_control", "disable"
+        content=toml_content, section_path="tool.pylint.messages_control", key="disable"
     )
     assert TOML_REGEX.find_section_header(
         content=toml_content, section_path="tool.pylint.messages_control"
@@ -608,7 +634,7 @@ def test_regex_performance_with_large_content() -> None:
 
     # Should still find the target section efficiently
     assert TOML_REGEX.key_exists_in_section(
-        large_toml, "tool.pylint.messages_control", "disable"
+        content=large_toml, section_path="tool.pylint.messages_control", key="disable"
     )
 
     # Should be able to replace content efficiently
