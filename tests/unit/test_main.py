@@ -19,7 +19,6 @@ from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 from pylint_ruff_sync.rule import Rule, Rules
-from pylint_ruff_sync.toml_file import TomlFile
 from tests.constants import (
     EXPECTED_IMPLEMENTED_RULES_COUNT,
     EXPECTED_RULES_COUNT,
@@ -98,8 +97,8 @@ def test_update_pylint_config() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
-        updater = PyprojectUpdater(toml_file)
+        # Create Rules instance with test rules
+        rules = Rules()
 
         disable_rules = [
             Rule(
@@ -121,9 +120,16 @@ def test_update_pylint_config() -> None:
             ),
         ]
 
+        # Add all rules to the Rules instance
+        for rule in disable_rules + enable_rules:
+            rules.add_rule(rule)
+
+        # Use new PyprojectUpdater pattern
+        updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=False)
         updater.update_pylint_config(disable_rules, [], enable_rules)
 
-        result_dict = toml_file.as_dict()
+        # Check the results by reading the file directly
+        result_dict = updater.toml_file.as_dict()
         assert "tool" in result_dict
         assert "pylint" in result_dict["tool"]
         assert "messages_control" in result_dict["tool"]["pylint"]
@@ -136,6 +142,48 @@ def test_update_pylint_config() -> None:
         assert "all" in disable_list
         assert "F401" in disable_list
         assert "F841" in disable_list
+    finally:
+        temp_path.unlink()
+
+
+def test_update_pylint_config_dry_run() -> None:
+    """Test updating pylint configuration in dry run mode."""
+    # Create a temporary file for testing
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+        original_content = "[tool.test]\nkey = 'value'\n"
+        f.write(original_content)
+        temp_path = Path(f.name)
+
+    try:
+        # Create Rules instance with test rules
+        rules = Rules()
+
+        disable_rules = [
+            Rule(
+                pylint_id="F401",
+                pylint_name="unused-import",
+                description="Unused import",
+            ),
+        ]
+        enable_rules = [
+            Rule(
+                pylint_id="C0103",
+                pylint_name="invalid-name",
+                description="Invalid name",
+            ),
+        ]
+
+        # Add all rules to the Rules instance
+        for rule in disable_rules + enable_rules:
+            rules.add_rule(rule)
+
+        # Use PyprojectUpdater in dry run mode
+        updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=True)
+        updater.update_pylint_config(disable_rules, [], enable_rules)
+
+        # Check that the file was not modified
+        actual_content = temp_path.read_text()
+        assert actual_content == original_content
     finally:
         temp_path.unlink()
 

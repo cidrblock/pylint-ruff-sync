@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from .toml_file import SimpleArrayWithComments, TomlFile
 
 if TYPE_CHECKING:
-    from .rule import Rule
+    from pathlib import Path
+
+    from .rule import Rule, Rules
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 class PyprojectUpdater:
     """Updates pyproject.toml with pylint configuration.
 
-    This class works with a TomlFile to update pylint configuration in-memory,
+    This class manages a TomlFile internally to update pylint configuration,
     first updating the disable array with "all", then updating the enable array
     based on the collected disable rules.
 
@@ -36,14 +38,22 @@ class PyprojectUpdater:
         "F": "fatal",
     }
 
-    def __init__(self, toml_file: TomlFile) -> None:
+    def __init__(
+        self, rules: Rules, config_file: Path, *, dry_run: bool = False
+    ) -> None:
         """Initialize the PyprojectUpdater.
 
         Args:
-            toml_file: TomlFile instance to work with.
+            rules: Rules instance containing all rule information.
+            config_file: Path to the pyproject.toml file to update.
+            dry_run: If True, don't actually modify the file, just log what would
+                be done.
 
         """
-        self.toml_file = toml_file
+        self.rules = rules
+        self.config_file = config_file
+        self.dry_run = dry_run
+        self.toml_file = TomlFile(config_file)
 
     def update_pylint_config(
         self,
@@ -62,11 +72,35 @@ class PyprojectUpdater:
             enable_rules: List of rules to enable.
 
         """
+        logger.info("Updating pylint configuration in %s", self.config_file)
+
+        if self.dry_run:
+            logger.info("DRY RUN: Would update configuration with:")
+            logger.info("  - Rules to disable: %d", len(disable_rules))
+            logger.info(
+                "  - Unknown disabled rules preserved: %d", len(unknown_disabled_rules)
+            )
+            logger.info("  - Rules to enable: %d", len(enable_rules))
+            return
+
         # Step 1: Update disable array with "all" and collected disable rules
         self._update_disable_array(disable_rules, unknown_disabled_rules)
 
         # Step 2: Update enable array with URL comments
         self._update_enable_array(enable_rules)
+
+        # Step 3: Save the file
+        self.save()
+        logger.info("Configuration updated successfully")
+
+    def save(self) -> None:
+        """Save the updated configuration to the file."""
+        if self.dry_run:
+            logger.debug("DRY RUN: Would save configuration to %s", self.config_file)
+            return
+
+        self.toml_file.write()
+        logger.debug("Saved configuration to %s", self.config_file)
 
     def _update_disable_array(
         self, disable_rules: list[Rule], unknown_disabled_rules: list[str]
@@ -173,7 +207,3 @@ class PyprojectUpdater:
 
         # Final fallback: generic pylint docs
         return "https://pylint.readthedocs.io/en/stable/user_guide/messages/"
-
-    def write_config(self) -> None:
-        """Write the updated configuration to the file."""
-        self.toml_file.write()

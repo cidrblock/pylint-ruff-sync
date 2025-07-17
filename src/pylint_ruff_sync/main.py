@@ -257,51 +257,6 @@ def _resolve_rule_identifiers(
     return rules_to_disable, unknown_disabled_rules, rules_to_enable
 
 
-def _update_pylint_config(
-    *,
-    config_file: Path,
-    rules_to_disable: list[Rule],
-    unknown_disabled_rules: list[str],
-    rules_to_enable: list[Rule],
-    dry_run: bool = False,
-) -> None:
-    """Update the pylint configuration in pyproject.toml.
-
-    Args:
-        config_file: Path to the pyproject.toml file.
-        rules_to_disable: List of rules to disable.
-        unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
-        rules_to_enable: List of rules to enable.
-        dry_run: If True, don't actually modify the file.
-
-    """
-    logger.info("Updating pylint configuration in %s", config_file)
-
-    # Load and update the TOML file
-    toml_file = TomlFile(config_file)
-    updater = PyprojectUpdater(toml_file)
-
-    if dry_run:
-        logger.info("DRY RUN: Would update configuration with:")
-        logger.info("  - Rules to disable: %d", len(rules_to_disable))
-        logger.info(
-            "  - Unknown disabled rules preserved: %d", len(unknown_disabled_rules)
-        )
-        logger.info("  - Rules to enable: %d", len(rules_to_enable))
-        return
-
-    # Update the configuration
-    updater.update_pylint_config(
-        disable_rules=rules_to_disable,
-        unknown_disabled_rules=unknown_disabled_rules,
-        enable_rules=rules_to_enable,
-    )
-
-    # Save the file
-    toml_file.write()
-    logger.info("Configuration updated successfully")
-
-
 def main() -> int:
     """Run the pylint-ruff-sync tool.
 
@@ -340,13 +295,16 @@ def main() -> int:
             )
         )
 
-        # Update configuration
-        _update_pylint_config(
+        # Update the configuration
+        updater = PyprojectUpdater(
+            rules=all_rules,
             config_file=args.config_file,
-            rules_to_disable=rules_to_disable,
-            unknown_disabled_rules=unknown_disabled_rules,
-            rules_to_enable=rules_to_enable,
             dry_run=args.dry_run,
+        )
+        updater.update_pylint_config(
+            disable_rules=rules_to_disable,
+            unknown_disabled_rules=unknown_disabled_rules,
+            enable_rules=rules_to_enable,
         )
 
     except KeyboardInterrupt:
