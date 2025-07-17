@@ -68,8 +68,9 @@ class Application:
         """
         return self._data_collector
 
-    def extract_all_rules(self) -> Rules:
-        """Extract and combine all rule information using DataCollector.
+    @property
+    def rules(self) -> Rules:
+        """Get all rule information using DataCollector.
 
         Returns:
             Rules object containing all available pylint rules with ruff data.
@@ -115,7 +116,7 @@ class Application:
 
         """
         if self._message_generator is None:
-            rules = self.extract_all_rules()
+            rules = self.rules
             self._message_generator = MessageGenerator(rules=rules)
 
         return self._message_generator
@@ -136,7 +137,7 @@ class Application:
             PyprojectUpdater instance.
 
         """
-        rules = self.extract_all_rules()
+        rules = self.rules
         message_generator = self.get_message_generator() if dry_run else None
 
         return PyprojectUpdater(
@@ -174,7 +175,7 @@ class Application:
             # Run PylintCleaner after configuration update if enabled
             if not getattr(self.args, "disable_pylint_cleaner", False):
                 project_root = self.args.config_file.parent
-                rules = self.extract_all_rules()
+                rules = self.rules
                 cleaner = PylintCleaner(
                     config_file=self.args.config_file,
                     dry_run=self.args.dry_run,

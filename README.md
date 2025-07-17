@@ -10,9 +10,9 @@
 > - **Consider becoming the maintainer** by reaching out to [@cidrblock](https://github.com/cidrblock)
 > - **Check for community forks** that may have active maintenance
 >
-> This codebase is production-ready with comprehensive tests and documentation, but requires ongoing maintenance for GitHub API changes, ruff updates, and dependency management.
+> This codebase includes comprehensive tests and documentation, but requires ongoing maintenance for GitHub API changes, ruff updates, and dependency management.
 
-A professional-grade precommit hook that automatically synchronizes your `pyproject.toml` pylint configuration with ruff's implementation status. This tool eliminates rule duplication between pylint and ruff by maintaining an optimal configuration that leverages the strengths of both tools.
+A precommit hook that automatically synchronizes your `pyproject.toml` pylint configuration with ruff's implementation status. This tool eliminates rule duplication between pylint and ruff by maintaining an optimal configuration that leverages the strengths of both tools.
 
 ## Core Functionality
 
@@ -23,26 +23,54 @@ This tool performs two primary operations:
 
 The configuration is automatically synchronized based on real-time data from the [ruff pylint implementation tracking issue](https://github.com/astral-sh/ruff/issues/970), ensuring your setup remains current as ruff evolves.
 
+## Pylint Command and Configuration
+
+### Command Execution
+
+The tool runs pylint with the following command to detect unnecessary disable comments:
+
+```bash
+pylint --output-format=parseable --rcfile {config_file} $(git ls-files '*.py')
+```
+
+This command:
+
+- Uses your existing pylint configuration file (`--rcfile`)
+- Only checks Python files tracked by git (`git ls-files '*.py'`)
+- Outputs results in parseable format for processing
+
+### Configuration Requirements
+
+**All pylint configuration must be in your config file** (typically `pyproject.toml`). The tool does not modify pylint's behavior beyond updating the `disable` and `enable` lists in your configuration file. Settings like:
+
+- Line length limits
+- Naming conventions
+- Plugin configurations
+- Custom rule settings
+- Output formats
+
+Should all be configured in your `[tool.pylint]` sections in `pyproject.toml`.
+
 ## Key Features
 
 ### Configuration Management
 
 - **Always Current**: References live GitHub issue data for accurate rule status
 - **Enable-Only Strategy**: Maintains shorter, more manageable rule lists that shrink over time
-- **Surgical Updates**: Preserves existing formatting, comments, and custom configurations
+- **Format Preservation**: Preserves existing formatting, comments, and custom configurations
 - **Mypy Integration**: Optionally excludes rules that overlap with mypy functionality
 
 ### Code Cleanup (PylintCleaner)
 
-- **Intelligent Comment Removal**: Identifies and removes unnecessary pylint disable comments
+- **Comment Removal**: Identifies and removes unnecessary pylint disable comments
 - **Multi-Format Support**: Handles various pylint disable comment patterns
 - **Tool Preservation**: Maintains comments for other tools (noqa, type: ignore, etc.)
-- **Surgical Precision**: Removes only unnecessary rules while preserving necessary ones
+- **Selective Removal**: Removes only unnecessary rules while preserving necessary ones
 
-### Operational Excellence
+### Operational Features
 
-- **Comprehensive Error Handling**: Graceful fallback to cached data when network unavailable
-- **Extensive Logging**: Detailed operation reporting for debugging and monitoring
+- **Error Handling**: Graceful fallback to cached data when network unavailable
+- **Logging**: Detailed operation reporting for debugging and monitoring
 - **Type Safety**: Full type annotations throughout codebase
 - **CI/CD Ready**: Designed for automated pipeline integration
 
@@ -125,12 +153,12 @@ z = eval("5 + 6")  # noqa: E501  # pylint: disable=eval-used
 y = eval("3 + 4")  # pylint: disable=W0123
 ```
 
-### Intelligent Processing
+### Processing Behavior
 
 - **Partial Removal**: Removes only unnecessary rules while preserving necessary ones
 - **Tool Preservation**: Maintains comments for ruff, mypy, type checkers, etc.
 - **Format Preservation**: Maintains original comment structure and spacing
-- **Safe Operation**: Thorough testing ensures no code functionality is affected
+- **Testing**: Includes test coverage for comment processing functionality
 
 ### Configuration
 
@@ -182,7 +210,7 @@ pylint --list-msgs → GitHub Issue Parsing → Mypy Overlap Analysis → Rule S
 - **MypyOverlapExtractor**: Identifies rules that overlap with mypy
 - **PyprojectUpdater**: Manages TOML configuration updates
 - **PylintCleaner**: Removes unnecessary disable comments
-- **TomlFile/TomlRegex**: Surgical TOML editing with format preservation
+- **TomlFile/TomlRegex**: TOML editing with format preservation
 
 ### Caching Strategy
 
