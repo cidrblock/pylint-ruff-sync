@@ -48,7 +48,8 @@ def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     setup_mocks(monkeypatch)
 
-    extractor = RuffPylintExtractor()
+    rules = Rules()
+    extractor = RuffPylintExtractor(rules)
     result = extractor.get_implemented_rules()
 
     # Should find F401, F841, and E501 as implemented (checked checkboxes)
@@ -67,8 +68,9 @@ def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     setup_mocks(monkeypatch)
 
-    extractor = PylintExtractor()
-    rules = extractor.extract_all_rules()
+    rules = Rules()
+    extractor = PylintExtractor(rules)
+    extractor.extract()
 
     assert len(rules) == EXPECTED_RULES_COUNT
     # Rules should be sorted by code
@@ -156,18 +158,11 @@ def test_main_argument_parsing() -> None:
 
 
 def test_resolve_rule_identifiers() -> None:
-    """Test resolving rule identifiers to codes."""
-    # Create a Rules object with test rules
+    """Test resolving rule identifiers to rule codes."""
+    # Create test rules
     rules = Rules()
     rules.add_rule(
         Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import")
-    )
-    rules.add_rule(
-        Rule(
-            pylint_id="F841",
-            pylint_name="unused-variable",
-            description="Unused variable",
-        )
     )
     rules.add_rule(
         Rule(pylint_id="E501", pylint_name="line-too-long", description="Line too long")
@@ -176,7 +171,7 @@ def test_resolve_rule_identifiers() -> None:
         Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
     )
 
-    extractor = PylintExtractor()
+    extractor = PylintExtractor(rules)
 
     # Test with rule codes
     rule_identifiers = ["F401", "C0103"]
@@ -220,7 +215,8 @@ def test_main_function_flow() -> None:
 
 def test_ruff_extractor_initialization() -> None:
     """Test RuffPylintExtractor initialization."""
-    extractor = RuffPylintExtractor()
+    rules = Rules()
+    extractor = RuffPylintExtractor(rules)
     assert extractor.issue_url == RUFF_PYLINT_ISSUE_URL
 
 

@@ -20,10 +20,22 @@ logger = logging.getLogger(__name__)
 
 
 class RuffPylintExtractor:
-    """Extract pylint rules implementation status from ruff."""
+    """Extract pylint rules implementation status from ruff.
 
-    def __init__(self) -> None:
-        """Initialize the RuffPylintExtractor."""
+    Attributes:
+        rules: Rules object to populate with ruff implementation data.
+        issue_url: GitHub issue URL for ruff pylint implementation tracking.
+
+    """
+
+    def __init__(self, rules: Rules) -> None:
+        """Initialize the RuffPylintExtractor with a Rules object.
+
+        Args:
+            rules: Rules object to populate with ruff implementation data.
+
+        """
+        self.rules = rules
         self.issue_url = RUFF_PYLINT_ISSUE_URL
 
     def _load_cache(self) -> Rules | None:
@@ -314,30 +326,52 @@ class RuffPylintExtractor:
 
         return all_rules
 
-    def extract_rules(self) -> Rules:
-        """Extract rules from ruff issue or cache.
+    def extract(self) -> None:
+        """Extract ruff implementation data and update the Rules object.
 
-        Returns:
-            Rules object containing ruff implementation data.
+        Only updates rules that exist in pylint. Rules from ruff issue that don't
+        exist in pylint are logged as warnings but not added.
 
         """
-        # Try GitHub first if available
-        if self._test_github_access():
-            try:
-                rules = self._fetch_from_github()
-                logger.info("Successfully fetched %d rules from GitHub", len(rules))
-            except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
-                logger.warning("Failed to fetch from GitHub: %s", e)
-                logger.info("Attempting to use cache fallback...")
-            else:
-                return rules
+        ruff_rules = self.get_all_ruff_rules()
 
-        # Fall back to cache
-        logger.info("Using cache fallback for ruff rule data")
-        cached_rules = self._load_cache()
-        if cached_rules is not None:
-            return cached_rules
+        # Create a mapping of ruff rules by pylint_id
+        ruff_map = {rule.pylint_id: rule for rule in ruff_rules}
 
-        # If cache is also unavailable, return empty Rules object
-        logger.warning("Cache is not available, returning empty Rules object")
-        return Rules([])
+        # Track which ruff rules we successfully matched
+        matched_ruff_rules = set()
+
+        # Update existing rules with ruff data, preserving original source
+        for rule in self.rules:
+            if rule.pylint_id in ruff_map:
+                ruff_rule = ruff_map[rule.pylint_id]
+                matched_ruff_rules.add(rule.pylint_id)
+
+                # Preserve the original source, only update ruff-specific fields
+                rule.is_in_ruff_issue = ruff_rule.is_in_ruff_issue
+                rule.is_implemented_in_ruff = ruff_rule.is_implemented_in_ruff
+                rule.ruff_rule = ruff_rule.ruff_rule
+                # Update name if we have it from ruff but not from pylint
+                if not rule.pylint_name and ruff_rule.pylint_name:
+                    rule.pylint_name = ruff_rule.pylint_name
+
+        # Log warnings for ruff rules that don't exist in current pylint
+        unmatched_ruff_rules = set(ruff_map.keys()) - matched_ruff_rules
+        if unmatched_ruff_rules:
+            logger.warning(
+                "Found %d rules in ruff issue that don't exist in current pylint",
+                len(unmatched_ruff_rules),
+            )
+            for rule_id in sorted(unmatched_ruff_rules):
+                ruff_rule = ruff_map[rule_id]
+                logger.debug(
+                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older",
+                    rule_id,
+                    ruff_rule.pylint_name,
+                )
+
+        logger.info(
+            "Updated %d pylint rules with ruff data, %d ruff rules had no pylint match",
+            len(matched_ruff_rules),
+            len(unmatched_ruff_rules),
+        )

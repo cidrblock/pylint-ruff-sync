@@ -18,7 +18,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class DataCollector:
-    """Manages data collection and cache loading for rules."""
+    """Manages data collection and cache loading for rules.
+
+    Attributes:
+        cache_path: Optional path to cache file for rules storage.
+
+    """
 
     cache_path: Path | None = None
 
@@ -41,7 +46,7 @@ class DataCollector:
             logger.debug("GitHub CLI not available or not authenticated")
             return False
         else:
-            return result.returncode == 0
+            return not result.returncode
 
     def _is_pylint_available(self) -> bool:
         """Check if pylint is available.
@@ -62,7 +67,7 @@ class DataCollector:
             logger.debug("Pylint not available")
             return False
         else:
-            return result.returncode == 0
+            return not result.returncode
 
     def _is_online_capable(self) -> bool:
         """Check if we have the capabilities to fetch fresh data online.
@@ -88,23 +93,26 @@ class DataCollector:
         """
         logger.info("Collecting fresh rules from extractors")
 
-        # Step 1: Extract all pylint rules
-        pylint_extractor = PylintExtractor()
-        all_rules = pylint_extractor.extract_all_rules()
-        logger.info("Found %d total pylint rules", len(all_rules))
+        # Step 1: Initialize empty Rules object
+        rules = Rules()
 
-        # Step 2: Update with ruff implementation data
-        ruff_extractor = RuffPylintExtractor()
-        all_rules = ruff_extractor.update_rules_with_ruff_data(all_rules)
+        # Step 2: Extract all pylint rules
+        pylint_extractor = PylintExtractor(rules)
+        pylint_extractor.extract()
+        logger.info("Found %d total pylint rules", len(rules))
 
-        ruff_implemented_count = len(all_rules.filter_implemented_in_ruff())
+        # Step 3: Update with ruff implementation data
+        ruff_extractor = RuffPylintExtractor(rules)
+        ruff_extractor.extract()
+
+        ruff_implemented_count = len(rules.filter_implemented_in_ruff())
         logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
 
-        # Step 3: Update mypy overlap status
+        # Step 4: Update mypy overlap status
         mypy_overlap_rules = get_mypy_overlap_rules()
-        all_rules.update_mypy_overlap_status(mypy_overlap_rules)
+        rules.update_mypy_overlap_status(mypy_overlap_rules)
 
-        return all_rules
+        return rules
 
     def _load_rules_from_cache(self) -> Rules:
         """Load rules from cache.
@@ -145,9 +153,6 @@ class DataCollector:
 
         Returns:
             Rules object containing all rule data.
-
-        Raises:
-            ValueError: If neither fresh extraction nor cache loading succeeds.
 
         """
         if self._is_online_capable():

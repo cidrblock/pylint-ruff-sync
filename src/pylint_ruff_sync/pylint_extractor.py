@@ -13,13 +13,24 @@ logger = logging.getLogger(__name__)
 
 
 class PylintExtractor:
-    """Extract pylint rules and information."""
+    """Extract pylint rules and information.
 
-    def extract_all_rules(self) -> Rules:
-        """Extract all available pylint rules from the configuration.
+    Attributes:
+        rules: Rules object to populate with pylint rule data.
 
-        Returns:
-            Rules object containing all available pylint rules.
+    """
+
+    def __init__(self, rules: Rules) -> None:
+        """Initialize the PylintExtractor with a Rules object.
+
+        Args:
+            rules: Rules object to populate with extracted data.
+
+        """
+        self.rules = rules
+
+    def extract(self) -> None:
+        """Extract all available pylint rules and populate the Rules object.
 
         Raises:
             subprocess.CalledProcessError: If pylint command fails.
@@ -37,7 +48,6 @@ class PylintExtractor:
             )
 
             output_text = result.stdout
-            rules = Rules()
 
             for line in output_text.split("\n"):
                 stripped_line = line.strip()
@@ -57,10 +67,10 @@ class PylintExtractor:
                         description=description,
                         source=RuleSource.PYLINT_LIST,
                     )
-                    rules.add_rule(rule)
+                    self.rules.add_rule(rule)
                     logger.debug("Found pylint rule: %s (%s)", code, name)
 
-            logger.info("Found %d total pylint rules", len(rules))
+            logger.info("Found %d total pylint rules", len(self.rules))
 
         except subprocess.CalledProcessError:
             logger.exception("Failed to run pylint --list-msgs")
@@ -69,8 +79,6 @@ class PylintExtractor:
         except Exception:
             logger.exception("Failed to parse pylint output")
             raise
-
-        return rules
 
     def resolve_rule_identifiers(
         self,

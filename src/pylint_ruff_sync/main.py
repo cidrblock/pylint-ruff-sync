@@ -110,6 +110,9 @@ def update_cache_from_github(cache_path: Path) -> None:
     Args:
         cache_path: Path to cache file.
 
+    Raises:
+        Exception: If cache update fails for any reason.
+
     """
     logger.info("Updating cache from GitHub...")
 
