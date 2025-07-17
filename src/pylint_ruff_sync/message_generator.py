@@ -18,8 +18,8 @@ class MessageGenerator:
         """Initialize the message generator.
 
         Args:
-            rules: Rules instance to use for message generation.
             data_dir: Directory containing template files. Defaults to package data dir.
+            rules: Rules instance to use for message generation.
 
         """
         self.rules = rules
@@ -38,8 +38,8 @@ class MessageGenerator:
 
         Args:
             rules_to_disable: Number of rules to disable.
-            unknown_disabled_rules: Number of unknown disabled rules preserved.
             rules_to_enable: Number of rules to enable.
+            unknown_disabled_rules: Number of unknown disabled rules preserved.
 
         Returns:
             Formatted dry-run message.

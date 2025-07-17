@@ -200,18 +200,18 @@ def test_resolve_rule_identifiers() -> None:
     rules = Rules()
     rules.add_rule(
         rule=Rule(
-            description="Unused import"
-        , pylint_id="F401", pylint_name="unused-import")
+            description="Unused import", pylint_id="F401", pylint_name="unused-import"
+        )
     )
     rules.add_rule(
         rule=Rule(
-            description="Line too long"
-        , pylint_id="E501", pylint_name="line-too-long")
+            description="Line too long", pylint_id="E501", pylint_name="line-too-long"
+        )
     )
     rules.add_rule(
         rule=Rule(
-            description="Invalid name"
-        , pylint_id="C0103", pylint_name="invalid-name")
+            description="Invalid name", pylint_id="C0103", pylint_name="invalid-name"
+        )
     )
 
     extractor = PylintExtractor(rules=rules)

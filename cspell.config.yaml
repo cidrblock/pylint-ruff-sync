@@ -28,8 +28,10 @@ words:
   - pytest
   - cidrblock
   - antonagestam
+  - asyncfunctiondef
   - setuptools
   - charliermarsh
+  - functiondef
   - testpaths
   - tomlsort
   - Mypy
