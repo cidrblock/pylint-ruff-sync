@@ -1,55 +1,43 @@
-"""PylintExtractor class definition."""
+"""Extract pylint rules from pylint configuration."""
 
 from __future__ import annotations
 
 import logging
 import re
-import shutil
 import subprocess
 
-from .pylint_rule import PylintRule
+from pylint_ruff_sync.rule import Rule, Rules, RuleSource
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 
 class PylintExtractor:
-    """Extracts pylint rules from pylint --list-msgs command."""
+    """Extract pylint rules and information."""
 
-    def extract_all_rules(self) -> list[PylintRule]:
-        """Extract all pylint rules from pylint --list-msgs.
+    def extract_all_rules(self) -> Rules:
+        """Extract all available pylint rules from the configuration.
 
         Returns:
-            List of PylintRule objects.
+            Rules object containing all available pylint rules.
 
         Raises:
             subprocess.CalledProcessError: If pylint command fails.
             Exception: If parsing fails.
 
         """
-        try:
-            logger.info("Extracting pylint rules from 'pylint --list-msgs'")
-            # Try to use pylint directly first, then fall back to python -m pylint
-            pylint_path = shutil.which("pylint")
-            if pylint_path:
-                cmd = [pylint_path, "--list-msgs"]
-            else:
-                # Fall back to python -m pylint (use 'python' instead of sys.executable)
-                cmd = ["python", "-m", "pylint", "--list-msgs"]
+        logger.info("Extracting pylint rules from 'pylint --list-msgs'")
 
-            result = subprocess.run(  # noqa: S603
-                cmd,
+        try:
+            result = subprocess.run(
+                ["pylint", "--list-msgs"],  # noqa: S607
                 capture_output=True,
-                text=True,
                 check=True,
+                text=True,
             )
 
-            rules = []
-
-            # Pylint output might be in stdout or stderr, so check both
             output_text = result.stdout
-            if not output_text.strip():
-                output_text = result.stderr
+            rules = Rules()
 
             for line in output_text.split("\n"):
                 stripped_line = line.strip()
@@ -63,8 +51,13 @@ class PylintExtractor:
                 )
                 if rule_match:
                     name, code, description = rule_match.groups()
-                    rule = PylintRule(rule_id=code, name=name, description=description)
-                    rules.append(rule)
+                    rule = Rule(
+                        pylint_id=code,
+                        pylint_name=name,
+                        description=description,
+                        source=RuleSource.PYLINT_LIST,
+                    )
+                    rules.add_rule(rule)
                     logger.debug("Found pylint rule: %s (%s)", code, name)
 
             logger.info("Found %d total pylint rules", len(rules))
@@ -77,36 +70,29 @@ class PylintExtractor:
             logger.exception("Failed to parse pylint output")
             raise
 
-        # Sort rules by code for consistent ordering
-        rules.sort(key=lambda rule: rule.rule_id)
         return rules
 
     def resolve_rule_identifiers(
         self,
         rule_identifiers: list[str],
-        all_rules: list[PylintRule],
+        all_rules: Rules,
     ) -> set[str]:
         """Resolve rule identifiers to rule codes.
 
         Args:
             rule_identifiers: List of rule codes or names to resolve.
-            all_rules: List of all available pylint rules.
+            all_rules: Rules object containing all available pylint rules.
 
         Returns:
             Set of resolved rule codes.
 
         """
         resolved_codes = set()
-        name_to_code = {rule.name: rule.code for rule in all_rules}
-        valid_codes = {rule.code for rule in all_rules}
 
         for identifier in rule_identifiers:
-            if identifier in valid_codes:
-                # Direct code match
-                resolved_codes.add(identifier)
-            elif identifier in name_to_code:
-                # Name match - resolve to code
-                resolved_codes.add(name_to_code[identifier])
+            rule = all_rules.get_by_identifier(identifier)
+            if rule:
+                resolved_codes.add(rule.pylint_id)
             else:
                 logger.warning("Unknown rule identifier: %s", identifier)
 

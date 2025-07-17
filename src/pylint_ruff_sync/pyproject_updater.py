@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from .toml_file import SimpleArrayWithComments, TomlFile
 
 if TYPE_CHECKING:
-    from .pylint_rule import PylintRule
+    from .rule import Rule
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -47,9 +47,9 @@ class PyprojectUpdater:
 
     def update_pylint_config(
         self,
-        disable_rules: list[PylintRule],
+        disable_rules: list[Rule],
         unknown_disabled_rules: list[str],
-        enable_rules: list[PylintRule],
+        enable_rules: list[Rule],
     ) -> None:
         """Update the pylint configuration with disable and enable rules.
 
@@ -69,7 +69,7 @@ class PyprojectUpdater:
         self._update_enable_array(enable_rules)
 
     def _update_disable_array(
-        self, disable_rules: list[PylintRule], unknown_disabled_rules: list[str]
+        self, disable_rules: list[Rule], unknown_disabled_rules: list[str]
     ) -> None:
         """Update the disable array with "all", disable rules, and unknown rules.
 
@@ -80,7 +80,7 @@ class PyprojectUpdater:
         """
         # Create set to avoid duplicates and ensure "all" is included
         disable_set = {"all"}
-        disable_set.update(rule.rule_id for rule in disable_rules)
+        disable_set.update(rule.pylint_id for rule in disable_rules)
         disable_set.update(unknown_disabled_rules)
 
         # Update the disable array with sorted list
@@ -91,7 +91,7 @@ class PyprojectUpdater:
             array_data=disable_list,
         )
 
-    def _update_enable_array(self, enable_rules: list[PylintRule]) -> None:
+    def _update_enable_array(self, enable_rules: list[Rule]) -> None:
         """Update the enable array with URL comments.
 
         Args:
@@ -108,9 +108,9 @@ class PyprojectUpdater:
             return
 
         # Create SimpleArrayWithComments with URL comments
-        enable_items = [rule.rule_id for rule in enable_rules]
+        enable_items = [rule.pylint_id for rule in enable_rules]
         enable_comments = {
-            rule.rule_id: self._generate_url_comment(rule) for rule in enable_rules
+            rule.pylint_id: self._generate_url_comment(rule) for rule in enable_rules
         }
 
         enable_array = SimpleArrayWithComments(
@@ -148,18 +148,31 @@ class PyprojectUpdater:
         except (KeyError, TypeError):
             return []
 
-    def _generate_url_comment(self, rule: PylintRule) -> str:
+    def _generate_url_comment(self, rule: Rule) -> str:
         """Generate a URL comment for a pylint rule.
 
         Args:
-            rule: The pylint rule to generate a comment for.
+            rule: Rule object containing rule information.
 
         Returns:
-            URL comment string.
+            URL comment string for the rule.
 
         """
-        category = self.CATEGORY_MAP.get(rule.rule_id[0], "unknown")
-        return f"https://pylint.readthedocs.io/en/stable/user_guide/messages/{category}/{rule.name}.html"
+        # Use the pylint_docs_url if available, otherwise generate one
+        if rule.pylint_docs_url:
+            return rule.pylint_docs_url
+
+        # Fallback: generate URL from rule category and name
+        if rule.pylint_category and rule.pylint_name:
+            category_name = self.CATEGORY_MAP.get(rule.pylint_category, "")
+            if category_name:
+                return (
+                    f"https://pylint.readthedocs.io/en/stable/user_guide/messages/"
+                    f"{category_name}/{rule.pylint_name}.html"
+                )
+
+        # Final fallback: generic pylint docs
+        return "https://pylint.readthedocs.io/en/stable/user_guide/messages/"
 
     def write_config(self) -> None:
         """Write the updated configuration to the file."""

@@ -1,4 +1,4 @@
-"""RuffPylintExtractor class definition."""
+"""Extract ruff-implemented pylint rules from GitHub issue tracking."""
 
 from __future__ import annotations
 
@@ -8,38 +8,33 @@ import re
 import subprocess
 from pathlib import Path
 
+from pylint_ruff_sync.rule import Rule, Rules, RuleSource
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# GitHub issue URL for ruff pylint implementation tracking
-RUFF_PYLINT_ISSUE_URL = "https://github.com/astral-sh/ruff/issues/970"
-# GitHub issue number for ruff pylint implementation tracking
-RUFF_PYLINT_ISSUE_NUMBER = "970"
-# GitHub repository for ruff
+# GitHub repo and issue details for ruff pylint implementation tracking
 RUFF_REPO = "astral-sh/ruff"
+RUFF_PYLINT_ISSUE_NUMBER = "970"
+RUFF_PYLINT_ISSUE_URL = (
+    f"https://github.com/{RUFF_REPO}/issues/{RUFF_PYLINT_ISSUE_NUMBER}"
+)
 
 
 class RuffPylintExtractor:
-    """Extracts pylint rules implemented in ruff from GitHub issue."""
+    """Extract pylint rules implementation status from ruff."""
 
-    def __init__(self, issue_url: str = RUFF_PYLINT_ISSUE_URL) -> None:
-        """Initialize a RuffPylintExtractor instance.
+    def __init__(self) -> None:
+        """Initialize the RuffPylintExtractor."""
+        self.issue_url = RUFF_PYLINT_ISSUE_URL
 
-        Args:
-            issue_url: The GitHub issue URL to fetch from
-
-        """
-        self.issue_url = issue_url
-
-    def _load_cache(self) -> list[str] | None:
+    def _load_cache(self) -> Rules | None:
         """Load implemented rules from package data as fallback.
 
         Returns:
-            List of implemented rule codes or None if package data doesn't exist or is
-            invalid.
+            Rules object or None if package data doesn't exist or is invalid.
 
         """
-        # Load from package data using __file__ approach
         try:
             package_data_path = (
                 Path(__file__).parent / "data" / "ruff_implemented_rules.json"
@@ -47,15 +42,38 @@ class RuffPylintExtractor:
             if package_data_path.exists():
                 with package_data_path.open("r", encoding="utf-8") as f:
                     data = json.load(f)
-                    if isinstance(data, dict) and "implemented_rules" in data:
-                        rules = data["implemented_rules"]
-                        if isinstance(rules, list):
-                            logger.debug(
-                                "Loaded %d rules from package data: %s",
-                                len(rules),
-                                package_data_path,
+
+                # Handle legacy format (just list of rule codes)
+                if isinstance(data, dict) and "implemented_rules" in data:
+                    legacy_rules = data["implemented_rules"]
+                    if isinstance(legacy_rules, list):
+                        # Convert legacy format to new format
+                        rules = Rules()
+                        for rule_id in legacy_rules:
+                            rule = Rule(
+                                pylint_id=rule_id,
+                                is_implemented_in_ruff=True,
+                                is_in_ruff_issue=True,
+                                source=RuleSource.RUFF_ISSUE,
                             )
-                            return rules
+                            rules.add_rule(rule)
+                        logger.debug(
+                            "Loaded %d rules from legacy package data: %s",
+                            len(rules),
+                            package_data_path,
+                        )
+                        return rules
+
+                # Handle new format (Rules dataclass serialized)
+                elif isinstance(data, dict) and "rules" in data:
+                    rules = Rules.from_dict(data)
+                    logger.debug(
+                        "Loaded %d rules from package data: %s",
+                        len(rules),
+                        package_data_path,
+                    )
+                    return rules
+
             logger.warning("Invalid package data format in %s", package_data_path)
         except (json.JSONDecodeError, OSError) as e:
             logger.warning(
@@ -64,12 +82,11 @@ class RuffPylintExtractor:
 
         return None
 
-    def _save_cache(self, rules: list[str]) -> None:
+    def _save_cache(self, rules: Rules) -> None:
         """Save implemented rules to cache file.
 
         Args:
-            rules: List of implemented rule codes to cache (unused in simplified
-                version).
+            rules: Rules object to cache.
 
         Note:
             This method is kept for compatibility but does nothing in the simplified
@@ -79,11 +96,30 @@ class RuffPylintExtractor:
         # This method is now handled by CacheManager
         # Kept for compatibility with get_implemented_rules method
 
-    def _fetch_from_github(self) -> list[str]:
+    def _test_github_access(self) -> bool:
+        """Test if GitHub CLI is available and authenticated.
+
+        Returns:
+            True if GitHub access is available, False otherwise.
+
+        """
+        try:
+            subprocess.run(
+                ["gh", "auth", "status"],  # noqa: S607
+                capture_output=True,
+                check=True,
+                text=True,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+        else:
+            return True
+
+    def _fetch_from_github(self) -> Rules:
         """Fetch the ruff pylint implementation status from GitHub issue.
 
         Returns:
-            List of implemented pylint rule codes.
+            Rules object with ruff implementation information.
 
         Raises:
             subprocess.CalledProcessError: If the gh command fails.
@@ -118,31 +154,48 @@ class RuffPylintExtractor:
 
             if not issue_body:
                 logger.warning("Empty issue body received from GitHub")
-                return []
+                return Rules()
 
-            # Extract implemented rules using regex
-            implemented_rules = set()
+            # Extract rules information using regex
+            rules = Rules()
 
-            # Pattern to match checked task list items with pylint codes
-            # Looks for: - [x] `rule-name` / `E0237` (`PLE0237`)
-            # Also handles: - [x] `rule-name` /  `R0917` (`PLR0917`) (note: extra space)
-            # We want to extract the pylint code (e.g., E0237, R0917)
-            pattern = r"- \[x\] `[^`]*` /\s+`([A-Z]\d+)`"
+            # Pattern to match task list items with pylint codes
+            # Looks for: - [x] `rule-name` / `E0237` (`PLE0237`) or - [ ] ...
+            pattern = r"- \[([x ])\] `([^`]*)`\s*/\s*`([A-Z]\d+)`"
 
             for match in re.finditer(pattern, issue_body):
-                pylint_code = match.group(1)
+                is_implemented = match.group(1) == "x"
+                rule_name = match.group(2)
+                pylint_code = match.group(3)
+
                 # Validate that it looks like a pylint code (letter followed by digits)
                 if re.match(r"^[A-Z]\d+$", pylint_code):
-                    implemented_rules.add(pylint_code)
-                    logger.debug("Found implemented rule: %s", pylint_code)
-
-            rules = sorted(implemented_rules)
+                    rule = Rule(
+                        pylint_id=pylint_code,
+                        pylint_name=rule_name,
+                        is_in_ruff_issue=True,
+                        is_implemented_in_ruff=is_implemented,
+                        source=RuleSource.RUFF_ISSUE,
+                    )
+                    rules.add_rule(rule)
+                    logger.debug(
+                        "Found rule in issue: %s (%s) - implemented: %s",
+                        pylint_code,
+                        rule_name,
+                        is_implemented,
+                    )
 
             if not rules:
-                msg = "No implemented rules found in issue body"
+                msg = "No rules found in issue body"
                 raise KeyError(msg)  # noqa: TRY301
 
-            logger.info("Found %d implemented pylint rules in ruff", len(rules))
+            implemented_count = len(rules.filter_implemented_in_ruff())
+            logger.info(
+                "Found %d rules in ruff issue (%d implemented)",
+                len(rules),
+                implemented_count,
+            )
+
         except subprocess.CalledProcessError as e:
             logger.exception("GitHub CLI command failed: %s", e.stderr)
             raise
@@ -156,34 +209,108 @@ class RuffPylintExtractor:
     def get_implemented_rules(self) -> list[str]:
         """Extract pylint rule codes that have been implemented in ruff.
 
-        First tries to fetch from GitHub. If that fails (e.g., no internet access),
-        falls back to package data.
-
         Returns:
             List of pylint rule codes that are implemented in ruff.
 
-        Raises:
-            subprocess.CalledProcessError: If unable to fetch from GitHub and no package
-                data available.
-            Exception: If both GitHub fetch and package data loading fail.
+        """
+        rules = self.get_all_ruff_rules()
+        return rules.get_implemented_rule_codes()
+
+    def get_all_ruff_rules(self) -> Rules:
+        """Get all rules from ruff issue (both implemented and not implemented).
+
+        First tries to fetch from GitHub. If that fails, falls back to cache.
+
+        Returns:
+            Rules object containing all ruff-tracked rules.
 
         """
+        # Test GitHub access first
+        if not self._test_github_access():
+            logger.info("GitHub CLI not available, using cache only")
+            cached_rules = self._load_cache()
+            if cached_rules is not None:
+                logger.info("Using cached data with %d rules", len(cached_rules))
+                return cached_rules
+            logger.warning("No cache available and GitHub access failed")
+            return Rules()
+
         try:
             # Try to fetch from GitHub first
             rules = self._fetch_from_github()
-            logger.info("Found %d implemented pylint rules in ruff", len(rules))
-        except (subprocess.CalledProcessError, Exception) as e:
+            logger.info("Successfully fetched %d rules from GitHub", len(rules))
+        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
             logger.warning("Failed to fetch from GitHub: %s", e)
-            logger.info("Attempting to use package data fallback...")
+            logger.info("Attempting to use cache fallback...")
 
-            # Fall back to package data
+            # Fall back to cache
             cached_rules = self._load_cache()
             if cached_rules is not None:
-                logger.info("Using package data with %d rules", len(cached_rules))
+                logger.info("Using cached data with %d rules", len(cached_rules))
                 return cached_rules
 
-            # If both fail, re-raise the original exception
-            logger.exception("No package data available and GitHub fetch failed")
-            raise
+            # If both fail, return empty Rules object
+            logger.warning("No cache available and GitHub fetch failed")
+            return Rules()
         else:
             return rules
+
+    def update_rules_with_ruff_data(self, all_rules: Rules) -> Rules:
+        """Update existing rules with ruff implementation data.
+
+        Args:
+            all_rules: Rules object to update with ruff data.
+
+        Returns:
+            Updated Rules object.
+
+        """
+        ruff_rules = self.get_all_ruff_rules()
+
+        # Create a mapping of ruff rules by pylint_id
+        ruff_map = {rule.pylint_id: rule for rule in ruff_rules}
+
+        # Update existing rules with ruff data
+        for rule in all_rules:
+            if rule.pylint_id in ruff_map:
+                ruff_rule = ruff_map[rule.pylint_id]
+                rule.is_in_ruff_issue = ruff_rule.is_in_ruff_issue
+                rule.is_implemented_in_ruff = ruff_rule.is_implemented_in_ruff
+                # Update name if we have it from ruff but not from pylint
+                if not rule.pylint_name and ruff_rule.pylint_name:
+                    rule.pylint_name = ruff_rule.pylint_name
+
+        # Add any rules that are in ruff but not in pylint list
+        for ruff_rule in ruff_rules:
+            if not all_rules.get_by_id(ruff_rule.pylint_id):
+                all_rules.add_rule(ruff_rule)
+
+        return all_rules
+
+    def extract_rules(self) -> Rules:
+        """Extract rules from ruff issue or cache.
+
+        Returns:
+            Rules object containing ruff implementation data.
+
+        """
+        # Try GitHub first if available
+        if self._test_github_access():
+            try:
+                rules = self._fetch_from_github()
+                logger.info("Successfully fetched %d rules from GitHub", len(rules))
+            except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
+                logger.warning("Failed to fetch from GitHub: %s", e)
+                logger.info("Attempting to use cache fallback...")
+            else:
+                return rules
+
+        # Fall back to cache
+        logger.info("Using cache fallback for ruff rule data")
+        cached_rules = self._load_cache()
+        if cached_rules is not None:
+            return cached_rules
+
+        # If cache is also unavailable, return empty Rules object
+        logger.warning("Cache is not available, returning empty Rules object")
+        return Rules([])
