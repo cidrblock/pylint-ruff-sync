@@ -68,7 +68,6 @@ repos:
     rev: v1.16.1
     hooks:
       - id: mypy
-        exclude: ^scripts/
         additional_dependencies:
           - beautifulsoup4
           - pytest

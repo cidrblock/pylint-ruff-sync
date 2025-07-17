@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add scripts directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
-from src.pylint_ruff_sync.argument_checker import ArgumentOrderChecker
+from argument_checker import ArgumentOrderChecker
 
 
 def test_function_arguments_alphabetical_order() -> None:
