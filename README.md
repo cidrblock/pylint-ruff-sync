@@ -507,6 +507,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -514,6 +515,7 @@ This project was developed through an innovative collaborative process between [
    - **GitHub CLI Integration**: Replaced HTTP requests with direct GitHub CLI calls for better reliability
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback
@@ -526,6 +528,39 @@ This project was developed through an innovative collaborative process between [
    - 66 test cases covering edge cases and integration scenarios
    - Adherence to coding standards (ruff, mypy, pylint)
    - Pre-commit hooks ensuring code quality
+
+## Troubleshooting
+
+### Cache File
+
+The tool maintains a cache of ruff implementation status to ensure it works correctly in offline environments like precommit.ci. The cache file is located at:
+
+```
+src/pylint_ruff_sync/data/ruff_implemented_rules.json
+```
+
+**Cache Behavior:**
+
+- **Online**: When GitHub CLI is available, fetches the latest data from the [ruff tracking issue](https://github.com/astral-sh/ruff/issues/970)
+- **Offline**: Falls back to the cached data automatically
+- **Format**: JSON file containing detailed rule metadata including implementation status, mypy overlap, and documentation URLs
+- **Updates**: Cache is updated when using `--update-cache` flag or when GitHub data is successfully fetched
+
+**Cache Contents:**
+The cache contains comprehensive information about each pylint rule:
+
+- Rule ID and name (e.g., `C0103`, `invalid-name`)
+- Implementation status in ruff
+- Whether the rule overlaps with mypy functionality
+- Documentation URLs for each rule
+- Rule source (pylint list, ruff issue tracking)
+
+**Troubleshooting Cache Issues:**
+
+- If you encounter unexpected rule behavior, check the cache file contents
+- Use `--update-cache` to refresh with latest GitHub data
+- The cache only includes rules from official pylint and ruff sources, not user-specific disabled rules
+- Cache entries are automatically ordered by pylint rule ID for consistency
 
 ### Technical Highlights
 
