@@ -104,13 +104,13 @@ class PylintCleaner:
             else:
                 logger.info("PylintCleaner found no unnecessary disable comments")
 
-            return modifications
-
         except (subprocess.CalledProcessError, OSError, ValueError) as e:
             logger.warning("PylintCleaner failed: %s", e)
             if not self.dry_run:
                 logger.info("Operation completed despite cleaner failure")
             return {}
+        else:
+            return modifications
 
     def _compile_disable_patterns(self) -> list[re.Pattern[str]]:
         """Compile regex patterns for detecting pylint disable comments.
@@ -155,7 +155,7 @@ class PylintCleaner:
         try:
             # Get Python files tracked by git
             git_result = subprocess.run(
-                ["git", "ls-files", "*.py"],
+                ["/usr/bin/git", "ls-files", "*.py"],
                 capture_output=True,
                 check=True,
                 cwd=self.project_root,
@@ -176,7 +176,8 @@ class PylintCleaner:
                 "--output-format=parseable",
                 "--disable=all",
                 "--enable=useless-suppression",
-            ] + python_files
+                *python_files,
+            ]
 
             # Run pylint with the user's configuration
             # Note: Using trusted pylint command from user's environment

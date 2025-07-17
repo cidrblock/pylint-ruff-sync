@@ -381,12 +381,12 @@ def test_clean_files_dry_run(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Test clean_files in dry-run mode.
+    """Test clean_files method in dry run mode.
 
     Args:
-        pylint_cleaner: PylintCleaner instance.
-        tmp_path: Temporary project directory.
-        monkeypatch: Pytest monkeypatch fixture.
+        pylint_cleaner_dry_run: PylintCleaner instance in dry run mode.
+        tmp_path: Temporary directory fixture from pytest.
+        monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
     # Create a test file
