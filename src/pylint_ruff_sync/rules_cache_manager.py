@@ -28,10 +28,13 @@ class RulesCacheManager:
         self.cache_path = cache_path
 
     def save_rules(self, rules: Rules) -> None:
-        """Save Rules object to cache file.
+        """Save rules to cache file.
 
         Args:
             rules: Rules object to save.
+
+        Raises:
+            OSError: If there's an error creating directories or writing the file.
 
         """
         logger.debug("Saving rules to cache: %s", self.cache_path)

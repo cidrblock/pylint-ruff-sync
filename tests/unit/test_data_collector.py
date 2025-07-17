@@ -79,7 +79,12 @@ def create_mock_rules() -> Rules:
 
 
 def test_data_collector_init(tmp_path: Path) -> None:
-    """Test DataCollector initialization."""
+    """Test DataCollector initialization.
+
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+
+    """
     cache_path = tmp_path / "test_cache.json"
     cache_manager = RulesCacheManager(cache_path)
     collector = DataCollector(cache_manager=cache_manager)
@@ -299,7 +304,12 @@ def _mock_pylint_extract(mock_rules: Rules) -> Callable[[PylintExtractor], None]
     """
 
     def mock_pylint_extract(self: PylintExtractor) -> None:
-        """Mock pylint extractor."""
+        """Mock pylint extractor.
+
+        Args:
+            self: PylintExtractor instance.
+
+        """
         for rule in mock_rules.rules:
             if rule.source == RuleSource.PYLINT_LIST:
                 self.rules.add_rule(rule)
@@ -319,7 +329,12 @@ def _mock_ruff_extract(mock_rules: Rules) -> Callable[[RuffPylintExtractor], Non
     """
 
     def mock_ruff_extract(self: RuffPylintExtractor) -> None:
-        """Mock ruff extractor."""
+        """Mock ruff extractor.
+
+        Args:
+            self: RuffPylintExtractor instance.
+
+        """
         for rule in mock_rules.rules:
             if rule.source == RuleSource.RUFF_ISSUE:
                 # Find existing rule and update it, or add if new
@@ -341,7 +356,12 @@ def _mock_mypy_extract() -> Callable[[MypyOverlapExtractor], None]:
     """
 
     def mock_mypy_extract(self: MypyOverlapExtractor) -> None:
-        """Mock mypy extractor."""
+        """Mock mypy extractor.
+
+        Args:
+            self: MypyOverlapExtractor instance.
+
+        """
         for rule in self.rules.rules:
             if rule.pylint_id in {"E1101"}:  # Example overlap rule
                 rule.is_mypy_overlap = True
