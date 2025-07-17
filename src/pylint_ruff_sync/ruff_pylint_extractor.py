@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class RuffPylintExtractor:
     """Extract pylint rules implementation status from ruff."""
 
-    def __init__(self, rules: Rules) -> None:
+    def __init__(self, *, rules: Rules) -> None:
         """Initialize the RuffPylintExtractor with a Rules object.
 
         Args:
@@ -60,7 +60,7 @@ class RuffPylintExtractor:
                                 is_in_ruff_issue=True,
                                 source=RuleSource.RUFF_ISSUE,
                             )
-                            rules.add_rule(rule)
+                            rules.add_rule(rule=rule)
                         logger.debug(
                             "Loaded %d rules from legacy package data: %s",
                             len(rules),
@@ -70,7 +70,7 @@ class RuffPylintExtractor:
 
                 # Handle new format (Rules dataclass serialized)
                 elif isinstance(data, dict) and "rules" in data:
-                    rules = Rules.from_dict(data)
+                    rules = Rules.from_dict(data=data)
                     logger.debug(
                         "Loaded %d rules from package data: %s",
                         len(rules),
@@ -86,7 +86,7 @@ class RuffPylintExtractor:
 
         return None
 
-    def _save_cache(self, rules: Rules) -> None:
+    def _save_cache(self, *, rules: Rules) -> None:
         """Save implemented rules to cache file.
 
         Args:
@@ -184,7 +184,7 @@ class RuffPylintExtractor:
                         ruff_rule=ruff_code,
                         source=RuleSource.RUFF_ISSUE,  # From ruff GitHub issue
                     )
-                    rules.add_rule(rule)
+                    rules.add_rule(rule=rule)
                     logger.debug(
                         "Found rule in issue: %s (%s) - implemented: %s, ruff_rule: %s",
                         pylint_code,

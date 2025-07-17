@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class RulesCacheManager:
     """Manages Rules object serialization and deserialization to/from cache files."""
 
-    def __init__(self, cache_path: Path) -> None:
+    def __init__(self, *, cache_path: Path) -> None:
         """Initialize the cache manager.
 
         Args:
@@ -27,7 +27,7 @@ class RulesCacheManager:
         """
         self.cache_path = cache_path
 
-    def save_rules(self, rules: Rules) -> None:
+    def save_rules(self, *, rules: Rules) -> None:
         """Save rules to cache file.
 
         Args:
@@ -83,7 +83,7 @@ class RulesCacheManager:
             with self.cache_path.open("r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            rules = Rules.from_dict(data)
+            rules = Rules.from_dict(data=data)
             logger.info("Loaded %d rules from cache: %s", len(rules), self.cache_path)
         except (json.JSONDecodeError, OSError, KeyError) as e:
             logger.warning("Failed to load cache from %s: %s", self.cache_path, e)

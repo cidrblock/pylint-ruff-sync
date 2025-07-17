@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class MypyOverlapExtractor:
     """Extractor for marking rules that overlap with mypy functionality."""
 
-    def __init__(self, rules: "Rules") -> None:
+    def __init__(self, *, rules: "Rules") -> None:
         """Initialize the MypyOverlapExtractor.
 
         Args:

@@ -20,6 +20,9 @@ alwaysApply: true
 - Always "git add --all" and "git commit" with a message before running pre-commit
 - Always run "pre-commit run --all-files after making any changes, fix errors reported"
 - When calling a python function, use named arguments (kwargs) when ever possible
+- When calling a python function ensure the kwargs are provided in alphabetical order
+- When writing a python function use the pattern "def foo (\*, this, that) to ensure it is always called with kwargs
+- When writing a python fucntion ensure all arguments are in alphabetical order
 - Always use a src layout for new projects https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
 - Never use relative imports
 - Always use uv instead of pip

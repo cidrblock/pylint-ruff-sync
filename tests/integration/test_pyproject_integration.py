@@ -11,7 +11,7 @@ from pylint_ruff_sync.main import main
 from tests.constants import setup_mocks
 
 
-def copy_fixture_to_temp(fixture_name: str, temp_dir: Path) -> Path:
+def copy_fixture_to_temp(*, fixture_name: str, temp_dir: Path) -> Path:
     """Copy a fixture file to temporary directory.
 
     Args:
@@ -28,7 +28,7 @@ def copy_fixture_to_temp(fixture_name: str, temp_dir: Path) -> Path:
     return temp_file
 
 
-def read_expected_result(fixture_name: str) -> str:
+def read_expected_result(*, fixture_name: str) -> str:
     """Read the expected result from an 'after' fixture.
 
     Args:
@@ -42,7 +42,7 @@ def read_expected_result(fixture_name: str) -> str:
     return fixture_path.read_text()
 
 
-def normalize_content(content: str) -> str:
+def normalize_content(*, content: str) -> str:
     """Normalize content for comparison by removing extra whitespace.
 
     Args:
@@ -82,13 +82,13 @@ def test_pyproject_integration(
         monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Copy before fixture to temp directory
     before_fixture = f"{test_case}_before.toml"
     after_fixture = f"{test_case}_after.toml"
 
-    config_file = copy_fixture_to_temp(before_fixture, tmp_path)
+    config_file = copy_fixture_to_temp(fixture_name=before_fixture, temp_dir=tmp_path)
 
     # Mock sys.argv for main function
     monkeypatch.setattr("sys.argv", ["pylint-ruff-sync", "--config", str(config_file)])
@@ -107,11 +107,11 @@ def test_pyproject_integration(
     actual_content = config_file.read_text()
 
     # Read the expected result
-    expected_content = read_expected_result(after_fixture)
+    expected_content = read_expected_result(fixture_name=after_fixture)
 
     # Normalize both contents for comparison
-    actual_normalized = normalize_content(actual_content)
-    expected_normalized = normalize_content(expected_content)
+    actual_normalized = normalize_content(content=actual_content)
+    expected_normalized = normalize_content(content=expected_content)
 
     # Compare the results
     assert actual_normalized == expected_normalized, (
@@ -132,10 +132,12 @@ def test_dry_run_integration(
         monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Copy a before fixture to temp directory
-    config_file = copy_fixture_to_temp("empty_pyproject_before.toml", tmp_path)
+    config_file = copy_fixture_to_temp(
+        fixture_name="empty_pyproject_before.toml", temp_dir=tmp_path
+    )
 
     # Read original content
     original_content = config_file.read_text()
@@ -171,7 +173,7 @@ def test_file_not_found_error(
         monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Use a non-existent file path
     nonexistent_file = tmp_path / "nonexistent.toml"
@@ -199,7 +201,7 @@ def test_invalid_config_file(
         monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Create an invalid TOML file
     invalid_file = tmp_path / "invalid.toml"

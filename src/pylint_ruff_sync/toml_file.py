@@ -16,7 +16,7 @@ from .toml_regex import TOML_REGEX
 logger = logging.getLogger(__name__)
 
 
-def apply_toml_sort_subprocess(content: str, working_directory: Path) -> str:
+def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
     """Apply toml-sort formatting to content using subprocess.
 
     This function uses the toml-sort CLI tool via subprocess, which respects
@@ -129,7 +129,7 @@ class TomlFile:
 
     """
 
-    def __init__(self, file_path: Path) -> None:
+    def __init__(self, *, file_path: Path) -> None:
         """Initialize the TomlFile with content loaded from disk.
 
         Args:
@@ -138,7 +138,7 @@ class TomlFile:
         """
         self.file_path = file_path
         self._raw_content = ""
-        self._content = self._load_file()
+        self._raw_content = self._load_file()
 
     @property
     def _content(self) -> str:
@@ -159,7 +159,7 @@ class TomlFile:
 
         """
         # Apply toml-sort automatically whenever content changes
-        self._raw_content = self._apply_toml_sort(value)
+        self._raw_content = self._apply_toml_sort(content=value)
 
     def _load_file(self) -> str:
         """Load the TOML file content from disk.
@@ -172,7 +172,7 @@ class TomlFile:
             return ""
         return self.file_path.read_text(encoding="utf-8")
 
-    def _apply_toml_sort(self, content: str) -> str:
+    def _apply_toml_sort(self, *, content: str) -> str:
         """Apply toml-sort formatting to the content using subprocess.
 
         This method uses the toml-sort CLI tool via subprocess, which respects
@@ -185,7 +185,9 @@ class TomlFile:
             Sorted TOML content.
 
         """
-        return apply_toml_sort_subprocess(content, self.file_path.parent)
+        return apply_toml_sort_subprocess(
+            content=content, working_directory=self.file_path.parent
+        )
 
     def as_dict(self) -> dict[str, Any]:
         """Return the current file content as a dictionary.
@@ -275,7 +277,9 @@ class TomlFile:
         # Add item if not present
         if item not in current_array:
             current_array.append(item)
-            self.update_section_array(section_path, key, current_array)
+            self.update_section_array(
+                section_path=section_path, key=key, array_data=current_array
+            )
 
     def _update_section_key_with_regex(
         self,
@@ -313,5 +317,5 @@ class TomlFile:
     def write(self) -> None:
         """Write the current in-memory content to the file with toml-sort formatting."""
         # Apply toml-sort before writing
-        formatted_content = self._apply_toml_sort(self._content)
+        formatted_content = self._apply_toml_sort(content=self._content)
         self.file_path.write_text(formatted_content, encoding="utf-8")

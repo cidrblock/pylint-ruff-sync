@@ -60,8 +60,8 @@ def test_mypy_overlap_extractor_extract() -> None:
         source=RuleSource.PYLINT_LIST,
     )
 
-    rules.add_rule(overlap_rule)
-    rules.add_rule(non_overlap_rule)
+    rules.add_rule(rule=overlap_rule)
+    rules.add_rule(rule=non_overlap_rule)
 
     # Extract mypy overlap information
     extractor = MypyOverlapExtractor(rules=rules)

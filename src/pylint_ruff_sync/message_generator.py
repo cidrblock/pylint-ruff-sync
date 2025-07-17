@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class MessageGenerator:
     """Generates commit messages and release notes using templates."""
 
-    def __init__(self, rules: Rules, data_dir: Path | None = None) -> None:
+    def __init__(self, *, rules: Rules, data_dir: Path | None = None) -> None:
         """Initialize the message generator.
 
         Args:
@@ -29,6 +29,7 @@ class MessageGenerator:
 
     def generate(
         self,
+        *,
         rules_to_disable: int,
         unknown_disabled_rules: int,
         rules_to_enable: int,
@@ -182,7 +183,7 @@ class MessageGenerator:
         if changes["added"]:
             sections.append(f"**Newly Implemented ({len(changes['added'])}):**")
             for rule_id in sorted(changes["added"]):
-                rule = self.rules.get_by_id(rule_id)
+                rule = self.rules.get_by_id(pylint_id=rule_id)
                 if rule:
                     sections.append(f"- `{rule_id}` - {rule.pylint_name}")
                 else:

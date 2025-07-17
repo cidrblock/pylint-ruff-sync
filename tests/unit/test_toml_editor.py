@@ -20,7 +20,7 @@ def test_init_existing_file() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         assert toml_file.file_path == temp_path
         assert "tool.test" in toml_file.as_str()
     finally:
@@ -29,7 +29,7 @@ def test_init_existing_file() -> None:
 
 def test_init_nonexistent_file() -> None:
     """Test TomlFile initialization with nonexistent file."""
-    toml_file = TomlFile(Path("nonexistent.toml"))
+    toml_file = TomlFile(file_path=Path("nonexistent.toml"))
     assert toml_file.file_path == Path("nonexistent.toml")
     assert not toml_file.as_str()
     assert toml_file.as_dict() == {}
@@ -42,7 +42,7 @@ def test_as_dict_existing_file() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         result = toml_file.as_dict()
         assert result == {"tool": {"test": {"key": "value"}}}
     finally:
@@ -55,7 +55,7 @@ def test_as_dict_empty_file() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         result = toml_file.as_dict()
         assert result == {}
     finally:
@@ -70,7 +70,7 @@ def test_as_str() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         result = toml_file.as_str()
         assert "tool.test" in result
         assert 'key = "value"' in result
@@ -85,7 +85,7 @@ def test_update_section_array_simple_list() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.test",
             key="array_key",
@@ -105,7 +105,7 @@ def test_update_section_array_with_comments() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
 
         array_with_comments = SimpleArrayWithComments(
             items=["C0103", "W0613"],
@@ -142,7 +142,7 @@ def test_update_section_array_empty_list() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.test",
             key="empty_array",
@@ -162,7 +162,7 @@ def test_ensure_item_in_array_existing_section() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
             section_path="tool.pylint.messages_control",
             key="disable",
@@ -183,7 +183,7 @@ def test_ensure_item_in_array_new_section() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
             section_path="tool.pylint.messages_control",
             key="disable",
@@ -205,7 +205,7 @@ def test_ensure_item_in_array_already_exists() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
             section_path="tool.pylint.messages_control",
             key="disable",
@@ -225,7 +225,7 @@ def test_write() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.test",
             key="items",
@@ -290,7 +290,7 @@ def test_apply_toml_sort() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.b",
             key="items",
@@ -316,7 +316,7 @@ def test_add_key_to_new_section() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.new.section",
             key="items",
@@ -336,7 +336,7 @@ def test_update_existing_key() -> None:
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.test",
             key="items",
@@ -370,7 +370,7 @@ line-length = 80
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
@@ -410,7 +410,7 @@ extra = true
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
@@ -443,7 +443,7 @@ existing = true"""
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.last",
             key="items",
@@ -475,7 +475,7 @@ value = "test"
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
@@ -512,7 +512,7 @@ disable = ["all"]
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="enable",
@@ -548,7 +548,7 @@ disable = ["all"]
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
 
         # This call should only affect the first section
         toml_file.update_section_array(
@@ -587,7 +587,7 @@ enable = [
         temp_path = Path(f.name)
 
     try:
-        toml_file = TomlFile(temp_path)
+        toml_file = TomlFile(file_path=temp_path)
 
         # This should work with the new implementation
         toml_file.update_section_array(
@@ -608,7 +608,7 @@ enable = [
         temp_path.unlink()
 
 
-def test_automatic_toml_sort_application(tmp_path: Path) -> None:
+def test_automatic_toml_sort_application(*, tmp_path: Path) -> None:
     """Test that toml-sort is automatically applied when content changes.
 
     Args:
@@ -625,11 +625,13 @@ line-length = 88
     temp_file = tmp_path / "test.toml"
     temp_file.write_text(toml_content)
 
-    toml_file = TomlFile(temp_file)
+    toml_file = TomlFile(file_path=temp_file)
 
     # Update an array - this should trigger automatic sorting
     toml_file.update_section_array(
-        "tool.pylint.messages_control", "disable", ["rule-c", "rule-a"]
+        section_path="tool.pylint.messages_control",
+        key="disable",
+        array_data=["rule-c", "rule-a"],
     )
 
     result_str = toml_file.as_str()
@@ -690,7 +692,7 @@ def test_toml_sort_with_custom_configuration(
             command_args = args[0]
             if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
                 file_path = command_args[2]
-                _apply_toml_sort_mock(file_path)
+                _apply_toml_sort_mock(file_path=file_path)
                 return MockResult()
 
         return MockResult()
@@ -712,11 +714,13 @@ disable = ["rule-b", "rule-a"]
     temp_file = tmp_path / "test.toml"
     temp_file.write_text(toml_content)
 
-    toml_file = TomlFile(temp_file)
+    toml_file = TomlFile(file_path=temp_file)
 
     # Update an array - this should trigger automatic sorting
     toml_file.update_section_array(
-        "tool.pylint.messages_control", "disable", ["rule-c", "rule-a"]
+        section_path="tool.pylint.messages_control",
+        key="disable",
+        array_data=["rule-c", "rule-a"],
     )
 
     result_str = toml_file.as_str()

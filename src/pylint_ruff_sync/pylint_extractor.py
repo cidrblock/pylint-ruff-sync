@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class PylintExtractor:
     """Extract pylint rules and information."""
 
-    def __init__(self, rules: Rules) -> None:
+    def __init__(self, *, rules: Rules) -> None:
         """Initialize the PylintExtractor with a Rules object.
 
         Args:
@@ -56,13 +56,10 @@ class PylintExtractor:
                 )
                 if rule_match:
                     name, code, description = rule_match.groups()
-                    rule = Rule(
-                        pylint_id=code,
-                        pylint_name=name,
-                        description=description,
+                    rule = Rule(pylint_id=code, pylint_name=name, description=description,
                         source=RuleSource.PYLINT_LIST,
                     )
-                    self.rules.add_rule(rule)
+                    self.rules.add_rule(rule=rule)
                     logger.debug("Found pylint rule: %s (%s)", code, name)
 
             logger.info("Found %d total pylint rules", len(self.rules))
@@ -93,7 +90,7 @@ class PylintExtractor:
         resolved_codes = set()
 
         for identifier in rule_identifiers:
-            rule = all_rules.get_by_identifier(identifier)
+            rule = all_rules.get_by_identifier(identifier=identifier)
             if rule:
                 resolved_codes.add(rule.pylint_id)
             else:

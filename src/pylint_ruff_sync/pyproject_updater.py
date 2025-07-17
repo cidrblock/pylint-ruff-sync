@@ -49,7 +49,7 @@ class PyprojectUpdater:
         self.config_file = config_file
         self.dry_run = dry_run
         self.message_generator = message_generator
-        self.toml_file = TomlFile(config_file)
+        self.toml_file = TomlFile(file_path=config_file)
 
     def update(self, *, disable_mypy_overlap: bool = False) -> None:
         """Update the pylint configuration with optimized rule settings.
@@ -91,7 +91,7 @@ class PyprojectUpdater:
         self._update_disable_array(rules_to_disable, unknown_disabled_rules)
 
         # Step 2: Update enable array with URL comments
-        self._update_enable_array(rules_to_enable)
+        self._update_enable_array(enable_rules=rules_to_enable)
 
         # Step 3: Save the file
         self.save()
@@ -179,7 +179,7 @@ class PyprojectUpdater:
             if disabled_item == "all":
                 continue
 
-            existing_rule = self.rules.get_by_identifier(disabled_item)
+            existing_rule = self.rules.get_by_identifier(identifier=disabled_item)
             if not existing_rule:
                 # This is a user-disabled rule we don't know about
                 # Add it as an unknown rule
@@ -188,7 +188,7 @@ class PyprojectUpdater:
                     pylint_name=disabled_item if not disabled_item.isupper() else "",
                     source=RuleSource.USER_DISABLE,
                 )
-                self.rules.add_rule(rule)
+                self.rules.add_rule(rule=rule)
                 logger.debug("Added user-disabled rule: %s", disabled_item)
 
     def save(self) -> None:
@@ -224,7 +224,7 @@ class PyprojectUpdater:
             array_data=disable_list,
         )
 
-    def _update_enable_array(self, enable_rules: list[Rule]) -> None:
+    def _update_enable_array(self, *, enable_rules: list[Rule]) -> None:
         """Update the enable array with rules and URL comments.
 
         Args:
@@ -257,7 +257,7 @@ class PyprojectUpdater:
             array_data=enable_array,
         )
 
-    def _get_current_disable_array(self, current_dict: dict[str, Any]) -> list[str]:
+    def _get_current_disable_array(self, *, current_dict: dict[str, Any]) -> list[str]:
         """Get the current disable array from the file dictionary.
 
         Args:

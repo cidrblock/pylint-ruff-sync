@@ -155,7 +155,7 @@ class Rule:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Rule:
+    def from_dict(cls, *, data: dict[str, Any]) -> Rule:
         """Create rule from dictionary.
 
         Args:
@@ -205,7 +205,7 @@ class Rules:
         # Ensure rules are sorted by pylint_id
         self.rules.sort(key=lambda r: r.pylint_id)
 
-    def add_rule(self, rule: Rule) -> None:
+    def add_rule(self, *, rule: Rule) -> None:
         """Add a rule to the collection.
 
         Args:
@@ -216,7 +216,7 @@ class Rules:
         # Re-sort after adding
         self.rules.sort(key=lambda r: r.pylint_id)
 
-    def update_rule(self, updated_rule: Rule) -> None:
+    def update_rule(self, *, updated_rule: Rule) -> None:
         """Update an existing rule or add if not found.
 
         Args:
@@ -228,9 +228,9 @@ class Rules:
                 self.rules[i] = updated_rule
                 return
         # If not found, add as new rule
-        self.add_rule(updated_rule)
+        self.add_rule(rule=updated_rule)
 
-    def get_by_id(self, pylint_id: str) -> Rule | None:
+    def get_by_id(self, *, pylint_id: str) -> Rule | None:
         """Get rule by pylint ID.
 
         Args:
@@ -245,7 +245,7 @@ class Rules:
                 return rule
         return None
 
-    def get_by_name(self, pylint_name: str) -> Rule | None:
+    def get_by_name(self, *, pylint_name: str) -> Rule | None:
         """Get rule by pylint name.
 
         Args:
@@ -260,7 +260,7 @@ class Rules:
                 return rule
         return None
 
-    def get_by_identifier(self, identifier: str) -> Rule | None:
+    def get_by_identifier(self, *, identifier: str) -> Rule | None:
         """Get rule by ID or name.
 
         Args:
@@ -271,11 +271,11 @@ class Rules:
 
         """
         # Try by ID first
-        rule = self.get_by_id(identifier)
+        rule = self.get_by_id(pylint_id=identifier)
         if rule:
             return rule
         # Try by name
-        return self.get_by_name(identifier)
+        return self.get_by_name(pylint_name=identifier)
 
     def filter_implemented_in_ruff(self) -> Rules:
         """Get rules that are implemented in ruff.
@@ -317,7 +317,7 @@ class Rules:
         filtered_rules = [r for r in self.rules if not r.is_mypy_overlap]
         return Rules(rules=filtered_rules, metadata=self.metadata.copy())
 
-    def filter_by_source(self, source: RuleSource) -> Rules:
+    def filter_by_source(self, *, source: RuleSource) -> Rules:
         """Get rules from a specific source.
 
         Args:
@@ -330,7 +330,7 @@ class Rules:
         filtered_rules = [r for r in self.rules if r.source == source]
         return Rules(rules=filtered_rules, metadata=self.metadata.copy())
 
-    def filter_by_category(self, category: str) -> Rules:
+    def filter_by_category(self, *, category: str) -> Rules:
         """Get rules from a specific category.
 
         Args:
@@ -369,7 +369,7 @@ class Rules:
                 continue  # "all" is handled separately
 
             # Find the rule for this disabled item
-            rule = self.get_by_identifier(disabled_item)
+            rule = self.get_by_identifier(identifier=disabled_item)
 
             if rule is None:
                 # Unknown rule - keep it in disable list
@@ -436,7 +436,7 @@ class Rules:
 
         return rules_to_enable
 
-    def update_mypy_overlap_status(self, mypy_overlap_rules: set[str]) -> None:
+    def update_mypy_overlap_status(self, *, mypy_overlap_rules: set[str]) -> None:
         """Update mypy overlap status for all rules.
 
         Args:
@@ -520,7 +520,7 @@ class Rules:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Rules:
+    def from_dict(cls, *, data: dict[str, Any]) -> Rules:
         """Create Rules from dictionary.
 
         Args:
@@ -530,7 +530,7 @@ class Rules:
             Rules instance.
 
         """
-        rules = [Rule.from_dict(rule_data) for rule_data in data.get("rules", [])]
+        rules = [Rule.from_dict(data=rule_data) for rule_data in data.get("rules", [])]
         metadata = data.get("metadata", {})
         return cls(rules=rules, metadata=metadata)
 

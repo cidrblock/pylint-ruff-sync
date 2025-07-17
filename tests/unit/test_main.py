@@ -31,25 +31,24 @@ EXPECTED_DISABLE_LIST_LENGTH = 3
 
 def test_rule_init() -> None:
     """Test Rule initialization."""
-    rule = Rule(
-        pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
+    rule = Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
     )
     assert rule.code == "C0103"
     assert rule.name == "invalid-name"
     assert rule.description == "Invalid name"
 
 
-def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_implemented_rules(*, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test extracting implemented rules from GitHub issue.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     rules = Rules()
-    extractor = RuffPylintExtractor(rules)
+    extractor = RuffPylintExtractor(rules=rules)
     result = extractor.get_implemented_rules()
 
     # Should find F401, F841, and E501 as implemented (checked checkboxes)
@@ -59,17 +58,17 @@ def test_extract_implemented_rules(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(result) == EXPECTED_IMPLEMENTED_RULES_COUNT
 
 
-def test_extract_all_rules(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_all_rules(*, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test extracting all pylint rules.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture for mocking.
 
     """
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     rules = Rules()
-    extractor = PylintExtractor(rules)
+    extractor = PylintExtractor(rules=rules)
     extractor.extract()
 
     assert len(rules) == EXPECTED_RULES_COUNT
@@ -101,29 +100,20 @@ def test_update_pylint_config() -> None:
         rules = Rules()
 
         test_rules = [
-            Rule(
-                pylint_id="F401",
-                pylint_name="unused-import",
-                description="Unused import",
+            Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import",
                 is_implemented_in_ruff=True,
             ),
-            Rule(
-                pylint_id="F841",
-                pylint_name="unused-variable",
-                description="Unused variable",
+            Rule(pylint_id="F841", pylint_name="unused-variable", description="Unused variable",
                 is_implemented_in_ruff=True,
             ),
-            Rule(
-                pylint_id="C0103",
-                pylint_name="invalid-name",
-                description="Invalid name",
+            Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name",
                 is_implemented_in_ruff=False,
             ),
         ]
 
         # Add all rules to the Rules instance
         for rule in test_rules:
-            rules.add_rule(rule)
+            rules.add_rule(rule=rule)
 
         # Use new PyprojectUpdater pattern with simplified interface
         updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=False)
@@ -163,23 +153,17 @@ def test_update_pylint_config_dry_run() -> None:
         rules = Rules()
 
         test_rules = [
-            Rule(
-                pylint_id="F401",
-                pylint_name="unused-import",
-                description="Unused import",
+            Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import",
                 is_implemented_in_ruff=True,
             ),
-            Rule(
-                pylint_id="C0103",
-                pylint_name="invalid-name",
-                description="Invalid name",
+            Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name",
                 is_implemented_in_ruff=False,
             ),
         ]
 
         # Add all rules to the Rules instance
         for rule in test_rules:
-            rules.add_rule(rule)
+            rules.add_rule(rule=rule)
 
         # Use PyprojectUpdater in dry run mode
         updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=True)
@@ -214,17 +198,17 @@ def test_resolve_rule_identifiers() -> None:
     """Test resolving rule identifiers to rule codes."""
     # Create test rules
     rules = Rules()
-    rules.add_rule(
+    rules.add_rule(rule=
         Rule(pylint_id="F401", pylint_name="unused-import", description="Unused import")
     )
-    rules.add_rule(
+    rules.add_rule(rule=
         Rule(pylint_id="E501", pylint_name="line-too-long", description="Line too long")
     )
-    rules.add_rule(
+    rules.add_rule(rule=
         Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
     )
 
-    extractor = PylintExtractor(rules)
+    extractor = PylintExtractor(rules=rules)
 
     # Test with rule codes
     rule_identifiers = ["F401", "C0103"]
@@ -255,7 +239,7 @@ def test_resolve_rule_identifiers() -> None:
     assert resolved == {"F401", "C0103"}
 
 
-def test_main_function_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_main_function_flow(*, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Test main function integration flow with normal execution.
 
     Args:
@@ -264,7 +248,7 @@ def test_main_function_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
 
     """
     # Setup mocks for all external dependencies
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Create a test pyproject.toml file
     config_file = tmp_path / "pyproject.toml"
@@ -312,7 +296,7 @@ disable = [
 def test_ruff_extractor_initialization() -> None:
     """Test that RuffPylintExtractor can be initialized with a Rules object."""
     rules = Rules()
-    extractor = RuffPylintExtractor(rules)
+    extractor = RuffPylintExtractor(rules=rules)
     assert extractor.issue_url == RUFF_PYLINT_ISSUE_URL
 
 
@@ -327,7 +311,7 @@ def test_main_with_update_cache(
 
     """
     # Setup mocks for GitHub CLI
-    setup_mocks(monkeypatch)
+    setup_mocks(monkeypatch=monkeypatch)
 
     # Create temporary cache file path
     cache_file = tmp_path / "test_cache.json"

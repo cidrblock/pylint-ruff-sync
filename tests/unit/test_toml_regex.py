@@ -67,7 +67,7 @@ def test_build_section_pattern() -> None:
     regex = TomlRegex()
 
     # Test basic section pattern
-    pattern = regex.build_section_pattern("tool.pylint.messages_control")
+    pattern = regex.build_section_pattern(section_path="tool.pylint.messages_control")
 
     # Should match exact section header
     assert pattern.search("[tool.pylint.messages_control]") is not None
@@ -77,11 +77,15 @@ def test_build_section_pattern() -> None:
     assert pattern.search("[other.section]") is None
 
     # Should handle special characters in section names
-    special_pattern = regex.build_section_pattern("tool.section-with-dashes")
+    special_pattern = regex.build_section_pattern(
+        section_path="tool.section-with-dashes"
+    )
     assert special_pattern.search("[tool.section-with-dashes]") is not None
 
     # Should handle sections with dots and underscores
-    complex_pattern = regex.build_section_pattern("tool.my_tool.sub-section")
+    complex_pattern = regex.build_section_pattern(
+        section_path="tool.my_tool.sub-section"
+    )
     assert complex_pattern.search("[tool.my_tool.sub-section]") is not None
 
 
@@ -90,7 +94,7 @@ def test_build_section_pattern_with_regex_characters() -> None:
     regex = TomlRegex()
 
     # Test section with parentheses (should be escaped)
-    pattern = regex.build_section_pattern("tool.test(special)")
+    pattern = regex.build_section_pattern(section_path="tool.test(special)")
     toml_content = "[tool.test(special)]\nkey = value"
 
     match = pattern.search(toml_content)
@@ -104,7 +108,9 @@ def test_build_section_pattern_with_regex_characters() -> None:
 def test_build_key_in_section_pattern_simple() -> None:
     """Test finding keys within sections with simple single-line values."""
     regex = TomlRegex()
-    pattern = regex.build_key_in_section_pattern("tool.pylint", "disable")
+    pattern = regex.build_key_in_section_pattern(
+        section_path="tool.pylint", key="disable"
+    )
 
     toml_content = """[tool.pylint]
 disable = ["rule1", "rule2"]
@@ -123,7 +129,9 @@ disable = ["other-rule"]
     assert "disable = " in captured
 
     # Should not match disable in other sections
-    other_pattern = regex.build_key_in_section_pattern("other.section", "disable")
+    other_pattern = regex.build_key_in_section_pattern(
+        section_path="other.section", key="disable"
+    )
     other_match = other_pattern.search(toml_content)
     assert other_match is not None
     assert "[other.section]" in other_match.group(1)
@@ -133,7 +141,7 @@ def test_build_key_in_section_pattern_multiline_array() -> None:
     """Test finding keys with multiline array values."""
     regex = TomlRegex()
     pattern = regex.build_key_in_section_pattern(
-        "tool.pylint.messages_control", "disable"
+        section_path="tool.pylint.messages_control", key="disable"
     )
 
     toml_content = """[tool.pylint.messages_control]
@@ -160,7 +168,9 @@ value = "test"
 def test_build_key_in_section_pattern_with_comments() -> None:
     """Test finding keys in sections that contain comments."""
     regex = TomlRegex()
-    pattern = regex.build_key_in_section_pattern("tool.pylint", "disable")
+    pattern = regex.build_key_in_section_pattern(
+        section_path="tool.pylint", key="disable"
+    )
 
     toml_content = """[tool.pylint]
 # This is a comment about pylint configuration
@@ -184,7 +194,7 @@ enable = ["rule3"]
 def test_build_key_exists_in_section_pattern() -> None:
     """Test checking if a key exists in a section."""
     regex = TomlRegex()
-    pattern = regex.build_key_exists_in_section_pattern("disable")
+    pattern = regex.build_key_exists_in_section_pattern(key="disable")
 
     # Test various key formats
     test_cases = [
@@ -206,7 +216,7 @@ def test_build_key_exists_in_section_pattern() -> None:
 def test_build_section_content_pattern() -> None:
     """Test capturing entire section content."""
     regex = TomlRegex()
-    pattern = regex.build_section_content_pattern("tool.pylint")
+    pattern = regex.build_section_content_pattern(section_path="tool.pylint")
 
     toml_content = """[tool.ruff]
 line-length = 88
@@ -247,12 +257,16 @@ def test_find_section_header() -> None:
         """)
 
     # Should find existing section
-    result = regex.find_section_header(toml_content, "tool.pylint.messages_control")
+    result = regex.find_section_header(
+        content=toml_content, section_path="tool.pylint.messages_control"
+    )
     assert result.matched
     assert result.match is not None
 
     # Should not find non-existent section
-    result = regex.find_section_header(toml_content, "nonexistent.section")
+    result = regex.find_section_header(
+        content=toml_content, section_path="nonexistent.section"
+    )
     assert not result.matched
     assert result.match is None
 
@@ -301,13 +315,17 @@ def test_key_exists_in_section() -> None:
 
     # Key exists in specified section
     assert regex.key_exists_in_section(
-        toml_content, "tool.pylint.messages_control", "disable"
+        content=toml_content, section_path="tool.pylint.messages_control", key="disable"
     )
     assert regex.key_exists_in_section(
-        toml_content, "tool.pylint.messages_control", "enable"
+        content=toml_content, section_path="tool.pylint.messages_control", key="enable"
     )
-    assert regex.key_exists_in_section(toml_content, "tool.ruff", "disable")
-    assert regex.key_exists_in_section(toml_content, "tool.black", "line-length")
+    assert regex.key_exists_in_section(
+        content=toml_content, section_path="tool.ruff", key="disable"
+    )
+    assert regex.key_exists_in_section(
+        content=toml_content, section_path="tool.black", key="line-length"
+    )
 
     # Key doesn't exist in specified section
     assert not regex.key_exists_in_section(
@@ -482,10 +500,14 @@ def test_regex_patterns_with_complex_toml() -> None:
 
     # Test finding sections
     assert regex.find_section_header(
-        complex_toml, "tool.pylint.messages_control"
+        content=complex_toml, section_path="tool.pylint.messages_control"
     ).matched
-    assert regex.find_section_header(complex_toml, "tool.ruff.lint").matched
-    assert not regex.find_section_header(complex_toml, "nonexistent.section").matched
+    assert regex.find_section_header(
+        content=complex_toml, section_path="tool.ruff.lint"
+    ).matched
+    assert not regex.find_section_header(
+        content=complex_toml, section_path="nonexistent.section"
+    ).matched
 
     # Test finding keys in sections
     assert regex.key_exists_in_section(
@@ -552,7 +574,7 @@ enable = ["rule2"]
         toml_content, "tool.pylint.messages_control", "disable"
     )
     assert TOML_REGEX.find_section_header(
-        toml_content, "tool.pylint.messages_control"
+        content=toml_content, section_path="tool.pylint.messages_control"
     ).matched
 
     result = TOML_REGEX.replace_key_in_section(

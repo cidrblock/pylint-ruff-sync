@@ -54,7 +54,7 @@ class TomlRegex:
             re.MULTILINE | re.DOTALL,
         )
 
-    def build_section_pattern(self, section_path: str) -> Pattern[str]:
+    def build_section_pattern(self, *, section_path: str) -> Pattern[str]:
         """Build a regex pattern to match a specific TOML section header.
 
         This pattern matches section headers like [tool.pylint.messages_control].
@@ -69,7 +69,7 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_section_pattern("tool.pylint.messages_control")
+            >>> pattern = regex.build_section_pattern(section_path="tool.pylint.messages_control")
             >>> bool(pattern.search("[tool.pylint.messages_control]"))
             True
             >>> bool(pattern.search("[other.section]"))
@@ -80,7 +80,9 @@ class TomlRegex:
         pattern = rf"^\[{escaped_path}\]"
         return re.compile(pattern, re.MULTILINE)
 
-    def build_key_in_section_pattern(self, section_path: str, key: str) -> Pattern[str]:
+    def build_key_in_section_pattern(
+        self, *, section_path: str, key: str
+    ) -> Pattern[str]:
         """Build a regex pattern to find a key within a specific section.
 
         This pattern matches a key-value pair within a specific TOML section.
@@ -103,7 +105,7 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_key_in_section_pattern("tool.pylint", "disable")
+            >>> pattern = regex.build_key_in_section_pattern(section_path="tool.pylint", key="disable")
             >>> text = '''[tool.pylint]
             ... disable = ["rule1", "rule2"]
             ... enable = ["rule3"]'''
@@ -112,7 +114,7 @@ class TomlRegex:
             True
 
         """
-        section_pattern = self.build_section_pattern(section_path)
+        section_pattern = self.build_section_pattern(section_path=section_path)
         escaped_key = re.escape(key)
 
         # Pattern explanation:
@@ -131,7 +133,7 @@ class TomlRegex:
         )
         return re.compile(pattern, re.MULTILINE | re.DOTALL)
 
-    def build_key_exists_in_section_pattern(self, key: str) -> Pattern[str]:
+    def build_key_exists_in_section_pattern(self, *, key: str) -> Pattern[str]:
         """Build a regex pattern to check if a key exists.
 
         This is a simpler pattern than build_key_in_section_pattern that only
@@ -156,7 +158,7 @@ class TomlRegex:
         pattern = rf"^\s*{escaped_key}\s*="
         return re.compile(pattern, re.MULTILINE)
 
-    def build_section_content_pattern(self, section_path: str) -> Pattern[str]:
+    def build_section_content_pattern(self, *, section_path: str) -> Pattern[str]:
         """Build a regex pattern to capture entire section content.
 
         This pattern captures everything from the section header until the next
@@ -176,7 +178,7 @@ class TomlRegex:
 
         Examples:
             >>> regex = TomlRegex()
-            >>> pattern = regex.build_section_content_pattern("tool.pylint")
+            >>> pattern = regex.build_section_content_pattern(section_path="tool.pylint")
             >>> text = '''[tool.pylint]
             ... disable = ["rule1"]
             ... enable = ["rule2"]
@@ -188,7 +190,7 @@ class TomlRegex:
             True
 
         """
-        section_pattern = self.build_section_pattern(section_path)
+        section_pattern = self.build_section_pattern(section_path=section_path)
 
         # Pattern explanation:
         # - ({section_pattern.pattern}.*?) captures:
@@ -200,7 +202,7 @@ class TomlRegex:
         pattern = rf"({section_pattern.pattern}.*?)(?=^\[|\Z)"
         return re.compile(pattern, re.MULTILINE | re.DOTALL)
 
-    def find_section_header(self, content: str, section_path: str) -> RegexMatch:
+    def find_section_header(self, *, content: str, section_path: str) -> RegexMatch:
         """Find a section header in TOML content.
 
         Args:
@@ -211,7 +213,7 @@ class TomlRegex:
             RegexMatch with the result.
 
         """
-        pattern = self.build_section_pattern(section_path)
+        pattern = self.build_section_pattern(section_path=section_path)
         match = pattern.search(content)
         return RegexMatch(match=match, matched=bool(match))
 
@@ -229,11 +231,13 @@ class TomlRegex:
             RegexMatch with the result and capture groups.
 
         """
-        pattern = self.build_key_in_section_pattern(section_path, key)
+        pattern = self.build_key_in_section_pattern(section_path=section_path, key=key)
         match = pattern.search(content)
         return RegexMatch(match=match, matched=bool(match))
 
-    def key_exists_in_section(self, content: str, section_path: str, key: str) -> bool:
+    def key_exists_in_section(
+        self, *, content: str, section_path: str, key: str
+    ) -> bool:
         """Check if a key exists within a section's content.
 
         This method first finds the section, then checks if the key exists
@@ -249,7 +253,7 @@ class TomlRegex:
 
         """
         # First find the section content
-        section_pattern = self.build_section_content_pattern(section_path)
+        section_pattern = self.build_section_content_pattern(section_path=section_path)
         section_match = section_pattern.search(content)
 
         if not section_match:
@@ -257,7 +261,7 @@ class TomlRegex:
 
         # Then check if key exists within that section
         section_content = section_match.group(1)
-        key_pattern = self.build_key_exists_in_section_pattern(key)
+        key_pattern = self.build_key_exists_in_section_pattern(key=key)
         return bool(key_pattern.search(section_content))
 
     def replace_key_in_section(
@@ -278,7 +282,7 @@ class TomlRegex:
             ValueError: If the key is not found in the section.
 
         """
-        pattern = self.build_key_in_section_pattern(section_path, key)
+        pattern = self.build_key_in_section_pattern(section_path=section_path, key=key)
 
         # Check if the pattern matches first
         if not pattern.search(content):
@@ -310,11 +314,13 @@ class TomlRegex:
 
         """
         # Check if key already exists and replace if so
-        if self.key_exists_in_section(content, section_path, key):
+        if self.key_exists_in_section(
+            content=content, section_path=section_path, key=key
+        ):
             return self.replace_key_in_section(content, section_path, key, value)
 
         # Find the section
-        section_pattern = self.build_section_content_pattern(section_path)
+        section_pattern = self.build_section_content_pattern(section_path=section_path)
         section_match = section_pattern.search(content)
 
         if section_match:

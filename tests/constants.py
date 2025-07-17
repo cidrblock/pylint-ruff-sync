@@ -39,7 +39,7 @@ EXPECTED_RULES_COUNT = 6
 EXPECTED_IMPLEMENTED_RULES_COUNT = 3
 
 
-def _apply_toml_sort_mock(file_path: str) -> None:
+def _apply_toml_sort_mock(*, file_path: str) -> None:
     """Apply toml-sort with desired configuration to a file.
 
     This is extracted to reduce complexity and eliminate code duplication.
@@ -104,7 +104,7 @@ def _apply_toml_sort_mock(file_path: str) -> None:
         pass
 
 
-def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
+def setup_mocks(*, monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up all mocks needed for tests.
 
     Args:
@@ -116,7 +116,7 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
     class MockSubprocessResult:
         """Mock subprocess result object."""
 
-        def __init__(self, stdout: str, returncode: int = 0) -> None:
+        def __init__(self, *, stdout: str, returncode: int = 0) -> None:
             """Initialize with stdout string.
 
             Args:
@@ -155,13 +155,13 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
             command_args = args[0]
             if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
                 file_path = command_args[2]
-                _apply_toml_sort_mock(file_path)
+                _apply_toml_sort_mock(file_path=file_path)
                 return MockSubprocessResult(stdout="")
 
         # For other subprocess calls (like pylint), return the default mock
         return mock_pylint_result
 
-    def mock_shutil_which(_cmd: str) -> str:
+    def mock_shutil_which(*, _cmd: str) -> str:
         return "/usr/bin/pylint"
 
     monkeypatch.setattr("subprocess.run", mock_subprocess_run)

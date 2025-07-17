@@ -100,19 +100,19 @@ class DataCollector:
         rules = Rules()
 
         # Step 2: Extract all pylint rules
-        pylint_extractor = PylintExtractor(rules)
+        pylint_extractor = PylintExtractor(rules=rules)
         pylint_extractor.extract()
         logger.info("Found %d total pylint rules", len(rules))
 
         # Step 3: Update with ruff implementation data
-        ruff_extractor = RuffPylintExtractor(rules)
+        ruff_extractor = RuffPylintExtractor(rules=rules)
         ruff_extractor.extract()
 
         ruff_implemented_count = len(rules.filter_implemented_in_ruff())
         logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
 
         # Step 4: Update mypy overlap status
-        mypy_extractor = MypyOverlapExtractor(rules)
+        mypy_extractor = MypyOverlapExtractor(rules=rules)
         mypy_extractor.extract()
 
         return rules
@@ -140,7 +140,7 @@ class DataCollector:
             logger.info("Loaded %d rules from cache", len(rules))
 
             # Still need to apply mypy overlap to cached rules
-            mypy_extractor = MypyOverlapExtractor(rules)
+            mypy_extractor = MypyOverlapExtractor(rules=rules)
             mypy_extractor.extract()
 
         except Exception as exc:

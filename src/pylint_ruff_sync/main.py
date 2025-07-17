@@ -27,7 +27,7 @@ class Application:
     to eliminate duplication of class instantiation.
     """
 
-    def __init__(self, args: argparse.Namespace) -> None:
+    def __init__(self, *, args: argparse.Namespace) -> None:
         """Initialize the application with parsed command line arguments.
 
         Args:
@@ -42,7 +42,7 @@ class Application:
             cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
 
         self.cache_path = cache_path
-        self._cache_manager = RulesCacheManager(self.cache_path)
+        self._cache_manager = RulesCacheManager(cache_path=self.cache_path)
         self._data_collector = DataCollector(cache_manager=self._cache_manager)
         self._rules: Rules | None = None
         self._message_generator: MessageGenerator | None = None
@@ -97,7 +97,7 @@ class Application:
             all_rules = self._data_collector.collect_fresh_rules()
 
             # Save to the specified cache path using cache manager
-            self._cache_manager.save_rules(all_rules)
+            self._cache_manager.save_rules(rules=all_rules)
             logger.info("Cache updated successfully with %d rules", len(all_rules))
 
             # Update cached rules

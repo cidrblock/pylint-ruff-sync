@@ -65,7 +65,7 @@ class CacheUpdateResult:
 class CacheManager:
     """Manages cache operations and change detection for ruff implemented rules."""
 
-    def __init__(self, cache_path: Path, extractor: RuleExtractor) -> None:
+    def __init__(self, *, cache_path: Path, extractor: RuleExtractor) -> None:
         """Initialize a CacheManager instance.
 
         Args:

@@ -6,7 +6,7 @@ from __future__ import annotations
 class PylintRule:
     """Represents a pylint rule with its metadata."""
 
-    def __init__(self, rule_id: str, name: str, description: str) -> None:
+    def __init__(self, *, rule_id: str, name: str, description: str) -> None:
         """Initialize a PylintRule instance.
 
         Args:
