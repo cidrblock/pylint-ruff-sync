@@ -224,11 +224,22 @@ pylint --list-msgs → GitHub Issue Parsing → Mypy Overlap Analysis → Rule S
 
 ## Cache File and Data Management
 
-### Cache Location and Structure
+### Rule Status Lookup
 
-The tool maintains a local cache file containing rule implementation data:
+**Want to know the status of any pylint rule?** Check the cache file directly:
 
-**Default Location**: [`src/pylint_ruff_sync/data/ruff_implemented_rules.json`](src/pylint_ruff_sync/data/ruff_implemented_rules.json)
+👉 **[`src/pylint_ruff_sync/data/ruff_implemented_rules.json`](src/pylint_ruff_sync/data/ruff_implemented_rules.json)** 👈
+
+This file contains the complete status of every pylint rule, including:
+
+- Whether it's implemented in ruff
+- Whether it overlaps with mypy functionality
+- The corresponding ruff rule code (if any)
+- Links to documentation
+
+**Example**: Curious about rule `E0401` (import-error)? Search for `"E0401"` in the cache file to see its complete status.
+
+### Cache File Structure
 
 **Cache File Contents**:
 
@@ -253,15 +264,15 @@ The tool maintains a local cache file containing rule implementation data:
 }
 ```
 
-### Cache Field Explanations
+### Understanding Rule Status Fields
 
-- **`pylint_id`**: Pylint rule identifier (e.g., "C0103", "E0401")
+- **`pylint_id`**: Pylint rule identifier (e.g., "C0103", "E0401") - **search for this**
 - **`pylint_name`**: Human-readable rule name (e.g., "invalid-name")
 - **`description`**: Rule description from pylint documentation
-- **`is_implemented_in_ruff`**: Whether this rule has a ruff equivalent
+- **`is_implemented_in_ruff`**: ✅ `true` = ruff has this rule, ❌ `false` = pylint only
 - **`is_in_ruff_issue`**: Whether rule is tracked in [ruff issue #970](https://github.com/astral-sh/ruff/issues/970)
-- **`is_mypy_overlap`**: Whether rule functionality overlaps with mypy
-- **`ruff_rule`**: Corresponding ruff rule code (if implemented)
+- **`is_mypy_overlap`**: ✅ `true` = also handled by mypy, ❌ `false` = pylint unique
+- **`ruff_rule`**: Corresponding ruff rule code (empty if not implemented)
 - **`pylint_category`**: Rule category (C=Convention, E=Error, W=Warning, etc.)
 - **`source`**: How the rule was discovered (pylint_list, ruff_issue, etc.)
 
@@ -278,20 +289,18 @@ pylint-ruff-sync --cache-path /path/to/custom/cache.json
 pylint-ruff-sync --verbose
 ```
 
-### Troubleshooting with Cache Data
+### Troubleshooting Rule Behavior
 
-If you suspect incorrect rule behavior:
+**Step 1**: Check the [cache file](src/pylint_ruff_sync/data/ruff_implemented_rules.json) for your rule
+**Step 2**: Verify the status flags match your expectations
+**Step 3**: If incorrect, run `pylint-ruff-sync --update-cache`
 
-1. **Check the cache file**: Look up your rule in the [cache file](src/pylint_ruff_sync/data/ruff_implemented_rules.json)
-2. **Verify flags**: Ensure `is_implemented_in_ruff` and `is_mypy_overlap` are correct
-3. **Update cache**: Run `--update-cache` to refresh from GitHub
-4. **Custom cache**: Use `--cache-path` to test with different cache files
+**Common Questions & Solutions**:
 
-Common issues:
-
-- **Outdated cache**: Rule shows as not implemented but should be ✓ Update cache
-- **Mypy overlap incorrect**: Rule should/shouldn't be filtered ✓ Check MYPY_OVERLAP_RULES
-- **Missing rules**: New pylint rules not in cache ✓ Update cache or check pylint version
+- **"Why is my rule disabled?"** → Check `is_implemented_in_ruff: true` in cache
+- **"Why is my rule missing from config?"** → Check `is_mypy_overlap: true` (filtered by default)
+- **"What's the ruff equivalent?"** → Look at `ruff_rule` field in cache
+- **"Is this rule outdated?"** → Run `--update-cache` to refresh from GitHub
 
 ## Network and Authentication
 
