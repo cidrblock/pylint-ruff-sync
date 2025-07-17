@@ -11,6 +11,7 @@ from .toml_file import SimpleArrayWithComments, TomlFile
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .message_generator import MessageGenerator
     from .rule import Rules
 
 # Configure logging
@@ -27,7 +28,12 @@ class PyprojectUpdater:
     """
 
     def __init__(
-        self, rules: Rules, config_file: Path, *, dry_run: bool = False
+        self,
+        rules: Rules,
+        config_file: Path,
+        *,
+        dry_run: bool = False,
+        message_generator: MessageGenerator | None = None,
     ) -> None:
         """Initialize the PyprojectUpdater.
 
@@ -36,11 +42,13 @@ class PyprojectUpdater:
             config_file: Path to the pyproject.toml file to update.
             dry_run: If True, don't actually modify the file, just log what would
                 be done.
+            message_generator: Optional MessageGenerator for dry-run messages.
 
         """
         self.rules = rules
         self.config_file = config_file
         self.dry_run = dry_run
+        self.message_generator = message_generator
         self.toml_file = TomlFile(config_file)
 
     def update(self, *, disable_mypy_overlap: bool = False) -> None:
@@ -62,12 +70,21 @@ class PyprojectUpdater:
         )
 
         if self.dry_run:
-            logger.info("DRY RUN: Would update configuration with:")
-            logger.info("  - Rules to disable: %d", len(rules_to_disable))
-            logger.info(
-                "  - Unknown disabled rules preserved: %d", len(unknown_disabled_rules)
-            )
-            logger.info("  - Rules to enable: %d", len(rules_to_enable))
+            if self.message_generator:
+                message = self.message_generator.generate(
+                    rules_to_disable=len(rules_to_disable),
+                    unknown_disabled_rules=len(unknown_disabled_rules),
+                    rules_to_enable=len(rules_to_enable),
+                )
+                logger.info(message)
+            else:
+                logger.info("DRY RUN: Would update configuration with:")
+                logger.info("  - Rules to disable: %d", len(rules_to_disable))
+                logger.info(
+                    "  - Unknown disabled rules preserved: %d",
+                    len(unknown_disabled_rules),
+                )
+                logger.info("  - Rules to enable: %d", len(rules_to_enable))
             return
 
         # Step 1: Update disable array with "all" and collected disable rules

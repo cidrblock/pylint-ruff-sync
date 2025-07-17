@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pylint_ruff_sync.data_collector import DataCollector
+from pylint_ruff_sync.message_generator import MessageGenerator
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
+from pylint_ruff_sync.rules_cache_manager import RulesCacheManager
 
 if TYPE_CHECKING:
     from pylint_ruff_sync.rule import Rules
@@ -117,15 +119,18 @@ def update_cache_from_github(cache_path: Path) -> None:
     """
     logger.info("Updating cache from GitHub...")
 
+    # Create cache manager for updating
+    cache_manager = RulesCacheManager(cache_path)
+
     # Use DataCollector to get fresh rules (bypassing cache)
-    data_collector = DataCollector(cache_path=None)  # Don't use cache for update
+    data_collector = DataCollector(cache_manager=cache_manager)
 
     # Force fresh collection by directly calling the fresh collection method
     try:
         all_rules = data_collector.collect_fresh_rules()
 
-        # Save to the specified cache path
-        all_rules.save_to_cache(cache_path)
+        # Save to the specified cache path using cache manager
+        cache_manager.save_rules(all_rules)
         logger.info("Cache updated successfully with %d rules", len(all_rules))
     except Exception:
         logger.exception("Failed to update cache")
@@ -144,7 +149,15 @@ def _extract_all_rules(cache_path: Path | None = None) -> Rules:
     """
     logger.info("Extracting all rule information")
 
-    data_collector = DataCollector(cache_path=cache_path)
+    # Determine cache path
+    if cache_path is None:
+        cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
+
+    # Create cache manager
+    cache_manager = RulesCacheManager(cache_path)
+
+    # Create data collector with cache manager
+    data_collector = DataCollector(cache_manager=cache_manager)
     return data_collector.collect_rules()
 
 
@@ -174,14 +187,18 @@ def main() -> int:
             update_cache_from_github(cache_path)
             return 0
 
-        # Extract all rule information using DataCollector
+        # Extract all rule information using DataCollector with cache manager
         all_rules = _extract_all_rules(cache_path=args.cache_path)
+
+        # Create MessageGenerator with rules for potential dry-run messages
+        message_generator = MessageGenerator(rules=all_rules) if args.dry_run else None
 
         # Update the configuration
         updater = PyprojectUpdater(
             rules=all_rules,
             config_file=args.config_file,
             dry_run=args.dry_run,
+            message_generator=message_generator,
         )
         updater.update(disable_mypy_overlap=args.disable_mypy_overlap)
 

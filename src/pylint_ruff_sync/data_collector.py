@@ -5,12 +5,15 @@ from __future__ import annotations
 import logging
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pylint_ruff_sync.mypy_overlap import MypyOverlapExtractor
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 from pylint_ruff_sync.rule import Rules
+
+if TYPE_CHECKING:
+    from pylint_ruff_sync.rules_cache_manager import RulesCacheManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,11 +24,11 @@ class DataCollector:
     """Manages data collection and cache loading for rules.
 
     Attributes:
-        cache_path: Optional path to cache file for rules storage.
+        cache_manager: Cache manager for Rules serialization/deserialization.
 
     """
 
-    cache_path: Path | None = None
+    cache_manager: RulesCacheManager
 
     def _is_github_cli_available(self) -> bool:
         """Check if GitHub CLI is available and working.
@@ -115,7 +118,7 @@ class DataCollector:
         return rules
 
     def _load_rules_from_cache(self) -> Rules:
-        """Load rules from cache.
+        """Load rules from cache using cache manager.
 
         Returns:
             Rules object loaded from cache.
@@ -126,14 +129,12 @@ class DataCollector:
         """
         logger.info("Loading rules from cache")
 
-        cache_path = self.cache_path
-        if cache_path is None:
-            cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
-
         try:
-            rules = Rules.load_from_cache(cache_path)
+            rules = self.cache_manager.load_rules()
             if rules is None:
-                msg = f"Cache file not found or invalid: {cache_path}"
+                msg = (
+                    f"Cache file not found or invalid: {self.cache_manager.cache_path}"
+                )
                 raise ValueError(msg)  # noqa: TRY301
 
             logger.info("Loaded %d rules from cache", len(rules))

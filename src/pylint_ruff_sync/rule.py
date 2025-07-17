@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 
 class RuleSource(Enum):
@@ -535,53 +533,6 @@ class Rules:
         rules = [Rule.from_dict(rule_data) for rule_data in data.get("rules", [])]
         metadata = data.get("metadata", {})
         return cls(rules=rules, metadata=metadata)
-
-    def save_to_cache(self, cache_path: Path) -> None:
-        """Save rules to cache file.
-
-        Args:
-            cache_path: Path to cache file.
-
-        """
-        # Ensure cache directory exists
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Only include rules from pylint list or ruff issue, not user disable/unknown
-        cache_rules = [
-            rule
-            for rule in self.rules
-            if rule.source in (RuleSource.PYLINT_LIST, RuleSource.RUFF_ISSUE)
-        ]
-
-        cache_data = {
-            "rules": [rule.to_dict() for rule in cache_rules],
-            "metadata": self.metadata.copy(),
-        }
-
-        with cache_path.open("w", encoding="utf-8") as f:
-            json.dump(cache_data, f, indent=2, sort_keys=True)
-            f.write("\n")  # Ensure trailing newline
-
-    @classmethod
-    def load_from_cache(cls, cache_path: Path) -> Rules | None:
-        """Load rules from cache file.
-
-        Args:
-            cache_path: Path to cache file.
-
-        Returns:
-            Rules instance if successful, None otherwise.
-
-        """
-        if not cache_path.exists():
-            return None
-
-        try:
-            with cache_path.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            return cls.from_dict(data)
-        except (json.JSONDecodeError, OSError, KeyError):
-            return None
 
     def get_implemented_rule_codes(self) -> list[str]:
         """Get list of rule codes that are implemented in ruff.

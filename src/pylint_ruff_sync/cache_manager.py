@@ -6,9 +6,10 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from string import Template
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -144,93 +145,6 @@ class CacheManager:
         except OSError as e:
             logger.warning("Failed to save cache to %s: %s", self.cache_path, e)
 
-    def _generate_release_notes(
-        self,
-        rules_added: list[str],
-        rules_removed: list[str],
-        total_rules: int,
-        timestamp: str,
-    ) -> str:
-        """Generate release notes for the cache update.
-
-        Args:
-            rules_added: List of rules that were added.
-            rules_removed: List of rules that were removed.
-            total_rules: Total number of rules after update.
-            timestamp: Formatted timestamp string to use.
-
-        Returns:
-            Formatted release notes string.
-
-        """
-        # Build rule changes section
-        rule_changes_parts = []
-
-        if rules_added:
-            rule_changes_parts.append(
-                f"### ✅ Added Rules ({len(rules_added)})\n```\n"
-                + "\n".join(rules_added)
-                + "\n```"
-            )
-
-        if rules_removed:
-            rule_changes_parts.append(
-                f"### ❌ Removed Rules ({len(rules_removed)})\n```\n"
-                + "\n".join(rules_removed)
-                + "\n```"
-            )
-
-        if not rules_added and not rules_removed:
-            rule_changes_parts.append("No rule changes in this update.")
-
-        rule_changes_section = "\n\n".join(rule_changes_parts)
-
-        # Load and substitute template
-        template_path = Path(__file__).parent / "data" / "release_notes_template.txt"
-        with template_path.open("r", encoding="utf-8") as f:
-            template_content = f.read()
-
-        template = Template(template_content)
-        return template.substitute(
-            total_rules=total_rules,
-            added_count=len(rules_added),
-            removed_count=len(rules_removed),
-            timestamp=timestamp,
-            rule_changes_section=rule_changes_section,
-        )
-
-    def _generate_commit_message(
-        self,
-        rules_added: list[str],
-        rules_removed: list[str],
-        total_rules: int,
-        timestamp: str,
-    ) -> str:
-        """Generate commit message for the cache update.
-
-        Args:
-            rules_added: List of rules that were added.
-            rules_removed: List of rules that were removed.
-            total_rules: Total number of rules after update.
-            timestamp: Formatted timestamp string to use.
-
-        Returns:
-            Formatted commit message string.
-
-        """
-        # Load and substitute template
-        template_path = Path(__file__).parent / "data" / "commit_message_template.txt"
-        with template_path.open("r", encoding="utf-8") as f:
-            template_content = f.read()
-
-        template = Template(template_content)
-        return template.substitute(
-            added_count=len(rules_added),
-            removed_count=len(rules_removed),
-            total_rules=total_rules,
-            timestamp=timestamp,
-        )
-
     def update_cache(self) -> CacheUpdateResult:
         """Fetch latest data, compare with existing cache, and update.
 
@@ -240,7 +154,6 @@ class CacheManager:
         """
         # Generate consistent timestamp for this update session
         timestamp = datetime.now(UTC)
-        timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
         version = timestamp.strftime("%y.%m.%d.%H%M%S")
 
         logger.info("Updating cache from %s", self.extractor.issue_url)
@@ -258,21 +171,9 @@ class CacheManager:
         rules_removed = sorted(old_rules_set - new_rules_set)
         has_changes = bool(rules_added or rules_removed)
 
-        # Generate release notes
-        release_notes = self._generate_release_notes(
-            rules_added=rules_added,
-            rules_removed=rules_removed,
-            total_rules=len(new_rules),
-            timestamp=timestamp_str,
-        )
-
-        # Generate commit message
-        commit_message = self._generate_commit_message(
-            rules_added=rules_added,
-            rules_removed=rules_removed,
-            total_rules=len(new_rules),
-            timestamp=timestamp_str,
-        )
+        # Note: Message generation now handled by MessageGenerator class
+        release_notes = ""
+        commit_message = ""
 
         # Save updated cache
         self._save_cache(rules=new_rules, has_changes=has_changes)

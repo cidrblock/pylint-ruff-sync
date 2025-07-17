@@ -14,27 +14,51 @@ if TYPE_CHECKING:
 class MessageGenerator:
     """Generates commit messages and release notes using templates."""
 
-    def __init__(self, data_dir: Path | None = None) -> None:
+    def __init__(self, rules: Rules, data_dir: Path | None = None) -> None:
         """Initialize the message generator.
 
         Args:
+            rules: Rules instance to use for message generation.
             data_dir: Directory containing template files. Defaults to package data dir.
 
         """
+        self.rules = rules
         if data_dir is None:
             data_dir = Path(__file__).parent / "data"
         self.data_dir = data_dir
 
+    def generate(
+        self,
+        rules_to_disable: int,
+        unknown_disabled_rules: int,
+        rules_to_enable: int,
+    ) -> str:
+        """Generate dry-run summary message.
+
+        Args:
+            rules_to_disable: Number of rules to disable.
+            unknown_disabled_rules: Number of unknown disabled rules preserved.
+            rules_to_enable: Number of rules to enable.
+
+        Returns:
+            Formatted dry-run message.
+
+        """
+        return (
+            f"DRY RUN: Would update configuration with:\n"
+            f"  - Rules to disable: {rules_to_disable}\n"
+            f"  - Unknown disabled rules preserved: {unknown_disabled_rules}\n"
+            f"  - Rules to enable: {rules_to_enable}"
+        )
+
     def generate_commit_message(
         self,
-        rules: Rules,
         *,
         old_rules: Rules | None = None,
     ) -> str:
         """Generate commit message for rule changes.
 
         Args:
-            rules: Current rules state.
             old_rules: Previous rules state for comparison.
 
         Returns:
@@ -45,19 +69,17 @@ class MessageGenerator:
         template_content = template_path.read_text(encoding="utf-8")
         template = Template(template_content)
 
-        data = self._get_commit_data(rules=rules, old_rules=old_rules)
+        data = self._get_commit_data(old_rules=old_rules)
         return template.substitute(data).strip()
 
     def generate_release_notes(
         self,
-        rules: Rules,
         *,
         old_rules: Rules | None = None,
     ) -> str:
         """Generate release notes for rule changes.
 
         Args:
-            rules: Current rules state.
             old_rules: Previous rules state for comparison.
 
         Returns:
@@ -68,26 +90,24 @@ class MessageGenerator:
         template_content = template_path.read_text(encoding="utf-8")
         template = Template(template_content)
 
-        data = self._get_release_data(rules=rules, old_rules=old_rules)
+        data = self._get_release_data(old_rules=old_rules)
         return template.substitute(data).strip()
 
     def _get_commit_data(
         self,
         *,
-        rules: Rules,
         old_rules: Rules | None = None,
     ) -> dict[str, str]:
         """Get data for commit message template.
 
         Args:
-            rules: Current rules state.
             old_rules: Previous rules state for comparison.
 
         Returns:
             Dictionary of template variables.
 
         """
-        stats = rules.get_statistics()
+        stats = self.rules.get_statistics()
 
         if old_rules is None:
             return {
@@ -97,7 +117,7 @@ class MessageGenerator:
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-        changes = rules.get_implementation_changes(old_rules=old_rules)
+        changes = self.rules.get_implementation_changes(old_rules=old_rules)
         return {
             "added_count": str(len(changes["added"])),
             "removed_count": str(len(changes["removed"])),
@@ -108,20 +128,18 @@ class MessageGenerator:
     def _get_release_data(
         self,
         *,
-        rules: Rules,
         old_rules: Rules | None = None,
     ) -> dict[str, str]:
         """Get data for release notes template.
 
         Args:
-            rules: Current rules state.
             old_rules: Previous rules state for comparison.
 
         Returns:
             Dictionary of template variables.
 
         """
-        stats = rules.get_statistics()
+        stats = self.rules.get_statistics()
 
         if old_rules is None:
             return {
@@ -132,9 +150,8 @@ class MessageGenerator:
                 "rule_changes_section": "Initial cache creation.",
             }
 
-        changes = rules.get_implementation_changes(old_rules=old_rules)
+        changes = self.rules.get_implementation_changes(old_rules=old_rules)
         rule_changes_section = self._format_rule_changes(
-            rules=rules,
             changes=changes,
         )
 
@@ -149,13 +166,11 @@ class MessageGenerator:
     def _format_rule_changes(
         self,
         *,
-        rules: Rules,
         changes: dict[str, set[str]],
     ) -> str:
         """Format rule changes for release notes.
 
         Args:
-            rules: Current rules state.
             changes: Dictionary with 'added' and 'removed' rule sets.
 
         Returns:
@@ -167,7 +182,7 @@ class MessageGenerator:
         if changes["added"]:
             sections.append(f"**Newly Implemented ({len(changes['added'])}):**")
             for rule_id in sorted(changes["added"]):
-                rule = rules.get_by_id(rule_id)
+                rule = self.rules.get_by_id(rule_id)
                 if rule:
                     sections.append(f"- `{rule_id}` - {rule.pylint_name}")
                 else:
