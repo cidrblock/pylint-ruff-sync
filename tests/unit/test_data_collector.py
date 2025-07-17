@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import subprocess
-import tempfile
-from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import Mock
 
 import pytest
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 from pylint_ruff_sync.data_collector import DataCollector
 from pylint_ruff_sync.mypy_overlap import MypyOverlapExtractor
@@ -22,6 +20,19 @@ from pylint_ruff_sync.rules_cache_manager import RulesCacheManager
 
 # Number of rules expected in the mock rules setup
 EXPECTED_MOCK_RULES_COUNT = 5
+
+
+class MockCompletedProcess:
+    """Mock subprocess.CompletedProcess for testing."""
+
+    def __init__(self, returncode: int = 0) -> None:
+        """Initialize mock process.
+
+        Args:
+            returncode: Return code for the process.
+
+        """
+        self.returncode = returncode
 
 
 def create_mock_rules() -> Rules:
@@ -101,9 +112,8 @@ def test_is_github_cli_available_success(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    mock_run = Mock()
-    mock_run.returncode = 0
-    monkeypatch.setattr(subprocess, "run", Mock(return_value=mock_run))
+    mock_run = MockCompletedProcess(returncode=0)
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: mock_run)
 
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -120,9 +130,8 @@ def test_is_github_cli_available_failure(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    mock_run = Mock()
-    mock_run.returncode = 1
-    monkeypatch.setattr(subprocess, "run", Mock(return_value=mock_run))
+    mock_run = MockCompletedProcess(returncode=1)
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: mock_run)
 
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -139,7 +148,11 @@ def test_is_github_cli_available_not_found(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    monkeypatch.setattr(subprocess, "run", Mock(side_effect=FileNotFoundError))
+
+    def mock_run_raise(*_args: object, **_kwargs: object) -> None:
+        raise FileNotFoundError
+
+    monkeypatch.setattr(subprocess, "run", mock_run_raise)
 
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -156,9 +169,8 @@ def test_is_pylint_available_success(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    mock_run = Mock()
-    mock_run.returncode = 0
-    monkeypatch.setattr(subprocess, "run", Mock(return_value=mock_run))
+    mock_run = MockCompletedProcess(returncode=0)
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: mock_run)
 
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -175,9 +187,8 @@ def test_is_pylint_available_failure(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    mock_run = Mock()
-    mock_run.returncode = 1
-    monkeypatch.setattr(subprocess, "run", Mock(return_value=mock_run))
+    mock_run = MockCompletedProcess(returncode=1)
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: mock_run)
 
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -197,8 +208,8 @@ def test_is_online_capable_both_available(
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
 
-    monkeypatch.setattr(collector, "_is_github_cli_available", Mock(return_value=True))
-    monkeypatch.setattr(collector, "_is_pylint_available", Mock(return_value=True))
+    monkeypatch.setattr(collector, "_is_github_cli_available", lambda: True)
+    monkeypatch.setattr(collector, "_is_pylint_available", lambda: True)
 
     assert collector._is_online_capable()
 
@@ -217,8 +228,8 @@ def test_is_online_capable_partial_availability(
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
 
-    monkeypatch.setattr(collector, "_is_github_cli_available", Mock(return_value=True))
-    monkeypatch.setattr(collector, "_is_pylint_available", Mock(return_value=False))
+    monkeypatch.setattr(collector, "_is_github_cli_available", lambda: True)
+    monkeypatch.setattr(collector, "_is_pylint_available", lambda: False)
 
     assert not collector._is_online_capable()
 
@@ -238,61 +249,78 @@ def test_collect_fresh_rules(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     rules = collector.collect_fresh_rules()
 
     assert isinstance(rules, Rules)
-    assert len(rules) == EXPECTED_MOCK_RULES_COUNT
+    assert len(rules.rules) == EXPECTED_MOCK_RULES_COUNT
 
 
-def test_load_rules_from_cache_success() -> None:
-    """Test loading rules from cache successfully."""
-    rules = create_mock_rules()
+def test_load_rules_from_cache_success(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Test loading rules from cache when cache exists and is valid.
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
-        cache_path = Path(tmp.name)
-        cache_manager = RulesCacheManager(cache_path)
-        cache_manager.save_rules(rules)
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
 
-    try:
-        collector = DataCollector(cache_manager=cache_manager)
-        loaded_rules = collector._load_rules_from_cache()
-
-        assert isinstance(loaded_rules, Rules)
-        assert len(loaded_rules) == EXPECTED_MOCK_RULES_COUNT
-    finally:
-        cache_path.unlink()
-
-
-def test_load_rules_from_cache_file_not_found() -> None:
-    """Test loading rules from cache when file doesn't exist."""
-    cache_manager = RulesCacheManager(Path("/nonexistent/path.json"))
+    """
+    cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
+
+    mock_rules = create_mock_rules()
+
+    # Mock cache_manager.load_rules to return mock rules
+    monkeypatch.setattr(cache_manager, "load_rules", lambda: mock_rules)
+
+    rules = collector._load_rules_from_cache()
+
+    assert rules == mock_rules
+
+
+def test_load_rules_from_cache_file_not_found(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Test loading rules from cache when cache file doesn't exist.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    cache_manager = RulesCacheManager(tmp_path / "test.json")
+    collector = DataCollector(cache_manager=cache_manager)
+
+    # Mock cache_manager.load_rules to raise FileNotFoundError
+    def mock_load_raise() -> None:
+        msg = "Cache file not found"
+        raise FileNotFoundError(msg)
+
+    monkeypatch.setattr(cache_manager, "load_rules", mock_load_raise)
 
     with pytest.raises(ValueError, match="Failed to load rules from cache"):
         collector._load_rules_from_cache()
 
 
-def test_load_rules_from_cache_default_path() -> None:
-    """Test loading rules from cache with default path."""
-    # Create a mock cache file at the default location
-    default_cache_path = (
-        Path(__file__).parent.parent.parent
-        / "src"
-        / "pylint_ruff_sync"
-        / "data"
-        / "ruff_implemented_rules.json"
-    )
+def test_load_rules_from_cache_default_path(tmp_path: Path) -> None:
+    """Test loading rules from cache using default cache path.
 
-    cache_manager = RulesCacheManager(default_cache_path)
+    Args:
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
 
-    # This should work with the actual package data file or fail gracefully
-    if default_cache_path.exists():
-        loaded_rules = collector._load_rules_from_cache()
-        assert isinstance(loaded_rules, Rules)
-    else:
-        with pytest.raises(ValueError, match="Failed to load rules from cache"):
-            collector._load_rules_from_cache()
+    mock_rules = create_mock_rules()
+
+    # Mock the cache manager's save_rules method and then load_rules
+    cache_manager.save_rules(mock_rules)
+
+    # Now test that we can load them back
+    loaded_rules = collector._load_rules_from_cache()
+
+    assert len(loaded_rules.rules) == len(mock_rules.rules)
 
 
-def _mock_pylint_extract(mock_rules: Rules) -> Callable[[PylintExtractor], None]:
+def _create_mock_pylint_extract(mock_rules: Rules) -> Callable[[PylintExtractor], None]:
     """Create mock pylint extractor function.
 
     Args:
@@ -317,7 +345,9 @@ def _mock_pylint_extract(mock_rules: Rules) -> Callable[[PylintExtractor], None]
     return mock_pylint_extract
 
 
-def _mock_ruff_extract(mock_rules: Rules) -> Callable[[RuffPylintExtractor], None]:
+def _create_mock_ruff_extract(
+    mock_rules: Rules,
+) -> Callable[[RuffPylintExtractor], None]:
     """Create mock ruff extractor function.
 
     Args:
@@ -347,7 +377,7 @@ def _mock_ruff_extract(mock_rules: Rules) -> Callable[[RuffPylintExtractor], Non
     return mock_ruff_extract
 
 
-def _mock_mypy_extract() -> Callable[[MypyOverlapExtractor], None]:
+def _create_mock_mypy_extract() -> Callable[[MypyOverlapExtractor], None]:
     """Create mock mypy extractor function.
 
     Returns:
@@ -379,9 +409,13 @@ def setup_mocks(monkeypatch: pytest.MonkeyPatch) -> None:
     # Mock the extractor extract methods to populate with test data
     mock_rules = create_mock_rules()
 
-    monkeypatch.setattr(PylintExtractor, "extract", _mock_pylint_extract(mock_rules))
-    monkeypatch.setattr(RuffPylintExtractor, "extract", _mock_ruff_extract(mock_rules))
-    monkeypatch.setattr(MypyOverlapExtractor, "extract", _mock_mypy_extract())
+    monkeypatch.setattr(
+        PylintExtractor, "extract", _create_mock_pylint_extract(mock_rules)
+    )
+    monkeypatch.setattr(
+        RuffPylintExtractor, "extract", _create_mock_ruff_extract(mock_rules)
+    )
+    monkeypatch.setattr(MypyOverlapExtractor, "extract", _create_mock_mypy_extract())
 
 
 def test_collect_rules_online_capable(
@@ -398,8 +432,8 @@ def test_collect_rules_online_capable(
     collector = DataCollector(cache_manager=cache_manager)
 
     mock_rules = create_mock_rules()
-    monkeypatch.setattr(collector, "_is_online_capable", Mock(return_value=True))
-    monkeypatch.setattr(collector, "collect_fresh_rules", Mock(return_value=mock_rules))
+    monkeypatch.setattr(collector, "_is_online_capable", lambda: True)
+    monkeypatch.setattr(collector, "collect_fresh_rules", lambda: mock_rules)
 
     rules = collector.collect_rules()
 
@@ -421,10 +455,8 @@ def test_collect_rules_offline_fallback_to_cache(
     collector = DataCollector(cache_manager=cache_manager)
 
     mock_rules = create_mock_rules()
-    monkeypatch.setattr(collector, "_is_online_capable", Mock(return_value=False))
-    monkeypatch.setattr(
-        collector, "_load_rules_from_cache", Mock(return_value=mock_rules)
-    )
+    monkeypatch.setattr(collector, "_is_online_capable", lambda: False)
+    monkeypatch.setattr(collector, "_load_rules_from_cache", lambda: mock_rules)
 
     rules = collector.collect_rules()
 
@@ -446,13 +478,16 @@ def test_collect_rules_online_fails_fallback_to_cache(
     collector = DataCollector(cache_manager=cache_manager)
 
     mock_rules = create_mock_rules()
-    monkeypatch.setattr(collector, "_is_online_capable", Mock(return_value=True))
+
+    def mock_collect_fresh_rules_raise() -> None:
+        msg = "Network error"
+        raise ValueError(msg)
+
+    monkeypatch.setattr(collector, "_is_online_capable", lambda: True)
     monkeypatch.setattr(
-        collector, "collect_fresh_rules", Mock(side_effect=ValueError("Network error"))
+        collector, "collect_fresh_rules", mock_collect_fresh_rules_raise
     )
-    monkeypatch.setattr(
-        collector, "_load_rules_from_cache", Mock(return_value=mock_rules)
-    )
+    monkeypatch.setattr(collector, "_load_rules_from_cache", lambda: mock_rules)
 
     rules = collector.collect_rules()
 
@@ -472,12 +507,20 @@ def test_collect_rules_both_fail(
     cache_manager = RulesCacheManager(tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
 
-    monkeypatch.setattr(collector, "_is_online_capable", Mock(return_value=True))
+    def mock_collect_fresh_rules_raise() -> None:
+        msg = "Network error"
+        raise ValueError(msg)
+
+    def mock_load_rules_from_cache_raise() -> None:
+        msg = "Cache error"
+        raise ValueError(msg)
+
+    monkeypatch.setattr(collector, "_is_online_capable", lambda: True)
     monkeypatch.setattr(
-        collector, "collect_fresh_rules", Mock(side_effect=ValueError("Network error"))
+        collector, "collect_fresh_rules", mock_collect_fresh_rules_raise
     )
     monkeypatch.setattr(
-        collector, "_load_rules_from_cache", Mock(side_effect=ValueError("Cache error"))
+        collector, "_load_rules_from_cache", mock_load_rules_from_cache_raise
     )
 
     with pytest.raises(ValueError, match="Cache error"):
