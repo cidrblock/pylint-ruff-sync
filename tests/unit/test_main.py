@@ -1,4 +1,4 @@
-"""Test module for main functionality."""
+"""Tests for main module."""
 
 from __future__ import annotations
 
@@ -10,11 +10,9 @@ import pytest
 
 from pylint_ruff_sync.constants import RUFF_PYLINT_ISSUE_URL
 from pylint_ruff_sync.main import (
-    _resolve_rule_identifiers,
     _setup_argument_parser,
     main,
 )
-from pylint_ruff_sync.mypy_overlap import MypyOverlapExtractor
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
@@ -100,33 +98,34 @@ def test_update_pylint_config() -> None:
         # Create Rules instance with test rules
         rules = Rules()
 
-        disable_rules = [
+        test_rules = [
             Rule(
                 pylint_id="F401",
                 pylint_name="unused-import",
                 description="Unused import",
+                is_implemented_in_ruff=True,
             ),
             Rule(
                 pylint_id="F841",
                 pylint_name="unused-variable",
                 description="Unused variable",
+                is_implemented_in_ruff=True,
             ),
-        ]
-        enable_rules = [
             Rule(
                 pylint_id="C0103",
                 pylint_name="invalid-name",
                 description="Invalid name",
+                is_implemented_in_ruff=False,
             ),
         ]
 
         # Add all rules to the Rules instance
-        for rule in disable_rules + enable_rules:
+        for rule in test_rules:
             rules.add_rule(rule)
 
-        # Use new PyprojectUpdater pattern
+        # Use new PyprojectUpdater pattern with simplified interface
         updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=False)
-        updater.update_pylint_config(disable_rules, [], enable_rules)
+        updater.update()
 
         # Check the results by reading the file directly
         result_dict = updater.toml_file.as_dict()
@@ -134,14 +133,17 @@ def test_update_pylint_config() -> None:
         assert "pylint" in result_dict["tool"]
         assert "messages_control" in result_dict["tool"]["pylint"]
 
-        # Check that enable rules are present
-        assert "C0103" in result_dict["tool"]["pylint"]["messages_control"]["enable"]
+        # Check that enable rules contain non-ruff-implemented rules
+        enable_list = result_dict["tool"]["pylint"]["messages_control"]["enable"]
+        assert "C0103" in enable_list
 
-        # Check that disable rules include "all" and the disabled rules
+        # Check that disable rules include "all" (but ruff-implemented rules
+        # are optimized out)
         disable_list = result_dict["tool"]["pylint"]["messages_control"]["disable"]
         assert "all" in disable_list
-        assert "F401" in disable_list
-        assert "F841" in disable_list
+        # Ruff-implemented rules should NOT be in disable list (optimization)
+        assert "F401" not in disable_list
+        assert "F841" not in disable_list
     finally:
         temp_path.unlink()
 
@@ -158,28 +160,28 @@ def test_update_pylint_config_dry_run() -> None:
         # Create Rules instance with test rules
         rules = Rules()
 
-        disable_rules = [
+        test_rules = [
             Rule(
                 pylint_id="F401",
                 pylint_name="unused-import",
                 description="Unused import",
+                is_implemented_in_ruff=True,
             ),
-        ]
-        enable_rules = [
             Rule(
                 pylint_id="C0103",
                 pylint_name="invalid-name",
                 description="Invalid name",
+                is_implemented_in_ruff=False,
             ),
         ]
 
         # Add all rules to the Rules instance
-        for rule in disable_rules + enable_rules:
+        for rule in test_rules:
             rules.add_rule(rule)
 
         # Use PyprojectUpdater in dry run mode
         updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=True)
-        updater.update_pylint_config(disable_rules, [], enable_rules)
+        updater.update()
 
         # Check that the file was not modified
         actual_content = temp_path.read_text()
@@ -263,83 +265,10 @@ def test_main_function_flow() -> None:
 
 
 def test_ruff_extractor_initialization() -> None:
-    """Test RuffPylintExtractor initialization."""
+    """Test that RuffPylintExtractor can be initialized with a Rules object."""
     rules = Rules()
     extractor = RuffPylintExtractor(rules)
     assert extractor.issue_url == RUFF_PYLINT_ISSUE_URL
-
-
-def test_mypy_overlap_filtering() -> None:
-    """Test that mypy overlap rules are filtered correctly."""
-    # Create test rules including known mypy overlap rules
-    rules = Rules()
-    rules.add_rule(
-        Rule(pylint_id="E1101", pylint_name="no-member", description="No member")
-    )  # mypy overlap
-    rules.add_rule(
-        Rule(pylint_id="E1102", pylint_name="not-callable", description="Not callable")
-    )  # mypy overlap
-    rules.add_rule(
-        Rule(
-            pylint_id="R0903",
-            pylint_name="too-few-public-methods",
-            description="Too few methods",
-        )
-    )  # not mypy overlap
-    rules.add_rule(
-        Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
-    )  # not mypy overlap
-
-    # Apply mypy overlap status using the extractor
-
-    mypy_extractor = MypyOverlapExtractor(rules)
-    mypy_extractor.extract()
-
-    # Create temporary config file with no disabled rules
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".toml", delete=False
-    ) as tmp_file:
-        tmp_file.write("""[tool.pylint.messages_control]
-disable = []
-""")
-        config_file = Path(tmp_file.name)
-
-    try:
-        # Test with mypy overlap filtering enabled (default)
-        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
-            _resolve_rule_identifiers(
-                all_rules=rules,
-                config_file=config_file,
-                disable_mypy_overlap=False,
-            )
-        )
-
-        enabled_rule_ids = {rule.pylint_id for rule in rules_to_enable}
-        # Should exclude mypy overlap rules
-        assert "E1101" not in enabled_rule_ids
-        assert "E1102" not in enabled_rule_ids
-        # Should include non-mypy overlap rules
-        assert "R0903" in enabled_rule_ids
-        assert "C0103" in enabled_rule_ids
-
-        # Test with mypy overlap filtering disabled
-        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
-            _resolve_rule_identifiers(
-                all_rules=rules,
-                config_file=config_file,
-                disable_mypy_overlap=True,
-            )
-        )
-
-        enabled_rule_ids = {rule.pylint_id for rule in rules_to_enable}
-        # Should include all rules when filtering is disabled
-        assert "E1101" in enabled_rule_ids
-        assert "E1102" in enabled_rule_ids
-        assert "R0903" in enabled_rule_ids
-        assert "C0103" in enabled_rule_ids
-
-    finally:
-        Path(tmp_file.name).unlink()
 
 
 def test_main_with_update_cache(
@@ -370,7 +299,7 @@ def test_main_with_update_cache(
     # Should exit successfully (return 0)
     assert not result
 
-    # Cache file should be created
+    # Check that cache file was created
     assert cache_file.exists()
 
     # Check cache content
@@ -380,59 +309,6 @@ def test_main_with_update_cache(
     assert "rules" in cache_data
     assert isinstance(cache_data["rules"], list)
     assert len(cache_data["rules"]) > 0
-
-
-def test_disable_list_optimization_removes_ruff_implemented_rules() -> None:
-    """Test that rules implemented in ruff are removed from disable list."""
-    rules = Rules()
-    rules.add_rule(
-        Rule(pylint_id="C0103", pylint_name="invalid-name", description="Invalid name")
-    )
-    rules.add_rule(
-        Rule(
-            pylint_id="W0613",
-            pylint_name="unused-argument",
-            description="Unused argument",
-            is_implemented_in_ruff=True,
-        )
-    )
-    rules.add_rule(
-        Rule(
-            pylint_id="R0903",
-            pylint_name="too-few-public-methods",
-            description="Too few public methods",
-        )
-    )
-
-    # Create config with all rules disabled
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".toml", delete=False
-    ) as tmp_file:
-        tmp_file.write("""[tool.pylint.messages_control]
-disable = ["invalid-name", "unused-argument", "too-few-public-methods"]
-""")
-        config_file = Path(tmp_file.name)
-
-    try:
-        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
-            _resolve_rule_identifiers(
-                all_rules=rules,
-                config_file=config_file,
-                disable_mypy_overlap=True,  # Disable mypy filtering for this test
-            )
-        )
-
-        # Only R0903 should remain in disable list (not implemented in ruff)
-        disabled_rule_ids = {rule.pylint_id for rule in rules_to_disable}
-        assert "R0903" in disabled_rule_ids
-        assert "C0103" in disabled_rule_ids  # Not implemented in ruff
-        assert "W0613" not in disabled_rule_ids  # Removed (implemented in ruff)
-
-        # No rules should be enabled (all are disabled by user)
-        assert not rules_to_enable
-
-    finally:
-        config_file.unlink()
 
 
 def test_argument_parser_help_text() -> None:

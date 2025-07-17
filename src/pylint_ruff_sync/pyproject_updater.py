@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
+from .rule import Rule, RuleSource
 from .toml_file import SimpleArrayWithComments, TomlFile
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from .rule import Rule, Rules
+    from .rule import Rules
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -20,23 +21,10 @@ class PyprojectUpdater:
     """Updates pyproject.toml with pylint configuration.
 
     This class manages a TomlFile internally to update pylint configuration,
-    first updating the disable array with "all", then updating the enable array
-    based on the collected disable rules.
-
-    Attributes:
-        CATEGORY_MAP: Map rule category codes to URL categories.
+    automatically determining which rules to enable/disable based on ruff
+    implementation status and current configuration.
 
     """
-
-    # Map rule category codes to URL categories
-    CATEGORY_MAP: ClassVar[dict[str, str]] = {
-        "C": "convention",
-        "E": "error",
-        "W": "warning",
-        "R": "refactor",
-        "I": "info",
-        "F": "fatal",
-    }
 
     def __init__(
         self, rules: Rules, config_file: Path, *, dry_run: bool = False
@@ -55,43 +43,136 @@ class PyprojectUpdater:
         self.dry_run = dry_run
         self.toml_file = TomlFile(config_file)
 
-    def update_pylint_config(
-        self,
-        disable_rules: list[Rule],
-        unknown_disabled_rules: list[str],
-        enable_rules: list[Rule],
-    ) -> None:
-        """Update the pylint configuration with disable and enable rules.
+    def update(self, *, disable_mypy_overlap: bool = False) -> None:
+        """Update the pylint configuration with optimized rule settings.
 
-        This method first updates the disable array (ensuring "all" is included),
-        then updates the enable array with URL comments.
+        Automatically determines which rules to enable/disable based on ruff
+        implementation status and current configuration.
 
         Args:
-            disable_rules: List of rules to disable.
-            unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
-            enable_rules: List of rules to enable.
+            disable_mypy_overlap: If False (default), exclude rules that overlap
+                with mypy.
 
         """
         logger.info("Updating pylint configuration in %s", self.config_file)
 
+        # Resolve which rules to enable/disable
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            self._resolve_rule_identifiers(disable_mypy_overlap=disable_mypy_overlap)
+        )
+
         if self.dry_run:
             logger.info("DRY RUN: Would update configuration with:")
-            logger.info("  - Rules to disable: %d", len(disable_rules))
+            logger.info("  - Rules to disable: %d", len(rules_to_disable))
             logger.info(
                 "  - Unknown disabled rules preserved: %d", len(unknown_disabled_rules)
             )
-            logger.info("  - Rules to enable: %d", len(enable_rules))
+            logger.info("  - Rules to enable: %d", len(rules_to_enable))
             return
 
         # Step 1: Update disable array with "all" and collected disable rules
-        self._update_disable_array(disable_rules, unknown_disabled_rules)
+        self._update_disable_array(rules_to_disable, unknown_disabled_rules)
 
         # Step 2: Update enable array with URL comments
-        self._update_enable_array(enable_rules)
+        self._update_enable_array(rules_to_enable)
 
         # Step 3: Save the file
         self.save()
         logger.info("Configuration updated successfully")
+
+    def _resolve_rule_identifiers(
+        self, *, disable_mypy_overlap: bool = False
+    ) -> tuple[list[Rule], list[str], list[Rule]]:
+        """Resolve rule identifiers to determine which rules to enable and disable.
+
+        Args:
+            disable_mypy_overlap: If False (default), exclude rules that overlap
+                with mypy.
+
+        Returns:
+            Tuple of (rules_to_disable, unknown_disabled_rules, rules_to_enable).
+
+        """
+        # Add any user-disabled rules that we don't know about
+        self._add_user_disabled_rules()
+
+        # Load existing configuration to check currently disabled and enabled rules
+        current_dict = self.toml_file.as_dict()
+        messages_control = (
+            current_dict.get("tool", {}).get("pylint", {}).get("messages_control", {})
+        )
+
+        current_disable = messages_control.get("disable", [])
+        current_enable = messages_control.get("enable", [])
+
+        # Convert to sets for easier checking (includes both rule IDs and names)
+        current_disable_set = set(current_disable) if current_disable else set()
+        current_enable_set = set(current_enable) if current_enable else set()
+
+        # Get optimized disable list
+        rules_to_disable, unknown_disabled_rules = (
+            self.rules.get_optimized_disable_list(
+                current_disabled=current_disable_set,
+                current_enabled=current_enable_set,
+                disable_mypy_overlap=disable_mypy_overlap,
+            )
+        )
+
+        # Get rules to enable
+        rules_to_enable = self.rules.get_rules_to_enable(
+            current_disabled=current_disable_set,
+            current_enabled=current_enable_set,
+            disable_mypy_overlap=disable_mypy_overlap,
+        )
+
+        disabled_rules_removed = (
+            len(current_disable_set)
+            - len(rules_to_disable)
+            - len(unknown_disabled_rules)
+        )
+
+        logger.info("Total pylint rules: %d", len(self.rules))
+        logger.info(
+            "Rules implemented in ruff: %d",
+            len(self.rules.filter_implemented_in_ruff()),
+        )
+        logger.info(
+            "Rules to enable (not implemented in ruff): %d", len(rules_to_enable)
+        )
+        logger.info("Rules to keep disabled: %d", len(rules_to_disable))
+        logger.info("Unknown disabled rules preserved: %d", len(unknown_disabled_rules))
+        logger.info("Disabled rules removed (optimization): %d", disabled_rules_removed)
+
+        return rules_to_disable, unknown_disabled_rules, rules_to_enable
+
+    def _add_user_disabled_rules(self) -> None:
+        """Add user-disabled rules that aren't in the main rule set."""
+        # Load existing configuration to check currently disabled rules
+        current_dict = self.toml_file.as_dict()
+        messages_control = (
+            current_dict.get("tool", {}).get("pylint", {}).get("messages_control", {})
+        )
+
+        current_disable = messages_control.get("disable", [])
+        if not current_disable:
+            return
+
+        # Check for any disabled rules that aren't in our rule set
+        for disabled_item in current_disable:
+            if disabled_item == "all":
+                continue
+
+            existing_rule = self.rules.get_by_identifier(disabled_item)
+            if not existing_rule:
+                # This is a user-disabled rule we don't know about
+                # Add it as an unknown rule
+                rule = Rule(
+                    pylint_id=disabled_item,
+                    pylint_name=disabled_item if not disabled_item.isupper() else "",
+                    source=RuleSource.USER_DISABLE,
+                )
+                self.rules.add_rule(rule)
+                logger.debug("Added user-disabled rule: %s", disabled_item)
 
     def save(self) -> None:
         """Save the updated configuration to the file."""
@@ -112,13 +193,14 @@ class PyprojectUpdater:
             unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
 
         """
-        # Create set to avoid duplicates and ensure "all" is included
+        # Collect all disable items: "all" + rule IDs + unknown rules
         disable_set = {"all"}
         disable_set.update(rule.pylint_id for rule in disable_rules)
         disable_set.update(unknown_disabled_rules)
 
-        # Update the disable array with sorted list
+        # Sort for consistent output
         disable_list = sorted(disable_set)
+
         self.toml_file.update_section_array(
             section_path="tool.pylint.messages_control",
             key="disable",
@@ -126,14 +208,14 @@ class PyprojectUpdater:
         )
 
     def _update_enable_array(self, enable_rules: list[Rule]) -> None:
-        """Update the enable array with URL comments.
+        """Update the enable array with rules and URL comments.
 
         Args:
             enable_rules: List of rules to enable.
 
         """
         if not enable_rules:
-            # If no rules to enable, set empty array
+            # Ensure enable array exists but is empty
             self.toml_file.update_section_array(
                 section_path="tool.pylint.messages_control",
                 key="enable",
@@ -141,10 +223,10 @@ class PyprojectUpdater:
             )
             return
 
-        # Create SimpleArrayWithComments with URL comments
+        # Create SimpleArrayWithComments with URL comments from rule data
         enable_items = [rule.pylint_id for rule in enable_rules]
         enable_comments = {
-            rule.pylint_id: self._generate_url_comment(rule) for rule in enable_rules
+            rule.pylint_id: rule.pylint_docs_url or "" for rule in enable_rules
         }
 
         enable_array = SimpleArrayWithComments(
@@ -181,29 +263,3 @@ class PyprojectUpdater:
             return []  # noqa: TRY300
         except (KeyError, TypeError):
             return []
-
-    def _generate_url_comment(self, rule: Rule) -> str:
-        """Generate a URL comment for a pylint rule.
-
-        Args:
-            rule: Rule object containing rule information.
-
-        Returns:
-            URL comment string for the rule.
-
-        """
-        # Use the pylint_docs_url if available, otherwise generate one
-        if rule.pylint_docs_url:
-            return rule.pylint_docs_url
-
-        # Fallback: generate URL from rule category and name
-        if rule.pylint_category and rule.pylint_name:
-            category_name = self.CATEGORY_MAP.get(rule.pylint_category, "")
-            if category_name:
-                return (
-                    f"https://pylint.readthedocs.io/en/stable/user_guide/messages/"
-                    f"{category_name}/{rule.pylint_name}.html"
-                )
-
-        # Final fallback: generic pylint docs
-        return "https://pylint.readthedocs.io/en/stable/user_guide/messages/"

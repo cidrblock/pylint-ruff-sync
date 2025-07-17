@@ -6,11 +6,13 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pylint_ruff_sync.data_collector import DataCollector
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.rule import Rule, Rules, RuleSource
-from pylint_ruff_sync.toml_file import TomlFile
+
+if TYPE_CHECKING:
+    from pylint_ruff_sync.rule import Rules
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -146,117 +148,6 @@ def _extract_all_rules(cache_path: Path | None = None) -> Rules:
     return data_collector.collect_rules()
 
 
-def _add_user_disabled_rules(
-    all_rules: Rules,
-    config_file: Path,
-) -> Rules:
-    """Add user-disabled rules that aren't in the main rule set.
-
-    Args:
-        all_rules: Existing Rules object.
-        config_file: Path to the pyproject.toml file.
-
-    Returns:
-        Updated Rules object with user-disabled rules added.
-
-    """
-    # Load existing configuration to check currently disabled rules
-    toml_file = TomlFile(config_file)
-    current_dict = toml_file.as_dict()
-    messages_control = (
-        current_dict.get("tool", {}).get("pylint", {}).get("messages_control", {})
-    )
-
-    current_disable = messages_control.get("disable", [])
-    if not current_disable:
-        return all_rules
-
-    # Check for any disabled rules that aren't in our rule set
-    for disabled_item in current_disable:
-        if disabled_item == "all":
-            continue
-
-        existing_rule = all_rules.get_by_identifier(disabled_item)
-        if not existing_rule:
-            # This is a user-disabled rule we don't know about
-            # Add it as an unknown rule
-            rule = Rule(
-                pylint_id=disabled_item,
-                pylint_name=disabled_item if not disabled_item.isupper() else "",
-                source=RuleSource.USER_DISABLE,
-            )
-            all_rules.add_rule(rule)
-            logger.debug("Added user-disabled rule: %s", disabled_item)
-
-    return all_rules
-
-
-def _resolve_rule_identifiers(
-    *,
-    all_rules: Rules,
-    config_file: Path,
-    disable_mypy_overlap: bool = False,
-) -> tuple[list[Rule], list[str], list[Rule]]:
-    """Resolve rule identifiers to determine which rules to enable and disable.
-
-    Args:
-        all_rules: Rules object containing all available pylint rules.
-        config_file: Path to the pyproject.toml file to check existing configuration.
-        disable_mypy_overlap: If False (default), exclude rules that overlap with mypy.
-
-    Returns:
-        Tuple of (rules_to_disable, unknown_disabled_rules, rules_to_enable).
-
-    """
-    # Add any user-disabled rules that we don't know about
-    all_rules = _add_user_disabled_rules(all_rules, config_file)
-
-    # Load existing configuration to check currently disabled and enabled rules
-    toml_file = TomlFile(config_file)
-    current_dict = toml_file.as_dict()
-    messages_control = (
-        current_dict.get("tool", {}).get("pylint", {}).get("messages_control", {})
-    )
-
-    current_disable = messages_control.get("disable", [])
-    current_enable = messages_control.get("enable", [])
-
-    # Convert to sets for easier checking (includes both rule IDs and names)
-    current_disable_set = set(current_disable) if current_disable else set()
-    current_enable_set = set(current_enable) if current_enable else set()
-
-    # Note: mypy overlap status is already set by DataCollector
-
-    # Get optimized disable list
-    rules_to_disable, unknown_disabled_rules = all_rules.get_optimized_disable_list(
-        current_disabled=current_disable_set,
-        current_enabled=current_enable_set,
-        disable_mypy_overlap=disable_mypy_overlap,
-    )
-
-    # Get rules to enable
-    rules_to_enable = all_rules.get_rules_to_enable(
-        current_disabled=current_disable_set,
-        current_enabled=current_enable_set,
-        disable_mypy_overlap=disable_mypy_overlap,
-    )
-
-    disabled_rules_removed = (
-        len(current_disable_set) - len(rules_to_disable) - len(unknown_disabled_rules)
-    )
-
-    logger.info("Total pylint rules: %d", len(all_rules))
-    logger.info(
-        "Rules implemented in ruff: %d", len(all_rules.filter_implemented_in_ruff())
-    )
-    logger.info("Rules to enable (not implemented in ruff): %d", len(rules_to_enable))
-    logger.info("Rules to keep disabled: %d", len(rules_to_disable))
-    logger.info("Unknown disabled rules preserved: %d", len(unknown_disabled_rules))
-    logger.info("Disabled rules removed (optimization): %d", disabled_rules_removed)
-
-    return rules_to_disable, unknown_disabled_rules, rules_to_enable
-
-
 def main() -> int:
     """Run the pylint-ruff-sync tool.
 
@@ -286,26 +177,13 @@ def main() -> int:
         # Extract all rule information using DataCollector
         all_rules = _extract_all_rules(cache_path=args.cache_path)
 
-        # Resolve which rules to enable/disable
-        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
-            _resolve_rule_identifiers(
-                all_rules=all_rules,
-                config_file=args.config_file,
-                disable_mypy_overlap=args.disable_mypy_overlap,
-            )
-        )
-
         # Update the configuration
         updater = PyprojectUpdater(
             rules=all_rules,
             config_file=args.config_file,
             dry_run=args.dry_run,
         )
-        updater.update_pylint_config(
-            disable_rules=rules_to_disable,
-            unknown_disabled_rules=unknown_disabled_rules,
-            enable_rules=rules_to_enable,
-        )
+        updater.update(disable_mypy_overlap=args.disable_mypy_overlap)
 
     except KeyboardInterrupt:
         logger.info("Operation cancelled by user")
