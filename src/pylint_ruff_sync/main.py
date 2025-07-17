@@ -236,9 +236,6 @@ def update_cache_from_github(cache_path: Path) -> None:
     Args:
         cache_path: Path to cache file.
 
-    Raises:
-        Exception: If cache update fails for any reason.
-
     """
     app = Application(cache_path=cache_path)
     app.update_cache_from_github()
