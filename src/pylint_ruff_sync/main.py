@@ -227,34 +227,6 @@ Examples:
     return parser
 
 
-def update_cache_from_github(cache_path: Path) -> None:
-    """Update the cache from GitHub issue.
-
-    This uses DataCollector to ensure fresh data is collected following
-    the proper initialization flow.
-
-    Args:
-        cache_path: Path to cache file.
-
-    """
-    app = Application(cache_path=cache_path)
-    app.update_cache_from_github()
-
-
-def _extract_all_rules(cache_path: Path | None = None) -> Rules:
-    """Extract and combine all rule information using DataCollector.
-
-    Args:
-        cache_path: Optional path to cache file.
-
-    Returns:
-        Rules object containing all available pylint rules with ruff data.
-
-    """
-    app = Application(cache_path=cache_path)
-    return app.extract_all_rules()
-
-
 def main() -> int:
     """Run the pylint-ruff-sync tool.
 
