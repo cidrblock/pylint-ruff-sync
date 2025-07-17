@@ -243,6 +243,35 @@ The tool uses advanced regex patterns to surgically update only the necessary pa
 - **Adds new sections at the end** when none exist
 - **Respects existing section organization** and doesn't reorder other pylint settings
 
+### 6. Disable List Optimization
+
+The tool automatically optimizes your disable list to reduce unnecessary entries over time:
+
+- **Removes redundant disabled rules**: If a rule is in your disable list but is implemented in ruff, it will be removed since ruff handles it anyway
+- **Respects explicit enables**: If you explicitly enable a rule (via the enable list), it takes precedence over any disable entry for the same rule
+- **Preserves unknown rules**: Custom or unrecognized rules in your disable list are preserved
+- **Handles mypy overlap**: Rules that overlap with mypy functionality are removed from the disable list (unless `--disable-mypy-overlap` is used)
+
+**Important**: The burden of ensuring that overlapping rules that should be enabled in ruff are properly configured is on you, the user. This tool removes disabled rules that are handled by ruff, but it's your responsibility to ensure ruff is configured to check those rules if you want them enforced.
+
+#### Example Optimization
+
+Before:
+
+```toml
+[tool.pylint.messages_control]
+disable = ["locally-disabled", "invalid-name", "unused-import"]  # invalid-name and unused-import implemented in ruff
+enable = ["C0103"]  # Explicitly enable invalid-name
+```
+
+After:
+
+```toml
+[tool.pylint.messages_control]
+disable = ["locally-disabled", "all"]  # Removed invalid-name (explicitly enabled) and unused-import (ruff handles it)
+enable = ["C0103"]  # Still enabled since user explicitly requested it
+```
+
 ## Benefits
 
 - **Avoid Duplication**: Prevents running the same checks twice by disabling all rules then enabling only needed ones
@@ -478,6 +507,7 @@ This project was developed through an innovative collaborative process between [
 1. **Problem Definition & Architecture**: Bradley presented the initial requirements and we collaboratively designed the overall architecture, deciding on a precommit hook approach that would surgically update TOML files while preserving formatting.
 
 2. **Iterative Development**: The development proceeded through multiple phases:
+
    - **Core Implementation**: Built the basic pylint rule extraction and ruff status parsing
    - **TOML Manipulation**: Developed sophisticated regex-based TOML editing that preserves comments and formatting
    - **Error Handling**: Discovered and fixed edge cases through testing on real-world configurations
@@ -485,6 +515,7 @@ This project was developed through an innovative collaborative process between [
    - **GitHub CLI Integration**: Replaced HTTP requests with direct GitHub CLI calls for better reliability
 
 3. **Problem-Solving Approach**: Each challenge was addressed through:
+
    - **Analysis**: Understanding the root cause of issues (e.g., `KeyAlreadyPresent` errors, URL format problems)
    - **Solution Design**: Collaborative brainstorming of approaches
    - **Implementation**: AI-assisted coding with human oversight and feedback

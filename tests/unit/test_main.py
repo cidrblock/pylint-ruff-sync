@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import tempfile
 from pathlib import Path
@@ -119,7 +120,7 @@ def test_update_pylint_config() -> None:
             ),
         ]
 
-        updater.update_pylint_config(disable_rules, enable_rules)
+        updater.update_pylint_config(disable_rules, [], enable_rules)
 
         result_dict = toml_file.as_dict()
         assert "tool" in result_dict
@@ -239,7 +240,7 @@ disable = ["existing-rule"]
             ),
         ]
 
-        updater.update_pylint_config(disable_rules, enable_rules)
+        updater.update_pylint_config(disable_rules, ["existing-rule"], enable_rules)
 
         result_dict = toml_file.as_dict()
 
@@ -364,11 +365,13 @@ disable = []
 
     try:
         # Test with mypy overlap filtering enabled (default)
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=implemented_codes,
-            config_file=config_file,
-            disable_mypy_overlap=False,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=False,
+            )
         )
 
         enabled_rule_ids = {rule.rule_id for rule in rules_to_enable}
@@ -380,11 +383,13 @@ disable = []
         assert "C0103" in enabled_rule_ids
 
         # Test with mypy overlap filtering disabled
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=implemented_codes,
-            config_file=config_file,
-            disable_mypy_overlap=True,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=True,
+            )
         )
 
         enabled_rule_ids = {rule.rule_id for rule in rules_to_enable}
@@ -484,3 +489,250 @@ def test_main_with_update_cache(
     assert "implemented_rules" in cache_data
     assert isinstance(cache_data["implemented_rules"], list)
     assert len(cache_data["implemented_rules"]) > 0
+
+
+def test_disable_list_optimization_removes_ruff_implemented_rules() -> None:
+    """Test that rules implemented in ruff are removed from disable list."""
+    all_rules = [
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            rule_id="W0613", name="unused-argument", description="Unused argument"
+        ),
+        PylintRule(
+            rule_id="R0903",
+            name="too-few-public-methods",
+            description="Too few public methods",
+        ),
+    ]
+
+    # C0103 and W0613 are implemented in ruff
+    implemented_codes = ["C0103", "W0613"]
+
+    # Create config with all rules disabled
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["invalid-name", "unused-argument", "too-few-public-methods"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=True,  # Disable mypy filtering for this test
+            )
+        )
+
+        # Only R0903 should remain in disable list (not implemented in ruff)
+        disabled_rule_ids = {rule.rule_id for rule in rules_to_disable}
+        assert "R0903" in disabled_rule_ids
+        assert "C0103" not in disabled_rule_ids  # Removed (implemented in ruff)
+        assert "W0613" not in disabled_rule_ids  # Removed (implemented in ruff)
+
+        # No rules should be enabled (all are disabled by user)
+        assert len(rules_to_enable) == 0
+
+    finally:
+        config_file.unlink()
+
+
+def test_disable_list_optimization_removes_mypy_overlap_rules() -> None:
+    """Test that mypy overlap rules are removed from disable list."""
+    all_rules = [
+        PylintRule(
+            rule_id="E1101", name="no-member", description="No member"
+        ),  # mypy overlap
+        PylintRule(
+            rule_id="E1102", name="not-callable", description="Not callable"
+        ),  # mypy overlap
+        PylintRule(
+            rule_id="C0103", name="invalid-name", description="Invalid name"
+        ),  # not mypy overlap
+    ]
+
+    implemented_codes: list[str] = []  # None implemented in ruff
+
+    # Create config with all rules disabled
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["no-member", "not-callable", "invalid-name"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=False,  # Enable mypy filtering
+            )
+        )
+
+        # Only C0103 should remain in disable list (not mypy overlap)
+        disabled_rule_ids = {rule.rule_id for rule in rules_to_disable}
+        assert "C0103" in disabled_rule_ids
+        assert "E1101" not in disabled_rule_ids  # Removed (mypy overlap)
+        assert "E1102" not in disabled_rule_ids  # Removed (mypy overlap)
+
+        # No rules should be enabled (all are disabled by user)
+        assert len(rules_to_enable) == 0
+
+    finally:
+        config_file.unlink()
+
+
+def test_disable_list_optimization_preserves_unknown_rules() -> None:
+    """Test that unknown/custom rules are preserved in disable list."""
+    all_rules = [
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
+    ]
+
+    implemented_codes: list[str] = []
+
+    # Create config with known and unknown rules disabled
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["invalid-name", "custom-rule-123", "unknown-rule"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=implemented_codes,
+            config_file=config_file,
+            disable_mypy_overlap=True,
+        )
+
+        # Only C0103 should be in rules_to_disable (known rule)
+        disabled_rule_ids = {rule.rule_id for rule in rules_to_disable}
+        assert "C0103" in disabled_rule_ids
+
+        # Unknown rules are handled differently - they're preserved in the original
+        # disable list but not included in rules_to_disable since they don't have
+        # PylintRule objects
+
+    finally:
+        config_file.unlink()
+
+
+def test_disable_list_optimization_handles_rule_names() -> None:
+    """Test that optimization works with rule names as well as IDs."""
+    all_rules = [
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            rule_id="W0613", name="unused-argument", description="Unused argument"
+        ),
+    ]
+
+    # W0613 is implemented in ruff
+    implemented_codes = ["W0613"]
+
+    # Create config with rules disabled by name
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["invalid-name", "unused-argument"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=implemented_codes,
+            config_file=config_file,
+            disable_mypy_overlap=True,
+        )
+
+        # Only C0103 should remain in disable list
+        disabled_rule_ids = {rule.rule_id for rule in rules_to_disable}
+        assert "C0103" in disabled_rule_ids
+        assert "W0613" not in disabled_rule_ids  # Removed (implemented in ruff)
+
+    finally:
+        config_file.unlink()
+
+
+def test_disable_list_optimization_skips_all() -> None:
+    """Test that 'all' is properly skipped in disable list optimization."""
+    all_rules = [
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
+    ]
+
+    implemented_codes = ["C0103"]  # C0103 is implemented in ruff
+
+    # Create config with "all" and specific rule disabled
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["all", "invalid-name"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
+            all_rules=all_rules,
+            implemented_codes=implemented_codes,
+            config_file=config_file,
+            disable_mypy_overlap=True,
+        )
+
+        # "all" should be skipped, C0103 should be removed (implemented in ruff)
+        disabled_rule_ids = {rule.rule_id for rule in rules_to_disable}
+        assert "C0103" not in disabled_rule_ids
+        # "all" is handled separately by PyprojectUpdater
+
+    finally:
+        config_file.unlink()
+
+
+def test_disable_list_optimization_logging(caplog: pytest.LogCaptureFixture) -> None:
+    """Test that disable list optimization produces correct logging."""
+    all_rules = [
+        PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
+        PylintRule(
+            rule_id="W0613", name="unused-argument", description="Unused argument"
+        ),
+        PylintRule(
+            rule_id="E1101", name="no-member", description="No member"
+        ),  # mypy overlap
+    ]
+
+    # W0613 is implemented in ruff
+    implemented_codes = ["W0613"]
+
+    # Create config with all rules disabled
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".toml", delete=False
+    ) as tmp_file:
+        tmp_file.write("""[tool.pylint.messages_control]
+disable = ["invalid-name", "unused-argument", "no-member"]
+""")
+        config_file = Path(tmp_file.name)
+
+    try:
+        with caplog.at_level(logging.INFO):
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=False,  # Enable mypy filtering
+            )
+
+        # Should log removal of 2 rules (W0613 implemented in ruff, E1101 mypy overlap)
+        assert "Removed 2 unnecessary disabled rules" in caplog.text
+        assert "This helps reduce your disable list over time" in caplog.text
+
+    finally:
+        config_file.unlink()

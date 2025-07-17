@@ -48,6 +48,7 @@ class PyprojectUpdater:
     def update_pylint_config(
         self,
         disable_rules: list[PylintRule],
+        unknown_disabled_rules: list[str],
         enable_rules: list[PylintRule],
     ) -> None:
         """Update the pylint configuration with disable and enable rules.
@@ -57,32 +58,32 @@ class PyprojectUpdater:
 
         Args:
             disable_rules: List of rules to disable.
+            unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
             enable_rules: List of rules to enable.
 
         """
         # Step 1: Update disable array with "all" and collected disable rules
-        self._update_disable_array(disable_rules)
+        self._update_disable_array(disable_rules, unknown_disabled_rules)
 
         # Step 2: Update enable array with URL comments
         self._update_enable_array(enable_rules)
 
-    def _update_disable_array(self, disable_rules: list[PylintRule]) -> None:
-        """Update the disable array with "all" and disable rules.
+    def _update_disable_array(
+        self, disable_rules: list[PylintRule], unknown_disabled_rules: list[str]
+    ) -> None:
+        """Update the disable array with "all", disable rules, and unknown rules.
 
         Args:
             disable_rules: List of rules to disable.
+            unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
 
         """
-        # Get current disable array from the file
-        current_dict = self.toml_file.as_dict()
-        current_disable = self._get_current_disable_array(current_dict)
-
         # Create set to avoid duplicates and ensure "all" is included
         disable_set = {"all"}
-        disable_set.update(current_disable)
         disable_set.update(rule.rule_id for rule in disable_rules)
+        disable_set.update(unknown_disabled_rules)
 
-        # Update the disable array
+        # Update the disable array with sorted list
         disable_list = sorted(disable_set)
         self.toml_file.update_section_array(
             section_path="tool.pylint.messages_control",

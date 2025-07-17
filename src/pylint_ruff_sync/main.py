@@ -123,7 +123,7 @@ def _resolve_rule_identifiers(
     implemented_codes: list[str],
     config_file: Path,
     disable_mypy_overlap: bool = False,
-) -> tuple[list[PylintRule], list[PylintRule]]:
+) -> tuple[list[PylintRule], list[str], list[PylintRule]]:
     """Resolve rule identifiers to determine which rules to enable and disable.
 
     Args:
@@ -133,39 +133,101 @@ def _resolve_rule_identifiers(
         disable_mypy_overlap: If False (default), exclude rules that overlap with mypy.
 
     Returns:
-        Tuple of (rules_to_disable, rules_to_enable).
+        Tuple of (rules_to_disable, unknown_disabled_rules, rules_to_enable).
 
     """
-    # Load existing configuration to check currently disabled rules
+    # Load existing configuration to check currently disabled and enabled rules
     toml_file = TomlFile(config_file)
     current_dict = toml_file.as_dict()
-    current_disable = (
-        current_dict.get("tool", {})
-        .get("pylint", {})
-        .get("messages_control", {})
-        .get("disable", [])
+    messages_control = (
+        current_dict.get("tool", {}).get("pylint", {}).get("messages_control", {})
     )
 
-    # Convert to set for easier checking (includes both rule IDs and names)
+    current_disable = messages_control.get("disable", [])
+    current_enable = messages_control.get("enable", [])
+
+    # Convert to sets for easier checking (includes both rule IDs and names)
     current_disable_set = set(current_disable) if current_disable else set()
+    current_enable_set = set(current_enable) if current_enable else set()
 
     # Get mypy overlap rules if filtering is enabled
     mypy_overlap_rules = set() if disable_mypy_overlap else get_mypy_overlap_rules()
 
-    # Always disable "all" to prevent duplicate rule execution (no PylintRule needed)
-    rules_to_disable: list[PylintRule] = []
+    # Create lookup maps for rule names to rule IDs and vice versa
+    rule_name_to_id = {rule.name: rule.rule_id for rule in all_rules}
+    rule_id_to_rule = {rule.rule_id: rule for rule in all_rules}
 
-    # Get rules to enable (not implemented in ruff AND not explicitly disabled by user)
-    rules_to_enable = [
-        rule
-        for rule in all_rules
-        if (
-            rule.rule_id not in implemented_codes  # Not implemented in ruff
-            and rule.rule_id not in current_disable_set  # Not disabled by ID
-            and rule.name not in current_disable_set  # Not disabled by name
-            and rule.rule_id not in mypy_overlap_rules  # Not overlapping with mypy
+    # Helper function to check if a rule is explicitly enabled (by ID or name)
+    def is_explicitly_enabled(rule_id: str, rule_name: str) -> bool:
+        return rule_id in current_enable_set or rule_name in current_enable_set
+
+    # Get rules to enable: not implemented in ruff AND (not disabled OR explicitly
+    # enabled) AND not mypy overlap
+    rules_to_enable = []
+    for rule in all_rules:
+        if rule.rule_id in implemented_codes:
+            # Skip rules implemented in ruff - they shouldn't be enabled
+            continue
+
+        if rule.rule_id in mypy_overlap_rules:
+            # Skip rules that overlap with mypy (unless mypy filtering is disabled)
+            continue
+
+        # Check if rule is explicitly enabled (takes precedence over disable)
+        explicitly_enabled = is_explicitly_enabled(rule.rule_id, rule.name)
+
+        # Check if rule is disabled (by ID or name)
+        disabled_by_id = rule.rule_id in current_disable_set
+        disabled_by_name = rule.name in current_disable_set
+
+        if explicitly_enabled or (not disabled_by_id and not disabled_by_name):
+            # Enable if: explicitly enabled OR not disabled at all
+            rules_to_enable.append(rule)
+
+    # Build optimized disable list: only keep disabled rules that serve a purpose
+    # (i.e., rules that are not implemented in ruff, not mypy overlap, and not
+    # explicitly enabled)
+    rules_to_disable = []
+    unknown_disabled_rules = []
+    disabled_rules_removed = 0
+
+    for disabled_item in current_disable_set:
+        if disabled_item == "all":
+            continue  # "all" is handled separately by PyprojectUpdater
+
+        # Find the rule ID for this disabled item (could be ID or name)
+        rule_id = (
+            disabled_item
+            if disabled_item in rule_id_to_rule
+            else rule_name_to_id.get(disabled_item)
         )
-    ]
+
+        if rule_id is None:
+            # Unknown rule - keep it in disable list (could be custom or future rule)
+            unknown_disabled_rules.append(disabled_item)
+            continue
+
+        rule = rule_id_to_rule[rule_id]
+
+        # Check if this rule is explicitly enabled (takes precedence)
+        explicitly_enabled = is_explicitly_enabled(rule.rule_id, rule.name)
+
+        if explicitly_enabled:
+            # Rule is explicitly enabled - remove from disable list
+            disabled_rules_removed += 1
+            continue
+
+        # Only keep disabled rule if it would otherwise be enabled
+        # (not implemented in ruff AND not overlapping with mypy)
+        if (
+            rule_id not in implemented_codes  # Not implemented in ruff
+            and rule_id not in mypy_overlap_rules  # Not overlapping with mypy
+        ):
+            rules_to_disable.append(rule)
+        else:
+            # Rule is implemented in ruff or overlaps with mypy - no point keeping
+            # it disabled
+            disabled_rules_removed += 1
 
     # Log mypy overlap filtering if enabled
     if not disable_mypy_overlap:
@@ -174,6 +236,7 @@ def _resolve_rule_identifiers(
             for rule in all_rules
             if rule.rule_id in mypy_overlap_rules
             and rule.rule_id not in implemented_codes
+            and not is_explicitly_enabled(rule.rule_id, rule.name)
             and rule.rule_id not in current_disable_set
             and rule.name not in current_disable_set
         )
@@ -184,13 +247,23 @@ def _resolve_rule_identifiers(
             )
             logger.info("Use --disable-mypy-overlap to include these rules")
 
-    return rules_to_disable, rules_to_enable
+    # Log disable list optimization
+    if disabled_rules_removed > 0:
+        logger.info(
+            "Removed %d unnecessary disabled rules (implemented in ruff, overlap "
+            "with mypy, or explicitly enabled)",
+            disabled_rules_removed,
+        )
+        logger.info("This helps reduce your disable list over time")
+
+    return rules_to_disable, unknown_disabled_rules, rules_to_enable
 
 
 def _update_pylint_config(
     *,
     config_file: Path,
     rules_to_disable: list[PylintRule],
+    unknown_disabled_rules: list[str],
     rules_to_enable: list[PylintRule],
     dry_run: bool = False,
 ) -> bool:
@@ -199,6 +272,7 @@ def _update_pylint_config(
     Args:
         config_file: Path to the pyproject.toml file.
         rules_to_disable: List of rules to disable.
+        unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
         rules_to_enable: List of rules to enable.
         dry_run: If True, only show what would be changed without writing.
 
@@ -211,6 +285,7 @@ def _update_pylint_config(
     if dry_run:
         logger.info("DRY RUN: Would update configuration with:")
         logger.info("  Rules to disable: %d", len(rules_to_disable))
+        logger.info("  Unknown rules to keep disabled: %d", len(unknown_disabled_rules))
         logger.info("  Rules to enable: %d", len(rules_to_enable))
         return True
 
@@ -221,6 +296,7 @@ def _update_pylint_config(
     # Update the configuration
     updater.update_pylint_config(
         disable_rules=rules_to_disable,
+        unknown_disabled_rules=unknown_disabled_rules,
         enable_rules=rules_to_enable,
     )
 
@@ -306,11 +382,13 @@ def main() -> int:
         logger.info("Found %d rules implemented in ruff", len(ruff_implemented))
 
         # Resolve which rules to enable/disable
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=ruff_implemented,
-            config_file=args.config_file,
-            disable_mypy_overlap=args.disable_mypy_overlap,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=ruff_implemented,
+                config_file=args.config_file,
+                disable_mypy_overlap=args.disable_mypy_overlap,
+            )
         )
 
         logger.info("Total pylint rules: %d", len(all_rules))
@@ -323,6 +401,7 @@ def main() -> int:
         _update_pylint_config(
             config_file=args.config_file,
             rules_to_disable=rules_to_disable,
+            unknown_disabled_rules=unknown_disabled_rules,
             rules_to_enable=rules_to_enable,
             dry_run=args.dry_run,
         )
