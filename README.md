@@ -30,12 +30,13 @@ The configuration is automatically synchronized based on real-time data from the
 The tool runs pylint with the following command to detect unnecessary disable comments:
 
 ```bash
-pylint --output-format=parseable --rcfile {config_file} $(git ls-files '*.py')
+pylint --output-format=parseable --disable=all --enable=useless-suppression --rcfile {config_file} $(git ls-files '*.py')
 ```
 
 This command:
 
 - Uses your existing pylint configuration file (`--rcfile`)
+- Disables all rules except useless-suppression (`--disable=all --enable=useless-suppression`)
 - Only checks Python files tracked by git (`git ls-files '*.py'`)
 - Outputs results in parseable format for processing
 
