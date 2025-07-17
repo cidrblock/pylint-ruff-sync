@@ -175,7 +175,7 @@ class PylintCleaner:
             return self._parse_pylint_output(output=result.stdout)
 
         except subprocess.TimeoutExpired:
-            logger.error("Pylint command timed out after 120 seconds")
+            logger.exception("Pylint command timed out after 120 seconds")
             return {}
         except Exception:
             logger.exception("Error running pylint to detect useless suppressions")
@@ -331,7 +331,7 @@ class PylintCleaner:
         file_path: Path,
         useless_suppressions: list[tuple[int, str]],
     ) -> str:
-        """Removes useless pylint disable comments from a single file's content.
+        """Remove useless pylint disable comments from a single file's content.
 
         Args:
             content: The original content of the file.
