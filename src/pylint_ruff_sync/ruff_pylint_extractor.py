@@ -8,17 +8,15 @@ import re
 import subprocess
 from pathlib import Path
 
+from pylint_ruff_sync.constants import (
+    RUFF_PYLINT_ISSUE_NUMBER,
+    RUFF_PYLINT_ISSUE_URL,
+    RUFF_REPO,
+)
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-# GitHub repo and issue details for ruff pylint implementation tracking
-RUFF_REPO = "astral-sh/ruff"
-RUFF_PYLINT_ISSUE_NUMBER = "970"
-RUFF_PYLINT_ISSUE_URL = (
-    f"https://github.com/{RUFF_REPO}/issues/{RUFF_PYLINT_ISSUE_NUMBER}"
-)
 
 
 class RuffPylintExtractor:

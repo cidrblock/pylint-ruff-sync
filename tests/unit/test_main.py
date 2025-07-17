@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from pylint_ruff_sync.constants import RUFF_PYLINT_ISSUE_URL
 from pylint_ruff_sync.main import (
     _resolve_rule_identifiers,
     _setup_argument_parser,
@@ -15,10 +16,7 @@ from pylint_ruff_sync.main import (
 )
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.ruff_pylint_extractor import (
-    RUFF_PYLINT_ISSUE_URL,
-    RuffPylintExtractor,
-)
+from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 from pylint_ruff_sync.rule import Rule, Rules
 from pylint_ruff_sync.toml_file import TomlFile
 from tests.constants import (

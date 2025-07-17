@@ -7,10 +7,9 @@ import logging
 import sys
 from pathlib import Path
 
+from pylint_ruff_sync.data_collector import DataCollector
 from pylint_ruff_sync.mypy_overlap import get_mypy_overlap_rules
-from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
-from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
 from pylint_ruff_sync.toml_file import TomlFile
 
@@ -105,10 +104,8 @@ Examples:
 def update_cache_from_github(cache_path: Path) -> None:
     """Update the cache from GitHub issue.
 
-    This follows the proper initialization flow:
-    1. Initialize rules from pylint --list-msgs (source=PYLINT_LIST)
-    2. Update those rules with ruff implementation data
-    3. Save to cache
+    This uses DataCollector to ensure fresh data is collected following
+    the proper initialization flow.
 
     Args:
         cache_path: Path to cache file.
@@ -116,46 +113,35 @@ def update_cache_from_github(cache_path: Path) -> None:
     """
     logger.info("Updating cache from GitHub...")
 
-    # Follow the same flow as _extract_all_rules()
-    # Step 1: Extract all pylint rules first
-    pylint_extractor = PylintExtractor()
-    all_rules = pylint_extractor.extract_all_rules()
-    logger.info("Found %d total pylint rules", len(all_rules))
+    # Use DataCollector to get fresh rules (bypassing cache)
+    data_collector = DataCollector(cache_path=None)  # Don't use cache for update
 
-    # Step 2: Update with ruff implementation data
-    ruff_extractor = RuffPylintExtractor()
-    all_rules = ruff_extractor.update_rules_with_ruff_data(all_rules)
+    # Force fresh collection by directly calling the fresh collection method
+    try:
+        all_rules = data_collector.collect_fresh_rules()
 
-    ruff_implemented_count = len(all_rules.filter_implemented_in_ruff())
-    logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
-
-    # Step 3: Save to cache
-    all_rules.save_to_cache(cache_path)
-    logger.info("Cache updated successfully with %d rules", len(all_rules))
+        # Save to the specified cache path
+        all_rules.save_to_cache(cache_path)
+        logger.info("Cache updated successfully with %d rules", len(all_rules))
+    except Exception:
+        logger.exception("Failed to update cache")
+        raise
 
 
-def _extract_all_rules() -> Rules:
-    """Extract and combine all rule information from multiple sources.
+def _extract_all_rules(cache_path: Path | None = None) -> Rules:
+    """Extract and combine all rule information using DataCollector.
+
+    Args:
+        cache_path: Optional path to cache file.
 
     Returns:
         Rules object containing all available pylint rules with ruff data.
 
     """
-    logger.info("Extracting all rule information from multiple sources")
+    logger.info("Extracting all rule information")
 
-    # Extract all pylint rules
-    pylint_extractor = PylintExtractor()
-    all_rules = pylint_extractor.extract_all_rules()
-    logger.info("Found %d total pylint rules", len(all_rules))
-
-    # Update with ruff implementation data
-    ruff_extractor = RuffPylintExtractor()
-    all_rules = ruff_extractor.update_rules_with_ruff_data(all_rules)
-
-    ruff_implemented_count = len(all_rules.filter_implemented_in_ruff())
-    logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
-
-    return all_rules
+    data_collector = DataCollector(cache_path=cache_path)
+    return data_collector.collect_rules()
 
 
 def _add_user_disabled_rules(
@@ -343,8 +329,8 @@ def main() -> int:
             update_cache_from_github(cache_path)
             return 0
 
-        # Extract all rule information
-        all_rules = _extract_all_rules()
+        # Extract all rule information using DataCollector
+        all_rules = _extract_all_rules(cache_path=args.cache_path)
 
         # Resolve which rules to enable/disable
         rules_to_disable, unknown_disabled_rules, rules_to_enable = (
