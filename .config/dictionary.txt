@@ -1,12 +1,13 @@
+antonagestam
+caplog
 cidrblock
 Cronicle
 dedented
 docstrings
+dunder
+kwoa
 levelname
 pydocstyle
 pylint
 testpaths
 tomlsort
-antonagestam
-dunder
-kwoa

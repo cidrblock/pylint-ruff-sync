@@ -534,7 +534,7 @@ disable = ["invalid-name", "unused-argument", "too-few-public-methods"]
         assert "W0613" not in disabled_rule_ids  # Removed (implemented in ruff)
 
         # No rules should be enabled (all are disabled by user)
-        assert len(rules_to_enable) == 0
+        assert not rules_to_enable
 
     finally:
         config_file.unlink()
@@ -582,7 +582,7 @@ disable = ["no-member", "not-callable", "invalid-name"]
         assert "E1102" not in disabled_rule_ids  # Removed (mypy overlap)
 
         # No rules should be enabled (all are disabled by user)
-        assert len(rules_to_enable) == 0
+        assert not rules_to_enable
 
     finally:
         config_file.unlink()
@@ -606,11 +606,13 @@ disable = ["invalid-name", "custom-rule-123", "unknown-rule"]
         config_file = Path(tmp_file.name)
 
     try:
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=implemented_codes,
-            config_file=config_file,
-            disable_mypy_overlap=True,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=True,
+            )
         )
 
         # Only C0103 should be in rules_to_disable (known rule)
@@ -647,11 +649,13 @@ disable = ["invalid-name", "unused-argument"]
         config_file = Path(tmp_file.name)
 
     try:
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=implemented_codes,
-            config_file=config_file,
-            disable_mypy_overlap=True,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=True,
+            )
         )
 
         # Only C0103 should remain in disable list
@@ -681,11 +685,13 @@ disable = ["all", "invalid-name"]
         config_file = Path(tmp_file.name)
 
     try:
-        rules_to_disable, rules_to_enable = _resolve_rule_identifiers(
-            all_rules=all_rules,
-            implemented_codes=implemented_codes,
-            config_file=config_file,
-            disable_mypy_overlap=True,
+        rules_to_disable, unknown_disabled_rules, rules_to_enable = (
+            _resolve_rule_identifiers(
+                all_rules=all_rules,
+                implemented_codes=implemented_codes,
+                config_file=config_file,
+                disable_mypy_overlap=True,
+            )
         )
 
         # "all" should be skipped, C0103 should be removed (implemented in ruff)
@@ -698,7 +704,12 @@ disable = ["all", "invalid-name"]
 
 
 def test_disable_list_optimization_logging(caplog: pytest.LogCaptureFixture) -> None:
-    """Test that disable list optimization produces correct logging."""
+    """Test that disable list optimization produces correct logging.
+
+    Args:
+        caplog: pytest fixture for capturing log messages.
+
+    """
     all_rules = [
         PylintRule(rule_id="C0103", name="invalid-name", description="Invalid name"),
         PylintRule(

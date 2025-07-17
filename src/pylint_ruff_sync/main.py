@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,10 +20,32 @@ from pylint_ruff_sync.ruff_pylint_extractor import (
 from pylint_ruff_sync.toml_file import TomlFile
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pylint_ruff_sync.pylint_rule import PylintRule
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RuleContext:
+    """Context for processing disabled rules.
+
+    Attributes:
+        name_to_id_map: Mapping from rule names to rule IDs.
+        id_to_rule_map: Mapping from rule IDs to PylintRule objects.
+        ruff_implemented: List of rule codes implemented in ruff.
+        mypy_overlaps: Set of rules that overlap with mypy.
+        enabled_checker: Function to check if a rule is explicitly enabled.
+
+    """
+
+    name_to_id_map: dict[str, str]
+    id_to_rule_map: dict[str, PylintRule]
+    ruff_implemented: list[str]
+    mypy_overlaps: set[str]
+    enabled_checker: Callable[[str, str], bool]
 
 
 def _setup_argument_parser() -> argparse.ArgumentParser:
@@ -117,6 +140,66 @@ def _extract_ruff_implemented_rules() -> list[str]:
     return extractor.get_implemented_rules()
 
 
+def _process_disabled_rules(
+    disabled_set: set[str],
+    context: RuleContext,
+) -> tuple[list[PylintRule], list[str], int]:
+    """Process disabled rules to determine which ones should be kept.
+
+    Args:
+        disabled_set: Set of currently disabled rule identifiers.
+        context: Context containing rule mappings and filters.
+
+    Returns:
+        Tuple of (rules_to_disable, unknown_disabled_rules,
+        disabled_rules_removed_count).
+
+    """
+    rules_to_disable = []
+    unknown_disabled_rules = []
+    disabled_rules_removed = 0
+
+    for disabled_item in disabled_set:
+        if disabled_item == "all":
+            continue  # "all" is handled separately by PyprojectUpdater
+
+        # Find the rule ID for this disabled item (could be ID or name)
+        rule_id = (
+            disabled_item
+            if disabled_item in context.id_to_rule_map
+            else context.name_to_id_map.get(disabled_item)
+        )
+
+        if rule_id is None:
+            # Unknown rule - keep it in disable list (could be custom or future rule)
+            unknown_disabled_rules.append(disabled_item)
+            continue
+
+        rule = context.id_to_rule_map[rule_id]
+
+        # Check if this rule is explicitly enabled (takes precedence)
+        explicitly_enabled = context.enabled_checker(rule.rule_id, rule.name)
+
+        if explicitly_enabled:
+            # Rule is explicitly enabled - remove from disable list
+            disabled_rules_removed += 1
+            continue
+
+        # Only keep disabled rule if it would otherwise be enabled
+        # (not implemented in ruff AND not overlapping with mypy)
+        if (
+            rule_id not in context.ruff_implemented  # Not implemented in ruff
+            and rule_id not in context.mypy_overlaps  # Not overlapping with mypy
+        ):
+            rules_to_disable.append(rule)
+        else:
+            # Rule is implemented in ruff or overlaps with mypy - no point keeping
+            # it disabled
+            disabled_rules_removed += 1
+
+    return rules_to_disable, unknown_disabled_rules, disabled_rules_removed
+
+
 def _resolve_rule_identifiers(
     *,
     all_rules: list[PylintRule],
@@ -184,50 +267,20 @@ def _resolve_rule_identifiers(
             # Enable if: explicitly enabled OR not disabled at all
             rules_to_enable.append(rule)
 
-    # Build optimized disable list: only keep disabled rules that serve a purpose
-    # (i.e., rules that are not implemented in ruff, not mypy overlap, and not
-    # explicitly enabled)
-    rules_to_disable = []
-    unknown_disabled_rules = []
-    disabled_rules_removed = 0
-
-    for disabled_item in current_disable_set:
-        if disabled_item == "all":
-            continue  # "all" is handled separately by PyprojectUpdater
-
-        # Find the rule ID for this disabled item (could be ID or name)
-        rule_id = (
-            disabled_item
-            if disabled_item in rule_id_to_rule
-            else rule_name_to_id.get(disabled_item)
+    # Process disabled rules to determine which ones to keep
+    context = RuleContext(
+        name_to_id_map=rule_name_to_id,
+        id_to_rule_map=rule_id_to_rule,
+        ruff_implemented=implemented_codes,
+        mypy_overlaps=mypy_overlap_rules,
+        enabled_checker=is_explicitly_enabled,
+    )
+    rules_to_disable, unknown_disabled_rules, disabled_rules_removed = (
+        _process_disabled_rules(
+            disabled_set=current_disable_set,
+            context=context,
         )
-
-        if rule_id is None:
-            # Unknown rule - keep it in disable list (could be custom or future rule)
-            unknown_disabled_rules.append(disabled_item)
-            continue
-
-        rule = rule_id_to_rule[rule_id]
-
-        # Check if this rule is explicitly enabled (takes precedence)
-        explicitly_enabled = is_explicitly_enabled(rule.rule_id, rule.name)
-
-        if explicitly_enabled:
-            # Rule is explicitly enabled - remove from disable list
-            disabled_rules_removed += 1
-            continue
-
-        # Only keep disabled rule if it would otherwise be enabled
-        # (not implemented in ruff AND not overlapping with mypy)
-        if (
-            rule_id not in implemented_codes  # Not implemented in ruff
-            and rule_id not in mypy_overlap_rules  # Not overlapping with mypy
-        ):
-            rules_to_disable.append(rule)
-        else:
-            # Rule is implemented in ruff or overlaps with mypy - no point keeping
-            # it disabled
-            disabled_rules_removed += 1
+    )
 
     # Log mypy overlap filtering if enabled
     if not disable_mypy_overlap:

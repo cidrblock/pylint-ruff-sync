@@ -78,7 +78,7 @@ min-public-methods = 0
 max-line-length = 100
 
 [tool.pylint.messages_control]
-disable = ["all", "locally-disabled", "suppressed-message"]
+disable = ["I0011", "I0020", "all"]
 enable = [
   "C0104", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/disallowed-name.html
   "C0117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unnecessary-negation.html
