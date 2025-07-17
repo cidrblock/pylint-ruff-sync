@@ -160,7 +160,8 @@ class RuffPylintExtractor:
             rules = Rules()
 
             # Pattern to match task list items with pylint codes and optional ruff codes
-            # Format: - [x] `rule-name` / `E0237` (PLE0237) or - [ ] `rule-name` / `E0237`
+            # Format: - [x] `rule-name` / `E0237` (PLE0237)
+            # or - [ ] `rule-name` / `E0237`
             pattern = r"- \[([x ])\] `([^`]*)`\s*/\s*`([A-Z]\d+)`(?:\s*\(([^)]+)\))?"
 
             for match in re.finditer(pattern, issue_body):
@@ -177,7 +178,7 @@ class RuffPylintExtractor:
                         is_in_ruff_issue=True,
                         is_implemented_in_ruff=is_implemented,
                         ruff_rule=ruff_code,
-                        source=RuleSource.RUFF_ISSUE,  # Updated in update_rules_with_ruff_data
+                        source=RuleSource.RUFF_ISSUE,  # Updated in update_rules_with_ruff_data  # noqa: E501
                     )
                     rules.add_rule(rule)
                     logger.debug(
