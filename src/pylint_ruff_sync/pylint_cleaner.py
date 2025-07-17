@@ -154,7 +154,10 @@ class PylintCleaner:
 
         try:
             # Run pylint with user's config on git-tracked Python files
-            cmd = f"pylint --output-format=parseable --rcfile {self.config_file} $(git ls-files '*.py')"
+            cmd = (
+                f"pylint --output-format=parseable --rcfile {self.config_file} "
+                "$(git ls-files '*.py')"
+            )
 
             # Run pylint with the user's configuration
             # Note: Using trusted pylint command from user's environment
