@@ -6,7 +6,7 @@ requires = ["hatchling"]
 dev = [
   "pylint>=3.3.7",
   "pytest>=8.3.5",
-  "ruff>=0.12.3"
+  "ruff>=0.12.3",
 ]
 test = ["mypy>=1.16.1", "pydoclint>=0.5.11", "types-requests>=2.32.4.20250611"]
 

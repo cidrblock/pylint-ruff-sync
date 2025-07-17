@@ -109,7 +109,7 @@ def test_build_key_in_section_pattern_simple() -> None:
     """Test finding keys within sections with simple single-line values."""
     regex = TomlRegex()
     pattern = regex.build_key_in_section_pattern(
-        section_path="tool.pylint", key="disable"
+        key="disable", section_path="tool.pylint"
     )
 
     toml_content = """[tool.pylint]
@@ -130,7 +130,7 @@ disable = ["other-rule"]
 
     # Should not match disable in other sections
     other_pattern = regex.build_key_in_section_pattern(
-        section_path="other.section", key="disable"
+        key="disable", section_path="other.section"
     )
     other_match = other_pattern.search(toml_content)
     assert other_match is not None
@@ -141,7 +141,7 @@ def test_build_key_in_section_pattern_multiline_array() -> None:
     """Test finding keys with multiline array values."""
     regex = TomlRegex()
     pattern = regex.build_key_in_section_pattern(
-        section_path="tool.pylint.messages_control", key="disable"
+        key="disable", section_path="tool.pylint.messages_control"
     )
 
     toml_content = """[tool.pylint.messages_control]
@@ -169,7 +169,7 @@ def test_build_key_in_section_pattern_with_comments() -> None:
     """Test finding keys in sections that contain comments."""
     regex = TomlRegex()
     pattern = regex.build_key_in_section_pattern(
-        section_path="tool.pylint", key="disable"
+        key="disable", section_path="tool.pylint"
     )
 
     toml_content = """[tool.pylint]
@@ -286,7 +286,7 @@ def test_find_key_in_section() -> None:
 
     # Should find key in correct section
     result = regex.find_key_in_section(
-        toml_content, "tool.pylint.messages_control", "disable"
+        content=toml_content, key="disable", section_path="tool.pylint.messages_control"
     )
     assert result.matched
     assert result.match is not None
@@ -315,29 +315,29 @@ def test_key_exists_in_section() -> None:
 
     # Key exists in specified section
     assert regex.key_exists_in_section(
-        content=toml_content, section_path="tool.pylint.messages_control", key="disable"
+        content=toml_content, key="disable", section_path="tool.pylint.messages_control"
     )
     assert regex.key_exists_in_section(
-        content=toml_content, section_path="tool.pylint.messages_control", key="enable"
+        content=toml_content, key="enable", section_path="tool.pylint.messages_control"
     )
     assert regex.key_exists_in_section(
-        content=toml_content, section_path="tool.ruff", key="disable"
+        content=toml_content, key="disable", section_path="tool.ruff"
     )
     assert regex.key_exists_in_section(
-        content=toml_content, section_path="tool.black", key="line-length"
+        content=toml_content, key="line-length", section_path="tool.black"
     )
 
     # Key doesn't exist in specified section
     assert not regex.key_exists_in_section(
         content=toml_content,
-        section_path="tool.pylint.messages_control",
         key="line-length",
+        section_path="tool.pylint.messages_control",
     )
     assert not regex.key_exists_in_section(
-        content=toml_content, section_path="tool.black", key="disable"
+        content=toml_content, key="disable", section_path="tool.black"
     )
     assert not regex.key_exists_in_section(
-        content=toml_content, section_path="nonexistent.section", key="disable"
+        content=toml_content, key="disable", section_path="nonexistent.section"
     )
 
 
@@ -356,7 +356,10 @@ def test_replace_key_in_section() -> None:
 
     # Replace key in specific section
     result = regex.replace_key_in_section(
-        toml_content, "tool.pylint.messages_control", "disable", '["new-rule"]'
+        content=toml_content,
+        key="disable",
+        new_value='["new-rule"]',
+        section_path="tool.pylint.messages_control",
     )
 
     # Should contain the new value
@@ -393,7 +396,10 @@ disable = ["rule1"]
 
     with pytest.raises(ValueError, match="Key 'nonexistent' not found in section"):
         regex.replace_key_in_section(
-            toml_content, "tool.pylint.messages_control", "nonexistent", "value"
+            content=toml_content,
+            key="nonexistent",
+            new_value="value",
+            section_path="tool.pylint.messages_control",
         )
 
 
@@ -410,7 +416,10 @@ def test_add_key_to_section_new_key() -> None:
         """)
 
     result = regex.add_key_to_section(
-        toml_content, "tool.pylint.messages_control", "enable", '["new-rule"]'
+        content=toml_content,
+        key="enable",
+        section_path="tool.pylint.messages_control",
+        value='["new-rule"]',
     )
 
     # Should contain the new key
@@ -432,7 +441,10 @@ def test_add_key_to_section_replace_existing() -> None:
         """)
 
     result = regex.add_key_to_section(
-        toml_content, "tool.pylint.messages_control", "disable", '["new-rule"]'
+        content=toml_content,
+        key="disable",
+        section_path="tool.pylint.messages_control",
+        value='["new-rule"]',
     )
 
     # Should replace the existing key
@@ -453,7 +465,10 @@ def test_add_key_to_section_create_section() -> None:
         """)
 
     result = regex.add_key_to_section(
-        toml_content, "new.section", "new_key", '"new_value"'
+        content=toml_content,
+        key="new_key",
+        section_path="new.section",
+        value='"new_value"',
     )
 
     # Should create the new section
@@ -515,29 +530,32 @@ def test_regex_patterns_with_complex_toml() -> None:
 
     # Test finding keys in sections
     assert regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.pylint.messages_control", key="disable"
+        content=complex_toml, key="disable", section_path="tool.pylint.messages_control"
     )
     assert regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.pylint.messages_control", key="enable"
+        content=complex_toml, key="enable", section_path="tool.pylint.messages_control"
     )
     assert regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.ruff", key="line-length"
+        content=complex_toml, key="line-length", section_path="tool.ruff"
     )
     assert regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.ruff.lint", key="select"
+        content=complex_toml, key="select", section_path="tool.ruff.lint"
     )
 
     # Test that keys are section-specific
     assert not regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.ruff", key="disable"
+        content=complex_toml, key="disable", section_path="tool.ruff"
     )
     assert not regex.key_exists_in_section(
-        content=complex_toml, section_path="tool.black", key="select"
+        content=complex_toml, key="select", section_path="tool.black"
     )
 
     # Test replacing multiline array
     result = regex.replace_key_in_section(
-        complex_toml, "tool.pylint.messages_control", "disable", '["new-rule-only"]'
+        content=complex_toml,
+        key="disable",
+        new_value='["new-rule-only"]',
+        section_path="tool.pylint.messages_control",
     )
 
     assert 'disable = ["new-rule-only"]' in result
@@ -554,10 +572,10 @@ def test_regex_patterns_edge_cases() -> None:
     # Test with minimal whitespace
     minimal_toml = "[tool.test]\nkey=value\nother=data"
     assert regex.key_exists_in_section(
-        content=minimal_toml, section_path="tool.test", key="key"
+        content=minimal_toml, key="key", section_path="tool.test"
     )
     assert regex.key_exists_in_section(
-        content=minimal_toml, section_path="tool.test", key="other"
+        content=minimal_toml, key="other", section_path="tool.test"
     )
 
     # Test with excessive whitespace
@@ -572,19 +590,19 @@ def test_regex_patterns_edge_cases() -> None:
         """
     )
     assert regex.key_exists_in_section(
-        content=spaced_toml, section_path="tool.test", key="key"
+        content=spaced_toml, key="key", section_path="tool.test"
     )
     assert regex.key_exists_in_section(
-        content=spaced_toml, section_path="tool.test", key="other"
+        content=spaced_toml, key="other", section_path="tool.test"
     )
 
     # Test with tabs
     tabbed_toml = "[tool.test]\n\tkey\t=\tvalue\n\tother\t=\tdata"
     assert regex.key_exists_in_section(
-        content=tabbed_toml, section_path="tool.test", key="key"
+        content=tabbed_toml, key="key", section_path="tool.test"
     )
     assert regex.key_exists_in_section(
-        content=tabbed_toml, section_path="tool.test", key="other"
+        content=tabbed_toml, key="other", section_path="tool.test"
     )
 
 
@@ -597,14 +615,17 @@ enable = ["rule2"]
 
     # Test using the global instance
     assert TOML_REGEX.key_exists_in_section(
-        content=toml_content, section_path="tool.pylint.messages_control", key="disable"
+        content=toml_content, key="disable", section_path="tool.pylint.messages_control"
     )
     assert TOML_REGEX.find_section_header(
         content=toml_content, section_path="tool.pylint.messages_control"
     ).matched
 
     result = TOML_REGEX.replace_key_in_section(
-        toml_content, "tool.pylint.messages_control", "disable", '["new-rule"]'
+        content=toml_content,
+        key="disable",
+        new_value='["new-rule"]',
+        section_path="tool.pylint.messages_control",
     )
     assert 'disable = ["new-rule"]' in result
 
@@ -634,11 +655,14 @@ def test_regex_performance_with_large_content() -> None:
 
     # Should still find the target section efficiently
     assert TOML_REGEX.key_exists_in_section(
-        content=large_toml, section_path="tool.pylint.messages_control", key="disable"
+        content=large_toml, key="disable", section_path="tool.pylint.messages_control"
     )
 
     # Should be able to replace content efficiently
     result = TOML_REGEX.replace_key_in_section(
-        large_toml, "tool.pylint.messages_control", "disable", '["new-target-rule"]'
+        content=large_toml,
+        key="disable",
+        new_value='["new-target-rule"]',
+        section_path="tool.pylint.messages_control",
     )
     assert 'disable = ["new-target-rule"]' in result

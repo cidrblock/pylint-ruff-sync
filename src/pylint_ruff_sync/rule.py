@@ -173,16 +173,16 @@ class Rule:
             source = RuleSource.UNKNOWN
 
         return cls(
+            description=data.get("description", ""),
+            is_implemented_in_ruff=data.get("is_implemented_in_ruff", False),
+            is_in_ruff_issue=data.get("is_in_ruff_issue", False),
+            is_mypy_overlap=data.get("is_mypy_overlap", False),
+            pylint_category=data.get("pylint_category", ""),
+            pylint_docs_url=data.get("pylint_docs_url", ""),
             pylint_id=data.get("pylint_id", ""),
             pylint_name=data.get("pylint_name", ""),
-            description=data.get("description", ""),
-            is_in_ruff_issue=data.get("is_in_ruff_issue", False),
-            is_implemented_in_ruff=data.get("is_implemented_in_ruff", False),
-            is_mypy_overlap=data.get("is_mypy_overlap", False),
             ruff_rule=data.get("ruff_rule", ""),
-            pylint_docs_url=data.get("pylint_docs_url", ""),
             source=source,
-            pylint_category=data.get("pylint_category", ""),
             user_comment=data.get("user_comment", ""),
         )
 
@@ -285,7 +285,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if r.is_implemented_in_ruff]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def filter_not_implemented_in_ruff(self) -> Rules:
         """Get rules that are NOT implemented in ruff.
@@ -295,7 +295,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if not r.is_implemented_in_ruff]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def filter_mypy_overlap(self) -> Rules:
         """Get rules that overlap with mypy.
@@ -305,7 +305,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if r.is_mypy_overlap]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def filter_not_mypy_overlap(self) -> Rules:
         """Get rules that do NOT overlap with mypy.
@@ -315,7 +315,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if not r.is_mypy_overlap]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def filter_by_source(self, *, source: RuleSource) -> Rules:
         """Get rules from a specific source.
@@ -328,7 +328,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if r.source == source]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def filter_by_category(self, *, category: str) -> Rules:
         """Get rules from a specific category.
@@ -341,7 +341,7 @@ class Rules:
 
         """
         filtered_rules = [r for r in self.rules if r.pylint_category == category]
-        return Rules(rules=filtered_rules, metadata=self.metadata.copy())
+        return Rules(metadata=self.metadata.copy(), rules=filtered_rules)
 
     def get_optimized_disable_list(
         self,
@@ -532,7 +532,7 @@ class Rules:
         """
         rules = [Rule.from_dict(data=rule_data) for rule_data in data.get("rules", [])]
         metadata = data.get("metadata", {})
-        return cls(rules=rules, metadata=metadata)
+        return cls(metadata=metadata, rules=rules)
 
     def get_implemented_rule_codes(self) -> list[str]:
         """Get list of rule codes that are implemented in ruff.

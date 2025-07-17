@@ -25,7 +25,7 @@ class TomlSortMockProtocol(Protocol):
 class MockSubprocessResult:
     """Mock subprocess result object."""
 
-    def __init__(self, *, stdout: str, returncode: int = 0) -> None:
+    def __init__(self, *, returncode: int = 0, stdout: str) -> None:
         """Initialize with stdout string.
 
         Args:
@@ -107,9 +107,9 @@ def _toml_sort_mock() -> TomlSortMockProtocol:
 
                 # Configure toml-sort with desired settings
                 sort_config = SortConfiguration(
-                    table_keys=True,
-                    inline_tables=True,
                     inline_arrays=True,
+                    inline_tables=True,
+                    table_keys=True,
                 )
                 formatting_config = FormattingConfiguration(
                     # Don't add trailing commas
@@ -118,9 +118,9 @@ def _toml_sort_mock() -> TomlSortMockProtocol:
 
                 # Apply sorting
                 sorter = TomlSort(
+                    format_config=formatting_config,
                     input_toml=content,
                     sort_config=sort_config,
-                    format_config=formatting_config,
                 )
 
                 result = sorter.sorted()
@@ -153,9 +153,9 @@ def _toml_sort_mock() -> TomlSortMockProtocol:
 @pytest.fixture(name="mocked_subprocess")
 def _mocked_subprocess(
     *,
-    monkeypatch: pytest.MonkeyPatch,
     mock_github_response: str,
     mock_pylint_output: str,
+    monkeypatch: pytest.MonkeyPatch,
     toml_sort_mock: TomlSortMockProtocol,
 ) -> None:
     """Set up all subprocess mocks needed for tests.

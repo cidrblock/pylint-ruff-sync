@@ -40,7 +40,7 @@ class RulesCacheManager:
         logger.debug("Saving rules to cache: %s", self.cache_path)
 
         # Ensure cache directory exists
-        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+        self.cache_path.parent.mkdir(exist_ok=True, parents=True)
 
         # Only include rules from pylint list or ruff issue, not user disable/unknown
         cache_rules = [

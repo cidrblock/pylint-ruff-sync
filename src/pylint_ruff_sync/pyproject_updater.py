@@ -29,9 +29,9 @@ class PyprojectUpdater:
 
     def __init__(
         self,
-        rules: Rules,
-        config_file: Path,
         *,
+        config_file: Path,
+        rules: Rules,
         dry_run: bool = False,
         message_generator: MessageGenerator | None = None,
     ) -> None:
@@ -73,8 +73,8 @@ class PyprojectUpdater:
             if self.message_generator:
                 message = self.message_generator.generate(
                     rules_to_disable=len(rules_to_disable),
-                    unknown_disabled_rules=len(unknown_disabled_rules),
                     rules_to_enable=len(rules_to_enable),
+                    unknown_disabled_rules=len(unknown_disabled_rules),
                 )
                 logger.info(message)
             else:
@@ -219,9 +219,9 @@ class PyprojectUpdater:
         disable_list = sorted(disable_set)
 
         self.toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
             array_data=disable_list,
+            key="disable",
+            section_path="tool.pylint.messages_control",
         )
 
     def _update_enable_array(self, *, enable_rules: list[Rule]) -> None:
@@ -234,9 +234,9 @@ class PyprojectUpdater:
         if not enable_rules:
             # Ensure enable array exists but is empty
             self.toml_file.update_section_array(
-                section_path="tool.pylint.messages_control",
-                key="enable",
                 array_data=[],
+                key="enable",
+                section_path="tool.pylint.messages_control",
             )
             return
 
@@ -247,14 +247,14 @@ class PyprojectUpdater:
         }
 
         enable_array = SimpleArrayWithComments(
-            items=enable_items,
             comments=enable_comments,
+            items=enable_items,
         )
 
         self.toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=enable_array,
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
     def _get_current_disable_array(self, *, current_dict: dict[str, Any]) -> list[str]:

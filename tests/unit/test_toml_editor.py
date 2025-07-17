@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def test_init_existing_file() -> None:
     """Test TomlFile initialization with existing file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write('[tool.test]\nkey = "value"\n')
         temp_path = Path(f.name)
 
@@ -41,7 +41,7 @@ def test_init_nonexistent_file() -> None:
 
 def test_as_dict_existing_file() -> None:
     """Test as_dict method with existing file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write('[tool.test]\nkey = "value"\n')
         temp_path = Path(f.name)
 
@@ -55,7 +55,7 @@ def test_as_dict_existing_file() -> None:
 
 def test_as_dict_empty_file() -> None:
     """Test as_dict method with empty file."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".toml") as f:
         temp_path = Path(f.name)
 
     try:
@@ -68,7 +68,7 @@ def test_as_dict_empty_file() -> None:
 
 def test_as_str() -> None:
     """Test as_str method."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         content = '[tool.test]\nkey = "value"\n'
         f.write(content)
         temp_path = Path(f.name)
@@ -84,16 +84,16 @@ def test_as_str() -> None:
 
 def test_update_section_array_simple_list() -> None:
     """Test updating a section array with a simple list."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.test",
-            key="array_key",
             array_data=["item1", "item2"],
+            key="array_key",
+            section_path="tool.test",
         )
 
         result_dict = toml_file.as_dict()
@@ -104,7 +104,7 @@ def test_update_section_array_simple_list() -> None:
 
 def test_update_section_array_with_comments() -> None:
     """Test updating a section array with comments."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write("[tool.pylint.messages_control]\nenable = []\n")
         temp_path = Path(f.name)
 
@@ -112,17 +112,17 @@ def test_update_section_array_with_comments() -> None:
         toml_file = TomlFile(file_path=temp_path)
 
         array_with_comments = SimpleArrayWithComments(
-            items=["C0103", "W0613"],
             comments={
                 "C0103": "https://example.com/C0103",
                 "W0613": "https://example.com/W0613",
             },
+            items=["C0103", "W0613"],
         )
 
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=array_with_comments,
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -141,16 +141,16 @@ def test_update_section_array_with_comments() -> None:
 
 def test_update_section_array_empty_list() -> None:
     """Test updating a section array with an empty list."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.test",
-            key="empty_array",
             array_data=[],
+            key="empty_array",
+            section_path="tool.test",
         )
 
         result_dict = toml_file.as_dict()
@@ -161,16 +161,16 @@ def test_update_section_array_empty_list() -> None:
 
 def test_ensure_item_in_array_existing_section() -> None:
     """Test ensuring an item exists in an array within an existing section."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write('[tool.pylint.messages_control]\ndisable = ["existing-rule"]\n')
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
             item="new-rule",
+            key="disable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -183,15 +183,15 @@ def test_ensure_item_in_array_existing_section() -> None:
 
 def test_ensure_item_in_array_new_section() -> None:
     """Test ensuring an item exists in an array when section doesn't exist."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".toml") as f:
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
             item="new-rule",
+            key="disable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -204,16 +204,16 @@ def test_ensure_item_in_array_new_section() -> None:
 
 def test_ensure_item_in_array_already_exists() -> None:
     """Test ensuring an item exists when it's already in the array."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write('[tool.pylint.messages_control]\ndisable = ["existing-rule"]\n')
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.ensure_item_in_array(
-            section_path="tool.pylint.messages_control",
-            key="disable",
             item="existing-rule",
+            key="disable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -225,15 +225,15 @@ def test_ensure_item_in_array_already_exists() -> None:
 
 def test_write() -> None:
     """Test writing the file to disk."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".toml") as f:
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.test",
-            key="items",
             array_data=["item1", "item2"],
+            key="items",
+            section_path="tool.test",
         )
 
         toml_file.write()
@@ -250,7 +250,7 @@ def test_write() -> None:
 
 def test_simple_array_with_comments_format_empty() -> None:
     """Test SimpleArrayWithComments formatting with empty array."""
-    array_with_comments = SimpleArrayWithComments(items=[], comments=None)
+    array_with_comments = SimpleArrayWithComments(comments=None, items=[])
     result = array_with_comments.format_as_toml()
     assert result == "[]"
 
@@ -258,7 +258,7 @@ def test_simple_array_with_comments_format_empty() -> None:
 def test_simple_array_with_comments_format_simple() -> None:
     """Test SimpleArrayWithComments formatting with simple array."""
     array_with_comments = SimpleArrayWithComments(
-        items=["item1", "item2"], comments=None
+        comments=None, items=["item1", "item2"]
     )
     result = array_with_comments.format_as_toml()
     assert result == '["item1", "item2"]'
@@ -267,8 +267,8 @@ def test_simple_array_with_comments_format_simple() -> None:
 def test_simple_array_with_comments_format_with_comments() -> None:
     """Test SimpleArrayWithComments formatting with comments."""
     array_with_comments = SimpleArrayWithComments(
-        items=["item1", "item2"],
         comments={"item1": "comment1", "item2": "comment2"},
+        items=["item1", "item2"],
     )
     result = array_with_comments.format_as_toml()
     expected = '[\n  "item1", # comment1\n  "item2" # comment2\n]'
@@ -278,8 +278,8 @@ def test_simple_array_with_comments_format_with_comments() -> None:
 def test_simple_array_with_comments_format_partial_comments() -> None:
     """Test SimpleArrayWithComments formatting with partial comments."""
     array_with_comments = SimpleArrayWithComments(
-        items=["item1", "item2", "item3"],
         comments={"item1": "comment1", "item3": "comment3"},
+        items=["item1", "item2", "item3"],
     )
     result = array_with_comments.format_as_toml()
     expected = '[\n  "item1", # comment1\n  "item2",\n  "item3" # comment3\n]'
@@ -288,7 +288,7 @@ def test_simple_array_with_comments_format_partial_comments() -> None:
 
 def test_apply_toml_sort() -> None:
     """Test that toml-sort is applied automatically when content changes."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # Write unsorted content
         f.write('[tool.z]\nkey = "value"\n[tool.a]\nother = "value"\n')
         temp_path = Path(f.name)
@@ -296,9 +296,9 @@ def test_apply_toml_sort() -> None:
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.b",
-            key="items",
             array_data=["item"],
+            key="items",
+            section_path="tool.b",
         )
 
         # The content should be sorted automatically
@@ -316,15 +316,15 @@ def test_apply_toml_sort() -> None:
 
 def test_add_key_to_new_section() -> None:
     """Test adding a key to a completely new section."""
-    with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".toml") as f:
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.new.section",
-            key="items",
             array_data=["item1"],
+            key="items",
+            section_path="tool.new.section",
         )
 
         result_dict = toml_file.as_dict()
@@ -335,16 +335,16 @@ def test_add_key_to_new_section() -> None:
 
 def test_update_existing_key() -> None:
     """Test updating an existing key in an existing section."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write('[tool.test]\nitems = ["old"]\n')
         temp_path = Path(f.name)
 
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.test",
-            key="items",
             array_data=["new1", "new2"],
+            key="items",
+            section_path="tool.test",
         )
 
         result_dict = toml_file.as_dict()
@@ -355,7 +355,7 @@ def test_update_existing_key() -> None:
 
 def test_add_key_to_section_with_comments_and_whitespace() -> None:
     """Test adding a key to a section that has comments and whitespace."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # Complex TOML with comments and whitespace
         content = """# This is a comment
 [tool.pylint.main]
@@ -376,9 +376,9 @@ line-length = 80
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103", "W0613"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -396,7 +396,7 @@ line-length = 80
 
 def test_add_key_to_section_with_similar_section_names() -> None:
     """Test adding a key when there are sections with similar names."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # TOML with similar section names that could confuse regex
         content = """[tool.pylint]
 version = "3.0"
@@ -416,9 +416,9 @@ extra = true
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -436,7 +436,7 @@ extra = true
 
 def test_add_key_to_section_at_end_of_file() -> None:
     """Test adding a key to a section at the end of the file."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # TOML with section at end, no trailing newline
         content = """[tool.first]
 value = 1
@@ -449,9 +449,9 @@ existing = true"""
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.last",
-            key="items",
             array_data=["item1"],
+            key="items",
+            section_path="tool.last",
         )
 
         result_dict = toml_file.as_dict()
@@ -463,7 +463,7 @@ existing = true"""
 
 def test_add_key_to_section_with_multiline_values() -> None:
     """Test adding a key to a section that has multiline values."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # TOML with multiline values
         content = """[tool.pylint.messages_control]
 disable = [
@@ -481,9 +481,9 @@ value = "test"
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -500,7 +500,7 @@ value = "test"
 
 def test_add_key_to_section_with_duplicate_content() -> None:
     """Test adding a key to a section when there's duplicate content."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # TOML with duplicate content that could cause issues with string replacement
         content = """[tool.pylint.messages_control]
 disable = ["all"]
@@ -518,9 +518,9 @@ disable = ["all"]
     try:
         toml_file = TomlFile(file_path=temp_path)
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -539,7 +539,7 @@ disable = ["all"]
 
 def test_add_key_to_section_string_replacement_issue() -> None:
     """Test that adding keys to sections only affects the correct section."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # Create a TOML where section content appears multiple times
         content = """[tool.pylint.messages_control]
 disable = ["all"]
@@ -556,9 +556,9 @@ disable = ["all"]
 
         # This call should only affect the first section
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         result_dict = toml_file.as_dict()
@@ -577,7 +577,7 @@ disable = ["all"]
 
 def test_debug_unexpected_char_error() -> None:
     """Debug test to understand the UnexpectedCharError."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         # Use the exact structure from pyproject.toml that causes the issue
         content = """[tool.pylint.messages_control]
 disable = ["all", "locally-disabled", "suppressed-message"]
@@ -595,9 +595,9 @@ enable = [
 
         # This should work with the new implementation
         toml_file.update_section_array(
-            section_path="tool.pylint.messages_control",
-            key="enable",
             array_data=["C0103", "C0117", "C0200"],
+            key="enable",
+            section_path="tool.pylint.messages_control",
         )
 
         # Check the result
@@ -633,9 +633,9 @@ line-length = 88
 
     # Update an array - this should trigger automatic sorting
     toml_file.update_section_array(
-        section_path="tool.pylint.messages_control",
-        key="disable",
         array_data=["rule-c", "rule-a"],
+        key="disable",
+        section_path="tool.pylint.messages_control",
     )
 
     result_str = toml_file.as_str()
@@ -652,8 +652,8 @@ line-length = 88
 
 def test_toml_sort_with_custom_configuration(
     *,
-    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     toml_sort_mock: TomlSortMockProtocol,
 ) -> None:
     """Test that toml-sort works with custom configuration using monkeypatch.
@@ -727,9 +727,9 @@ disable = ["rule-b", "rule-a"]
 
     # Update an array - this should trigger automatic sorting
     toml_file.update_section_array(
-        section_path="tool.pylint.messages_control",
-        key="disable",
         array_data=["rule-c", "rule-a"],
+        key="disable",
+        section_path="tool.pylint.messages_control",
     )
 
     result_str = toml_file.as_str()

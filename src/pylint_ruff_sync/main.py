@@ -139,10 +139,10 @@ class Application:
         message_generator = self.get_message_generator() if dry_run else None
 
         return PyprojectUpdater(
-            rules=rules,
             config_file=config_file,
             dry_run=dry_run,
             message_generator=message_generator,
+            rules=rules,
         )
 
     def run(self) -> int:
@@ -189,9 +189,9 @@ def _setup_logging(*, verbose: bool = False) -> None:
     """
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=level,
     )
 
 
@@ -204,7 +204,6 @@ def _setup_argument_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description="Synchronize pylint configuration with ruff implementation status",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Update pyproject.toml with optimized pylint configuration
@@ -222,13 +221,14 @@ Examples:
   # Update cache from GitHub (requires internet and gh CLI)
   pylint-ruff-sync --update-cache
         """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
         "--config-file",
-        type=Path,
         default=Path("pyproject.toml"),
         help="Path to pyproject.toml file (default: %(default)s)",
+        type=Path,
     )
 
     parser.add_argument(
@@ -257,8 +257,8 @@ Examples:
 
     parser.add_argument(
         "--cache-path",
-        type=Path,
         help="Path to cache file (default: package data location)",
+        type=Path,
     )
 
     return parser

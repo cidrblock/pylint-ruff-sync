@@ -55,9 +55,9 @@ class RuffPylintExtractor:
                         rules = Rules()
                         for rule_id in legacy_rules:
                             rule = Rule(
-                                pylint_id=rule_id,
                                 is_implemented_in_ruff=True,
                                 is_in_ruff_issue=True,
+                                pylint_id=rule_id,
                                 source=RuleSource.RUFF_ISSUE,
                             )
                             rules.add_rule(rule=rule)
@@ -177,10 +177,10 @@ class RuffPylintExtractor:
                 # Validate that it looks like a pylint code (letter followed by digits)
                 if re.match(r"^[A-Z]\d+$", pylint_code):
                     rule = Rule(
+                        is_implemented_in_ruff=is_implemented,
+                        is_in_ruff_issue=True,
                         pylint_id=pylint_code,
                         pylint_name=rule_name,
-                        is_in_ruff_issue=True,
-                        is_implemented_in_ruff=is_implemented,
                         ruff_rule=ruff_code,
                         source=RuleSource.RUFF_ISSUE,  # From ruff GitHub issue
                     )

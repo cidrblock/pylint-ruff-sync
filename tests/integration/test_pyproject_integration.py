@@ -56,8 +56,8 @@ def read_expected_result(*, fixture_name: str) -> str:
 @pytest.mark.usefixtures("mocked_subprocess")
 def test_pyproject_integration(
     *,
-    test_case: str,
     monkeypatch: pytest.MonkeyPatch,
+    test_case: str,
     tmp_path: Path,
 ) -> None:
     """Test integration with different pyproject.toml configurations.

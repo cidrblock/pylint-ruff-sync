@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class MessageGenerator:
     """Generates commit messages and release notes using templates."""
 
-    def __init__(self, *, rules: Rules, data_dir: Path | None = None) -> None:
+    def __init__(self, *, data_dir: Path | None = None, rules: Rules) -> None:
         """Initialize the message generator.
 
         Args:
@@ -31,8 +31,8 @@ class MessageGenerator:
         self,
         *,
         rules_to_disable: int,
-        unknown_disabled_rules: int,
         rules_to_enable: int,
+        unknown_disabled_rules: int,
     ) -> str:
         """Generate dry-run summary message.
 

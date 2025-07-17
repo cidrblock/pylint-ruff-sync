@@ -83,7 +83,7 @@ class TomlRegex:
         return re.compile(pattern, re.MULTILINE)
 
     def build_key_in_section_pattern(
-        self, *, section_path: str, key: str
+        self, *, key: str, section_path: str
     ) -> Pattern[str]:
         """Build a regex pattern to find a key within a specific section.
 
@@ -224,7 +224,7 @@ class TomlRegex:
         return RegexMatch(match=match, matched=bool(match))
 
     def find_key_in_section(
-        self, content: str, section_path: str, key: str
+        self, content: str, key: str, section_path: str
     ) -> RegexMatch:
         """Find a key within a specific section.
 
@@ -237,12 +237,12 @@ class TomlRegex:
             RegexMatch with the result and capture groups.
 
         """
-        pattern = self.build_key_in_section_pattern(section_path=section_path, key=key)
+        pattern = self.build_key_in_section_pattern(key=key, section_path=section_path)
         match = pattern.search(content)
         return RegexMatch(match=match, matched=bool(match))
 
     def key_exists_in_section(
-        self, *, content: str, section_path: str, key: str
+        self, *, content: str, key: str, section_path: str
     ) -> bool:
         """Check if a key exists within a section's content.
 
@@ -271,7 +271,7 @@ class TomlRegex:
         return bool(key_pattern.search(section_content))
 
     def replace_key_in_section(
-        self, content: str, section_path: str, key: str, new_value: str
+        self, content: str, key: str, new_value: str, section_path: str
     ) -> str:
         """Replace a key's value within a specific section.
 
@@ -288,7 +288,7 @@ class TomlRegex:
             ValueError: If the key is not found in the section.
 
         """
-        pattern = self.build_key_in_section_pattern(section_path=section_path, key=key)
+        pattern = self.build_key_in_section_pattern(key=key, section_path=section_path)
 
         # Check if the pattern matches first
         if not pattern.search(content):
@@ -302,7 +302,7 @@ class TomlRegex:
         return pattern.sub(replacement, content)
 
     def add_key_to_section(
-        self, content: str, section_path: str, key: str, value: str
+        self, content: str, key: str, section_path: str, value: str
     ) -> str:
         """Add a new key-value pair to a section.
 
@@ -321,9 +321,11 @@ class TomlRegex:
         """
         # Check if key already exists and replace if so
         if self.key_exists_in_section(
-            content=content, section_path=section_path, key=key
+            content=content, key=key, section_path=section_path
         ):
-            return self.replace_key_in_section(content, section_path, key, value)
+            return self.replace_key_in_section(
+                content=content, key=key, new_value=value, section_path=section_path
+            )
 
         # Find the section
         section_pattern = self.build_section_content_pattern(section_path=section_path)

@@ -41,9 +41,9 @@ class DataCollector:
             result = subprocess.run(
                 ["gh", "auth", "status"],  # noqa: S607
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
-                check=False,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             logger.debug("GitHub CLI not available or not authenticated")
@@ -62,9 +62,9 @@ class DataCollector:
             result = subprocess.run(
                 ["pylint", "--version"],  # noqa: S607
                 capture_output=True,
+                check=False,
                 text=True,
                 timeout=10,
-                check=False,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             logger.debug("Pylint not available")

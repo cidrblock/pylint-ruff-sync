@@ -29,7 +29,7 @@ EXPECTED_MOCK_RULES_COUNT = 6
 
 def test_rule_init() -> None:
     """Test Rule initialization and properties."""
-    rule = Rule(pylint_id="C0103", pylint_name="invalid-name", description="Test")
+    rule = Rule(description="Test", pylint_id="C0103", pylint_name="invalid-name")
     assert rule.pylint_id == "C0103"
     assert rule.pylint_name == "invalid-name"
     assert rule.description == "Test"
@@ -76,7 +76,7 @@ def test_extract_all_rules() -> None:
 def test_update_pylint_config() -> None:
     """Test updating pylint configuration."""
     # Create a temporary file for testing
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         f.write("[tool.test]\nkey = 'value'\n")
         temp_path = Path(f.name)
 
@@ -86,22 +86,22 @@ def test_update_pylint_config() -> None:
 
         test_rules = [
             Rule(
-                pylint_id="F401",
-                pylint_name="unused-import",
                 description="Unused import",
                 is_implemented_in_ruff=True,
+                pylint_id="F401",
+                pylint_name="unused-import",
             ),
             Rule(
-                pylint_id="F841",
-                pylint_name="unused-variable",
                 description="Unused variable",
                 is_implemented_in_ruff=True,
+                pylint_id="F841",
+                pylint_name="unused-variable",
             ),
             Rule(
-                pylint_id="C0103",
-                pylint_name="invalid-name",
                 description="Invalid name",
                 is_implemented_in_ruff=False,
+                pylint_id="C0103",
+                pylint_name="invalid-name",
             ),
         ]
 
@@ -110,7 +110,7 @@ def test_update_pylint_config() -> None:
             rules.add_rule(rule=rule)
 
         # Use new PyprojectUpdater pattern with simplified interface
-        updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=False)
+        updater = PyprojectUpdater(config_file=temp_path, dry_run=False, rules=rules)
         updater.update()
 
         # Check the results by reading the file directly
@@ -137,7 +137,7 @@ def test_update_pylint_config() -> None:
 def test_update_pylint_config_dry_run() -> None:
     """Test updating pylint configuration in dry run mode."""
     # Create a temporary file for testing
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:
         original_content = "[tool.test]\nkey = 'value'\n"
         f.write(original_content)
         temp_path = Path(f.name)
@@ -148,16 +148,16 @@ def test_update_pylint_config_dry_run() -> None:
 
         test_rules = [
             Rule(
-                pylint_id="F401",
-                pylint_name="unused-import",
                 description="Unused import",
                 is_implemented_in_ruff=True,
+                pylint_id="F401",
+                pylint_name="unused-import",
             ),
             Rule(
-                pylint_id="C0103",
-                pylint_name="invalid-name",
                 description="Invalid name",
                 is_implemented_in_ruff=False,
+                pylint_id="C0103",
+                pylint_name="invalid-name",
             ),
         ]
 
@@ -166,7 +166,7 @@ def test_update_pylint_config_dry_run() -> None:
             rules.add_rule(rule=rule)
 
         # Use PyprojectUpdater in dry run mode
-        updater = PyprojectUpdater(rules=rules, config_file=temp_path, dry_run=True)
+        updater = PyprojectUpdater(config_file=temp_path, dry_run=True, rules=rules)
         updater.update()
 
         # Check that the file was not modified
@@ -200,18 +200,18 @@ def test_resolve_rule_identifiers() -> None:
     rules = Rules()
     rules.add_rule(
         rule=Rule(
-            pylint_id="F401", pylint_name="unused-import", description="Unused import"
-        )
+            description="Unused import"
+        , pylint_id="F401", pylint_name="unused-import")
     )
     rules.add_rule(
         rule=Rule(
-            pylint_id="E501", pylint_name="line-too-long", description="Line too long"
-        )
+            description="Line too long"
+        , pylint_id="E501", pylint_name="line-too-long")
     )
     rules.add_rule(
         rule=Rule(
-            pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
-        )
+            description="Invalid name"
+        , pylint_id="C0103", pylint_name="invalid-name")
     )
 
     extractor = PylintExtractor(rules=rules)
@@ -219,28 +219,28 @@ def test_resolve_rule_identifiers() -> None:
     # Test with rule codes
     rule_identifiers = ["F401", "C0103"]
     resolved = extractor.resolve_rule_identifiers(
-        rule_identifiers=rule_identifiers, all_rules=rules
+        all_rules=rules, rule_identifiers=rule_identifiers
     )
     assert resolved == {"F401", "C0103"}
 
     # Test with rule names
     rule_identifiers = ["unused-import", "invalid-name"]
     resolved = extractor.resolve_rule_identifiers(
-        rule_identifiers=rule_identifiers, all_rules=rules
+        all_rules=rules, rule_identifiers=rule_identifiers
     )
     assert resolved == {"F401", "C0103"}
 
     # Test with mixed codes and names
     rule_identifiers = ["F401", "invalid-name"]
     resolved = extractor.resolve_rule_identifiers(
-        rule_identifiers=rule_identifiers, all_rules=rules
+        all_rules=rules, rule_identifiers=rule_identifiers
     )
     assert resolved == {"F401", "C0103"}
 
     # Test with unknown identifiers (should be ignored)
     rule_identifiers = ["F401", "unknown-rule", "C0103"]
     resolved = extractor.resolve_rule_identifiers(
-        rule_identifiers=rule_identifiers, all_rules=rules
+        all_rules=rules, rule_identifiers=rule_identifiers
     )
     assert resolved == {"F401", "C0103"}
 

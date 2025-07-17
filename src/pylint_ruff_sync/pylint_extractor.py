@@ -57,9 +57,9 @@ class PylintExtractor:
                 if rule_match:
                     name, code, description = rule_match.groups()
                     rule = Rule(
+                        description=description,
                         pylint_id=code,
                         pylint_name=name,
-                        description=description,
                         source=RuleSource.PYLINT_LIST,
                     )
                     self.rules.add_rule(rule=rule)
@@ -77,8 +77,8 @@ class PylintExtractor:
 
     def resolve_rule_identifiers(
         self,
-        rule_identifiers: list[str],
         all_rules: Rules,
+        rule_identifiers: list[str],
     ) -> set[str]:
         """Resolve rule identifiers to rule codes.
 

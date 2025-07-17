@@ -36,7 +36,7 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
     try:
         # Create a temporary file with the content
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".toml", delete=False, encoding="utf-8"
+            delete=False, encoding="utf-8", mode="w", suffix=".toml"
         ) as temp_file:
             temp_file.write(content)
             temp_file_path = temp_file.name
@@ -47,10 +47,10 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
             # Security: toml-sort is a trusted tool from the user's environment
             subprocess.run(
                 ["toml-sort", "--in-place", temp_file_path],
-                check=True,
                 capture_output=True,
-                text=True,
-                cwd=working_directory,  # Use project directory for config
+                check=True,
+                cwd=working_directory,
+                text=True,  # Use project directory for config
             )
 
             # Read the sorted content back
@@ -218,9 +218,9 @@ class TomlFile:
 
     def update_section_array(
         self,
-        section_path: str,
-        key: str,
         array_data: list[str] | SimpleArrayWithComments,
+        key: str,
+        section_path: str,
     ) -> None:
         """Update an array in a specific section.
 
@@ -240,16 +240,16 @@ class TomlFile:
             formatted_array = f"[{', '.join(formatted_items)}]"
 
         self._update_section_key_with_regex(
-            section_path=section_path,
             key=key,
             new_value=formatted_array,
+            section_path=section_path,
         )
 
     def ensure_item_in_array(
         self,
-        section_path: str,
-        key: str,
         item: str,
+        key: str,
+        section_path: str,
     ) -> None:
         """Ensure an item exists in an array, adding it if not present.
 
@@ -278,14 +278,14 @@ class TomlFile:
         if item not in current_array:
             current_array.append(item)
             self.update_section_array(
-                section_path=section_path, key=key, array_data=current_array
+                array_data=current_array, key=key, section_path=section_path
             )
 
     def _update_section_key_with_regex(
         self,
-        section_path: str,
         key: str,
         new_value: str,
+        section_path: str,
     ) -> None:
         """Update a specific key in a section using regex replacement.
 
@@ -303,12 +303,18 @@ class TomlFile:
         try:
             # Try to replace the key using the centralized regex
             new_content = TOML_REGEX.replace_key_in_section(
-                current_content, section_path, key, new_value
+                content=current_content,
+                key=key,
+                new_value=new_value,
+                section_path=section_path,
             )
         except ValueError:
             # Key not found, add it using the centralized regex
             new_content = TOML_REGEX.add_key_to_section(
-                current_content, section_path, key, new_value
+                content=current_content,
+                key=key,
+                section_path=section_path,
+                value=new_value,
             )
 
         # Only set the content once at the end
