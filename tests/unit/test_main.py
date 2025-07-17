@@ -1,20 +1,16 @@
-"""Tests for main module."""
+"""Unit tests for main functionality."""
 
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+
+import pytest
 
 from pylint_ruff_sync.constants import RUFF_PYLINT_ISSUE_URL
-
-if TYPE_CHECKING:
-    import pytest
-from pylint_ruff_sync.main import (
-    _setup_argument_parser,
-    main,
-)
+from pylint_ruff_sync.main import _setup_argument_parser, main
 from pylint_ruff_sync.pylint_extractor import PylintExtractor
 from pylint_ruff_sync.pyproject_updater import PyprojectUpdater
 from pylint_ruff_sync.ruff_pylint_extractor import RuffPylintExtractor
@@ -22,32 +18,26 @@ from pylint_ruff_sync.rule import Rule, Rules
 from tests.constants import (
     EXPECTED_IMPLEMENTED_RULES_COUNT,
     EXPECTED_RULES_COUNT,
-    setup_mocks,
 )
 
 # Constants for test expectations
 EXPECTED_DISABLE_LIST_LENGTH = 3
 
+# We expect 6 mock rules total in our test setup
+EXPECTED_MOCK_RULES_COUNT = 6
+
 
 def test_rule_init() -> None:
-    """Test Rule initialization."""
-    rule = Rule(
-        pylint_id="C0103", pylint_name="invalid-name", description="Invalid name"
-    )
-    assert rule.code == "C0103"
-    assert rule.name == "invalid-name"
-    assert rule.description == "Invalid name"
+    """Test Rule initialization and properties."""
+    rule = Rule(pylint_id="C0103", pylint_name="invalid-name", description="Test")
+    assert rule.pylint_id == "C0103"
+    assert rule.pylint_name == "invalid-name"
+    assert rule.description == "Test"
 
 
-def test_extract_implemented_rules(*, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test extracting implemented rules from GitHub issue.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture for mocking.
-
-    """
-    setup_mocks(monkeypatch=monkeypatch)
-
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_extract_implemented_rules() -> None:
+    """Test extracting implemented rules from GitHub issue."""
     rules = Rules()
     extractor = RuffPylintExtractor(rules=rules)
     result = extractor.get_implemented_rules()
@@ -59,15 +49,9 @@ def test_extract_implemented_rules(*, monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(result) == EXPECTED_IMPLEMENTED_RULES_COUNT
 
 
-def test_extract_all_rules(*, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test extracting all pylint rules.
-
-    Args:
-        monkeypatch: Pytest monkeypatch fixture for mocking.
-
-    """
-    setup_mocks(monkeypatch=monkeypatch)
-
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_extract_all_rules() -> None:
+    """Test extracting all pylint rules."""
     rules = Rules()
     extractor = PylintExtractor(rules=rules)
     extractor.extract()
@@ -261,7 +245,12 @@ def test_resolve_rule_identifiers() -> None:
     assert resolved == {"F401", "C0103"}
 
 
-def test_main_function_flow(*, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_main_function_flow(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """Test main function integration flow with normal execution.
 
     Args:
@@ -269,9 +258,6 @@ def test_main_function_flow(*, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
         tmp_path: Pytest temporary directory fixture.
 
     """
-    # Setup mocks for all external dependencies
-    setup_mocks(monkeypatch=monkeypatch)
-
     # Create a test pyproject.toml file
     config_file = tmp_path / "pyproject.toml"
     config_file.write_text("""
@@ -282,18 +268,16 @@ disable = [
 ]
 """)
 
-    # Create temporary cache file
-    cache_file = tmp_path / "test_cache.json"
-
-    # Mock sys.argv to simulate normal execution
+    # Setup mocks for all external dependencies
     monkeypatch.setattr(
-        "sys.argv",
+        sys,
+        "argv",
         [
             "pylint-ruff-sync",
             "--config-file",
             str(config_file),
             "--cache-path",
-            str(cache_file),
+            str(tmp_path / "test_cache.json"),
             "--verbose",
         ],
     )
@@ -322,8 +306,11 @@ def test_ruff_extractor_initialization() -> None:
     assert extractor.issue_url == RUFF_PYLINT_ISSUE_URL
 
 
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_main_with_update_cache(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Test main function with --update-cache argument.
 
@@ -333,15 +320,15 @@ def test_main_with_update_cache(
 
     """
     # Setup mocks for GitHub CLI
-    setup_mocks(monkeypatch=monkeypatch)
-
-    # Create temporary cache file path
-    cache_file = tmp_path / "test_cache.json"
-
-    # Mock sys.argv to simulate --update-cache
     monkeypatch.setattr(
-        "sys.argv",
-        ["pylint-ruff-sync", "--update-cache", "--cache-path", str(cache_file)],
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--update-cache",
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+        ],
     )
 
     # Run main function
@@ -351,10 +338,10 @@ def test_main_with_update_cache(
     assert not result
 
     # Check that cache file was created
-    assert cache_file.exists()
+    assert (tmp_path / "test_cache.json").exists()
 
     # Check cache content
-    with cache_file.open() as f:
+    with (tmp_path / "test_cache.json").open() as f:
         cache_data = json.load(f)
 
     assert "rules" in cache_data

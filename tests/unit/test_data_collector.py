@@ -244,7 +244,7 @@ def test_collect_fresh_rules(
         tmp_path: Pytest temporary directory fixture.
 
     """
-    setup_mocks(monkeypatch=monkeypatch)
+    setup_extractor_mocks(monkeypatch=monkeypatch)
 
     cache_manager = RulesCacheManager(cache_path=tmp_path / "test.json")
     collector = DataCollector(cache_manager=cache_manager)
@@ -403,7 +403,7 @@ def _create_mock_mypy_extract() -> Callable[[MypyOverlapExtractor], None]:
     return mock_mypy_extract
 
 
-def setup_mocks(*, monkeypatch: pytest.MonkeyPatch) -> None:
+def setup_extractor_mocks(*, monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mocks for extractor tests.
 
     Args:

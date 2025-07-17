@@ -6,11 +6,15 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
+from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
+from tests.constants import TOML_SORT_MIN_ARGS
+
 if TYPE_CHECKING:
     import pytest
 
-from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
-from tests.constants import TOML_SORT_MIN_ARGS, _apply_toml_sort_mock
+    from tests.conftest import TomlSortMockProtocol
 
 
 def test_init_existing_file() -> None:
@@ -647,7 +651,10 @@ line-length = 88
 
 
 def test_toml_sort_with_custom_configuration(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    *,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    toml_sort_mock: TomlSortMockProtocol,
 ) -> None:
     """Test that toml-sort works with custom configuration using monkeypatch.
 
@@ -658,6 +665,7 @@ def test_toml_sort_with_custom_configuration(
     Args:
         tmp_path: Temporary path for the test file.
         monkeypatch: Pytest monkeypatch fixture for mocking.
+        toml_sort_mock: Fixture for toml-sort mock functionality.
 
     """
 
@@ -692,7 +700,8 @@ def test_toml_sort_with_custom_configuration(
             command_args = args[0]
             if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
                 file_path = command_args[2]
-                _apply_toml_sort_mock(file_path=file_path)
+                # Use the fixture to apply the mock
+                toml_sort_mock(file_path=file_path)
                 return MockResult()
 
         return MockResult()

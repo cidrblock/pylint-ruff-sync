@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from pylint_ruff_sync.main import main
-from tests.constants import setup_mocks
 
 
 def copy_fixture_to_temp(*, fixture_name: str, temp_dir: Path) -> Path:
@@ -16,7 +15,7 @@ def copy_fixture_to_temp(*, fixture_name: str, temp_dir: Path) -> Path:
 
     Args:
         fixture_name: Name of the fixture file
-        temp_dir: Temporary directory path
+        temp_dir: Temporary directory to copy to
 
     Returns:
         Path to the copied file
@@ -35,26 +34,11 @@ def read_expected_result(*, fixture_name: str) -> str:
         fixture_name: Name of the 'after' fixture file
 
     Returns:
-        Content of the expected result file
+        Content of the fixture file
 
     """
     fixture_path = Path(__file__).parent.parent / "fixtures" / fixture_name
     return fixture_path.read_text()
-
-
-def normalize_content(*, content: str) -> str:
-    """Normalize content for comparison by removing extra whitespace.
-
-    Args:
-        content: Content to normalize
-
-    Returns:
-        Normalized content
-
-    """
-    # Remove extra whitespace and normalize line endings
-    lines = [line.rstrip() for line in content.splitlines()]
-    return "\n".join(lines).strip()
 
 
 @pytest.mark.parametrize(
@@ -69,149 +53,161 @@ def normalize_content(*, content: str) -> str:
         "complex_existing_config",
     ],
 )
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_pyproject_integration(
-    tmp_path: Path,
+    *,
     test_case: str,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    """Test integration with various pyproject.toml configurations.
+    """Test integration with different pyproject.toml configurations.
 
     Args:
-        tmp_path: Temporary directory fixture from pytest
         test_case: The test case name (corresponds to fixture file names)
-        monkeypatch: Pytest monkeypatch for mocking
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest
 
     """
-    setup_mocks(monkeypatch=monkeypatch)
-
     # Copy before fixture to temp directory
     before_fixture = f"{test_case}_before.toml"
     after_fixture = f"{test_case}_after.toml"
 
     config_file = copy_fixture_to_temp(fixture_name=before_fixture, temp_dir=tmp_path)
 
-    # Mock sys.argv for main function
-    monkeypatch.setattr("sys.argv", ["pylint-ruff-sync", "--config", str(config_file)])
+    # Mock sys.argv to simulate running the tool
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+        ],
+    )
 
-    # Run the tool
+    # Run the main function
     result = main()
 
-    # Check that the tool ran successfully
-    # NOTE: Tool returns 1 when changes are made (for precommit hooks),
-    # 0 when no changes
-    assert result in (0, 1), (
-        f"Tool failed unexpectedly for {test_case} (exit code: {result})"
-    )
+    # Should succeed
+    assert not result
 
-    # Read the actual result
+    # Check the result matches expected
     actual_content = config_file.read_text()
-
-    # Read the expected result
     expected_content = read_expected_result(fixture_name=after_fixture)
 
-    # Normalize both contents for comparison
-    actual_normalized = normalize_content(content=actual_content)
-    expected_normalized = normalize_content(content=expected_content)
-
-    # Compare the results
-    assert actual_normalized == expected_normalized, (
-        f"Result doesn't match expected for {test_case}.\n"
-        f"Expected:\n{expected_normalized}\n"
-        f"Actual:\n{actual_normalized}\n"
-    )
+    assert actual_content.strip() == expected_content.strip()
 
 
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_dry_run_integration(
-    tmp_path: Path,
+    *,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    """Test dry run mode doesn't modify files.
+    """Test dry run functionality.
 
     Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
         tmp_path: Temporary directory fixture from pytest
-        monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch=monkeypatch)
-
     # Copy a before fixture to temp directory
     config_file = copy_fixture_to_temp(
         fixture_name="empty_pyproject_before.toml", temp_dir=tmp_path
     )
 
-    # Read original content
     original_content = config_file.read_text()
 
-    # Mock sys.argv for main function with dry-run flag
+    # Mock sys.argv to simulate dry run
     monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config", str(config_file), "--dry-run"]
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--dry-run",
+        ],
     )
 
-    # Run the tool
+    # Run the main function
     result = main()
 
-    # Check that the tool ran successfully
-    assert not result, f"Tool failed unexpectedly (exit code: {result})"
+    # Should succeed
+    assert not result
 
-    # Read the content after running
-    after_content = config_file.read_text()
-
-    # Content should be unchanged
-    assert after_content == original_content, (
-        "File was modified during dry run when it shouldn't have been"
-    )
+    # File should not be modified in dry run
+    current_content = config_file.read_text()
+    assert current_content == original_content
 
 
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_file_not_found_error(
-    tmp_path: Path,
+    *,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     """Test error handling when config file doesn't exist.
 
     Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
         tmp_path: Temporary directory fixture from pytest
-        monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch=monkeypatch)
+    non_existent_file = tmp_path / "non_existent.toml"
 
-    # Use a non-existent file path
-    nonexistent_file = tmp_path / "nonexistent.toml"
-
-    # Mock sys.argv for main function
+    # Mock sys.argv to simulate file not found
     monkeypatch.setattr(
-        "sys.argv", ["pylint-ruff-sync", "--config", str(nonexistent_file)]
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(non_existent_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+        ],
     )
 
-    # Run the tool and expect it to fail
+    # Run the main function
     result = main()
 
-    # Should return non-zero exit code for file not found
-    assert result, "Tool should have failed with non-existent config file"
+    # Should return error code
+    assert result == 1
 
 
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_invalid_config_file(
-    tmp_path: Path,
+    *,
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    """Test error handling with invalid TOML file.
+    """Test error handling with invalid config file.
 
     Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
         tmp_path: Temporary directory fixture from pytest
-        monkeypatch: Pytest monkeypatch for mocking
 
     """
-    setup_mocks(monkeypatch=monkeypatch)
-
     # Create an invalid TOML file
-    invalid_file = tmp_path / "invalid.toml"
-    invalid_file.write_text("invalid toml content [[[")
+    invalid_config = tmp_path / "invalid.toml"
+    invalid_config.write_text("This is not valid TOML content [[[")
 
-    # Mock sys.argv for main function
-    monkeypatch.setattr("sys.argv", ["pylint-ruff-sync", "--config", str(invalid_file)])
+    # Mock sys.argv to simulate invalid config
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(invalid_config),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+        ],
+    )
 
-    # Run the tool and expect it to fail
+    # Run the main function
     result = main()
 
-    # Should return non-zero exit code for invalid TOML
-    assert result, "Tool should have failed with invalid TOML file"
+    # Should return error code (1 for general errors)
+    assert result == 1
