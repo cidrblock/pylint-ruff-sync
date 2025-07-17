@@ -63,8 +63,8 @@ def test_pyproject_integration(
     """Test integration with different pyproject.toml configurations.
 
     Args:
-        test_case: The test case name (corresponds to fixture file names)
         monkeypatch: Pytest monkeypatch fixture for mocking.
+        test_case: The test case name (corresponds to fixture file names)
         tmp_path: Temporary directory fixture from pytest
 
     """

@@ -29,8 +29,8 @@ class MockSubprocessResult:
         """Initialize with stdout string.
 
         Args:
-            stdout: The subprocess stdout as string.
             returncode: The return code.
+            stdout: The subprocess stdout as string.
 
         """
         self.stdout = stdout
@@ -161,9 +161,9 @@ def _mocked_subprocess(
     """Set up all subprocess mocks needed for tests.
 
     Args:
-        monkeypatch: Pytest monkeypatch fixture for mocking.
         mock_github_response: Mock GitHub CLI response.
         mock_pylint_output: Mock pylint output.
+        monkeypatch: Pytest monkeypatch fixture for mocking.
         toml_sort_mock: Function to apply toml-sort mock.
 
     """

@@ -225,9 +225,9 @@ class TomlFile:
         """Update an array in a specific section.
 
         Args:
-            section_path: Dot-separated path to the section.
-            key: Key within the section to update.
             array_data: Either a simple list of strings or SimpleArrayWithComments.
+            key: Key within the section to update.
+            section_path: Dot-separated path to the section.
 
         """
         if isinstance(array_data, SimpleArrayWithComments):
@@ -254,9 +254,9 @@ class TomlFile:
         """Ensure an item exists in an array, adding it if not present.
 
         Args:
-            section_path: Dot-separated path to the section.
-            key: Key within the section.
             item: Item to ensure exists in the array.
+            key: Key within the section.
+            section_path: Dot-separated path to the section.
 
         """
         current_dict = self.as_dict()
@@ -292,9 +292,9 @@ class TomlFile:
         This method uses the centralized TomlRegex class for all regex operations.
 
         Args:
-            section_path: Dot-separated path to the section.
             key: Key within the section to update.
             new_value: New value for the key.
+            section_path: Dot-separated path to the section.
 
         """
         # Work with the current content and only set it once at the end

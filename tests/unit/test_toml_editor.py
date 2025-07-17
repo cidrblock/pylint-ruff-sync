@@ -663,8 +663,8 @@ def test_toml_sort_with_custom_configuration(
     - sort_table_keys = true
 
     Args:
-        tmp_path: Temporary path for the test file.
         monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary path for the test file.
         toml_sort_mock: Fixture for toml-sort mock functionality.
 
     """

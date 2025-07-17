@@ -83,8 +83,8 @@ class PylintExtractor:
         """Resolve rule identifiers to rule codes.
 
         Args:
-            rule_identifiers: List of rule codes or names to resolve.
             all_rules: Rules object containing all available pylint rules.
+            rule_identifiers: List of rule codes or names to resolve.
 
         Returns:
             Set of resolved rule codes.

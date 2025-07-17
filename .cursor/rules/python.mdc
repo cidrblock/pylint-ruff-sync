@@ -4,27 +4,81 @@ globs:
 alwaysApply: true
 ---
 
+## Type Safety & Code Quality
+
 - Always Use type hints for all function parameters and return types
 - Always avoid the use of "Any" as a type hint
 - Always Ask before using "Any" as a type hint with a clear explanation of why it is necessary
+
+## Code Quality Tools (CRITICAL - NO EXCEPTIONS)
+
+- **MANDATORY: Always run `pre-commit run --all-files` after making ANY changes**
+- **MANDATORY: Fix ALL pre-commit issues without exception - NEVER ignore, skip, or disable**
+- **MANDATORY: All of the following tools MUST pass with zero errors/warnings:**
+  - ruff (all violations must be fixed, never disable rules)
+  - mypy (all type errors must be resolved)
+  - pylint (all enabled violations must be fixed)
+  - pydoclint (all docstring issues must be fixed)
+  - cspell (all spelling errors must be fixed)
+  - prettier (all formatting issues must be auto-fixed)
+  - argument ordering checker (all functions must have alphabetical arguments)
+  - toml-sort (all TOML files must be properly sorted)
+- **MANDATORY: If ANY pre-commit check fails, it MUST be fixed before proceeding**
+- **MANDATORY: Never commit code with failing pre-commit checks**
 - Always run ruff and fix any errors reported
 - Always run mypy and fix any errors reports
 - Always run the tests and fix any test failures
+- Never disable ruff rules in the pyproject.toml file
+- Always fix errors rather than disable them, ask if a disable is necessary and explain why
+
+## Testing Standards
+
 - Never use "unittest", use pytest instead with monkeypatch
 - Never use unittest.mock, use pytest with monkeypatch instead
 - Do not add pytest-mock
-- Minimize the project dependendices
-- Never disable ruff rules in the pyproject.toml file
-- Always fix errors rather than disable them, ask if a disable is necessary and explain why
 - Avoid the use of classes in the tests, with the exception of a dataclass for data if needed.
-- Always "git add --all" and "git commit" with a message before running pre-commit
-- Always run "pre-commit run --all-files after making any changes, fix errors reported"
+
+## Function Argument Standards (STRICTLY ENFORCED)
+
 - When calling a python function, use named arguments (kwargs) when ever possible
 - When calling a python function ensure the kwargs are provided in alphabetical order
 - When writing a python function use the pattern "def foo (\*, this, that) to ensure it is always called with kwargs
-- When writing a python fucntion ensure all arguments are in alphabetical order
+- When writing a python function ensure all arguments are in alphabetical order
+- **CRITICAL: All function definitions and calls are automatically checked by pre-commit hook**
+
+## Docstring Standards (STRICTLY ENFORCED)
+
+- **MANDATORY: All docstring arguments must be in the same order as function signature**
+- **MANDATORY: All docstring type hints must match function signature type hints**
+- **MANDATORY: All pydoclint violations must be fixed immediately**
+- Use Google-style docstrings with proper Args sections
+
+## Project Structure & Dependencies
+
 - Always use a src layout for new projects https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/
 - Never use relative imports
 - Always use uv instead of pip
 - Never install a python package outside of the workspace virtual environment
-- Always review the rules after making changes to ensure they were followed, ask if a rule needs to be broken
+- Minimize the project dependencies
+
+## Git & Pre-commit Workflow (MANDATORY SEQUENCE)
+
+1. **MANDATORY: Always "git add --all" and "git commit" with a message before running pre-commit**
+2. **MANDATORY: Always run "pre-commit run --all-files" after making any changes**
+3. **MANDATORY: Fix ALL errors reported by pre-commit - NO EXCEPTIONS**
+4. **MANDATORY: Repeat steps 2-3 until pre-commit passes with zero issues**
+5. **MANDATORY: Only then proceed with further development**
+
+## Rule Compliance & Enforcement
+
+- Always review the rules after making changes to ensure they were followed
+- Ask if a rule needs to be broken and provide clear justification
+- **NEVER ignore or bypass pre-commit failures**
+- **NEVER disable tools to avoid fixing issues**
+- **NEVER commit code that doesn't pass all quality checks**
+
+## Emergency Procedures
+
+- If pre-commit issues seem impossible to fix, STOP and ask for help
+- If a tool reports false positives, ask before disabling or ignoring
+- If rules conflict, ask for clarification rather than making assumptions

@@ -94,8 +94,8 @@ class TomlRegex:
         3. Handles both single-line and multiline values
 
         Args:
-            section_path: Dot-separated path to the section.
             key: The key name to find.
+            section_path: Dot-separated path to the section.
 
         Returns:
             Compiled regex pattern with capture groups.
@@ -230,8 +230,8 @@ class TomlRegex:
 
         Args:
             content: TOML content to search.
-            section_path: Section path containing the key.
             key: Key name to find.
+            section_path: Section path containing the key.
 
         Returns:
             RegexMatch with the result and capture groups.
@@ -251,8 +251,8 @@ class TomlRegex:
 
         Args:
             content: TOML content to search.
-            section_path: Section path to search within.
             key: Key name to check for.
+            section_path: Section path to search within.
 
         Returns:
             True if the key exists in the section, False otherwise.
@@ -277,9 +277,9 @@ class TomlRegex:
 
         Args:
             content: TOML content to modify.
-            section_path: Section path containing the key.
             key: Key name to replace.
             new_value: New value for the key.
+            section_path: Section path containing the key.
 
         Returns:
             Modified TOML content with the key's value replaced.
@@ -311,8 +311,8 @@ class TomlRegex:
 
         Args:
             content: TOML content to modify.
-            section_path: Section path to add the key to.
             key: Key name to add.
+            section_path: Section path to add the key to.
             value: Value for the key.
 
         Returns:
