@@ -52,19 +52,58 @@ class PylintCleaner:
     comments and maintaining code formatting.
     """
 
-    def __init__(self, *, config_file: Path, project_root: Path, rules: Rules) -> None:
+    def __init__(
+        self,
+        *,
+        config_file: Path,
+        dry_run: bool,
+        project_root: Path,
+        rules: Rules,
+    ) -> None:
         """Initialize the PylintCleaner.
 
         Args:
             config_file: Path to the configuration file (e.g., pyproject.toml).
+            dry_run: Whether to run in dry-run mode.
             project_root: Root directory of the project to clean.
             rules: Rules instance containing all rule information.
 
         """
         self.config_file = config_file
+        self.dry_run = dry_run
         self.project_root = project_root
         self.rules = rules
         self._disable_patterns = self._compile_disable_patterns()
+
+    def run(self) -> dict[Path, int]:
+        """Run the PylintCleaner to remove unnecessary disable comments.
+
+        Returns:
+            Dictionary mapping file paths to number of lines modified.
+
+        """
+        logger.info("Running PylintCleaner to remove unnecessary disable comments")
+
+        modifications = self.clean_files(dry_run=self.dry_run)
+
+        if modifications:
+            total_lines = sum(modifications.values())
+            if self.dry_run:
+                logger.info(
+                    "PylintCleaner would modify %d lines across %d files",
+                    total_lines,
+                    len(modifications),
+                )
+            else:
+                logger.info(
+                    "PylintCleaner cleaned %d lines across %d files",
+                    total_lines,
+                    len(modifications),
+                )
+        else:
+            logger.info("PylintCleaner found no unnecessary disable comments")
+
+        return modifications
 
     def _compile_disable_patterns(self) -> list[re.Pattern[str]]:
         """Compile regex patterns for detecting pylint disable comments.
@@ -107,7 +146,7 @@ class PylintCleaner:
         )
 
         try:
-            # Build pylint command that uses provided config but enables only useless-suppression
+            # Run pylint with user's config, enabling only useless-suppression
             cmd = [
                 "pylint",
                 "--output-format=parseable",
@@ -116,11 +155,7 @@ class PylintCleaner:
                 str(self.project_root),
             ]
 
-            # Use the provided config file if it exists
-            if self.config_file.exists():
-                cmd.insert(1, f"--rcfile={self.config_file}")
-
-            # Run pylint with the modified configuration
+            # Run pylint with the user's configuration
             # Note: Using trusted pylint command from user's environment
             result = subprocess.run(  # noqa: S603
                 cmd,

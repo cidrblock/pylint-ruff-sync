@@ -69,6 +69,34 @@ enable = ["C0103", "W0613"]
 
     return PylintCleaner(
         config_file=config_file,
+        dry_run=False,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
+
+
+@pytest.fixture
+def pylint_cleaner_dry_run(tmp_path: Path, mock_rules: Rules) -> PylintCleaner:
+    """Create a PylintCleaner instance for dry-run testing.
+
+    Args:
+        tmp_path: Temporary project directory from pytest.
+        mock_rules: Mock rules object.
+
+    Returns:
+        PylintCleaner instance configured for dry-run mode.
+
+    """
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["C0103", "W0613"]
+""")
+
+    return PylintCleaner(
+        config_file=config_file,
+        dry_run=True,
         project_root=tmp_path,
         rules=mock_rules,
     )
@@ -349,7 +377,7 @@ other.py:5:1: R0903: Useless suppression of 'missing-function-docstring'
 
 
 def test_clean_files_dry_run(
-    pylint_cleaner: PylintCleaner,
+    pylint_cleaner_dry_run: PylintCleaner,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -368,13 +396,13 @@ def test_clean_files_dry_run(
     # Mock the useless suppressions detection
     mock_suppressions = {test_file: [(1, "eval-used")]}
     monkeypatch.setattr(
-        pylint_cleaner,
+        pylint_cleaner_dry_run,
         "_detect_useless_suppressions",
         lambda: mock_suppressions,
     )
 
     # Run in dry-run mode
-    result = pylint_cleaner.clean_files(dry_run=True)
+    result = pylint_cleaner_dry_run.run()
 
     # Should report modifications but not change file
     assert test_file in result
@@ -411,7 +439,7 @@ def test_clean_files_actual_modification(
     )
 
     # Run actual cleaning
-    result = pylint_cleaner.clean_files(dry_run=False)
+    result = pylint_cleaner.run()
 
     # Should report modifications and change file
     assert test_file in result

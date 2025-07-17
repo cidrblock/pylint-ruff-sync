@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .message_generator import MessageGenerator
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .message_generator import MessageGenerator
+
 from .rule import Rule, Rules, RuleSource
 from .toml_file import SimpleArrayWithComments, TomlFile
 

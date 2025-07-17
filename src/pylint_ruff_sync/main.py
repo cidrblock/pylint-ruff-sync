@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -146,56 +147,6 @@ class Application:
             rules=rules,
         )
 
-    def run_pylint_cleaner(
-        self,
-        config_file: Path,
-        *,
-        dry_run: bool = False,
-    ) -> None:
-        """Run PylintCleaner to remove unnecessary pylint disable comments.
-
-        Args:
-            config_file: Path to configuration file.
-            dry_run: Whether to run in dry-run mode.
-
-        """
-        # Skip if disabled via CLI argument
-        if getattr(self.args, "disable_pylint_cleaner", False):
-            logger.info("PylintCleaner disabled via --disable-pylint-cleaner")
-            return
-
-        try:
-            project_root = config_file.parent
-            rules = self.extract_all_rules()
-            cleaner = PylintCleaner(
-                config_file=config_file,
-                project_root=project_root,
-                rules=rules,
-            )
-            modifications = cleaner.clean_files(dry_run=dry_run)
-
-            if modifications:
-                total_lines = sum(modifications.values())
-                if dry_run:
-                    logger.info(
-                        "PylintCleaner would modify %d lines across %d files",
-                        total_lines,
-                        len(modifications),
-                    )
-                else:
-                    logger.info(
-                        "PylintCleaner cleaned %d lines across %d files",
-                        total_lines,
-                        len(modifications),
-                    )
-            else:
-                logger.info("PylintCleaner found no unnecessary disable comments")
-
-        except Exception as e:
-            logger.warning("PylintCleaner failed: %s", e)
-            if not dry_run:
-                logger.info("Operation completed despite cleaner failure")
-
     def run(self) -> int:
         """Run the application with the provided arguments.
 
@@ -221,20 +172,34 @@ class Application:
             )
             updater.update(disable_mypy_overlap=self.args.disable_mypy_overlap)
 
-            # Run PylintCleaner after configuration update
-            self.run_pylint_cleaner(
-                config_file=self.args.config_file,
-                dry_run=self.args.dry_run,
-            )
+            # Run PylintCleaner after configuration update if enabled
+            if not getattr(self.args, "disable_pylint_cleaner", False):
+                try:
+                    project_root = self.args.config_file.parent
+                    rules = self.extract_all_rules()
+                    cleaner = PylintCleaner(
+                        config_file=self.args.config_file,
+                        dry_run=self.args.dry_run,
+                        project_root=project_root,
+                        rules=rules,
+                    )
+                    cleaner.run()
+
+                except (subprocess.CalledProcessError, OSError, ValueError) as e:
+                    logger.warning("PylintCleaner failed: %s", e)
+                    if not self.args.dry_run:
+                        logger.info("Operation completed despite cleaner failure")
+            else:
+                logger.info("PylintCleaner disabled via --disable-pylint-cleaner")
 
         except KeyboardInterrupt:
             logger.info("Operation cancelled by user")
             return 130
         except Exception:
-            logger.exception("An unexpected error occurred")
+            logger.exception("Unexpected error occurred")
             return 1
-        else:
-            return 0
+
+        return 0
 
 
 def _setup_logging(*, verbose: bool = False) -> None:
