@@ -20,6 +20,129 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class Application:
+    """Main application class for pylint-ruff-sync tool.
+
+    Encapsulates the core functionality and manages component initialization
+    to eliminate duplication of class instantiation.
+    """
+
+    def __init__(self, cache_path: Path | None = None) -> None:
+        """Initialize the application with optional cache path.
+
+        Args:
+            cache_path: Optional path to cache file. If None, uses default location.
+
+        """
+        # Determine cache path
+        if cache_path is None:
+            cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
+
+        self.cache_path = cache_path
+        self._cache_manager = RulesCacheManager(self.cache_path)
+        self._data_collector = DataCollector(cache_manager=self._cache_manager)
+        self._rules: Rules | None = None
+        self._message_generator: MessageGenerator | None = None
+
+    @property
+    def cache_manager(self) -> RulesCacheManager:
+        """Get the cache manager instance.
+
+        Returns:
+            RulesCacheManager instance.
+
+        """
+        return self._cache_manager
+
+    @property
+    def data_collector(self) -> DataCollector:
+        """Get the data collector instance.
+
+        Returns:
+            DataCollector instance.
+
+        """
+        return self._data_collector
+
+    def extract_all_rules(self) -> Rules:
+        """Extract and combine all rule information using DataCollector.
+
+        Returns:
+            Rules object containing all available pylint rules with ruff data.
+
+        """
+        if self._rules is None:
+            logger.info("Extracting all rule information")
+            self._rules = self._data_collector.collect_rules()
+
+        return self._rules
+
+    def update_cache_from_github(self) -> None:
+        """Update the cache from GitHub issue.
+
+        This uses DataCollector to ensure fresh data is collected following
+        the proper initialization flow.
+
+        Raises:
+            Exception: If cache update fails for any reason.
+
+        """
+        logger.info("Updating cache from GitHub...")
+
+        try:
+            # Force fresh collection by directly calling the fresh collection method
+            all_rules = self._data_collector.collect_fresh_rules()
+
+            # Save to the specified cache path using cache manager
+            self._cache_manager.save_rules(all_rules)
+            logger.info("Cache updated successfully with %d rules", len(all_rules))
+
+            # Update cached rules
+            self._rules = all_rules
+        except Exception:
+            logger.exception("Failed to update cache")
+            raise
+
+    def get_message_generator(self) -> MessageGenerator:
+        """Get or create a message generator instance.
+
+        Returns:
+            MessageGenerator instance.
+
+        """
+        if self._message_generator is None:
+            rules = self.extract_all_rules()
+            self._message_generator = MessageGenerator(rules=rules)
+
+        return self._message_generator
+
+    def create_pyproject_updater(
+        self,
+        config_file: Path,
+        *,
+        dry_run: bool = False,
+    ) -> PyprojectUpdater:
+        """Create a PyprojectUpdater with the application's rules.
+
+        Args:
+            config_file: Path to pyproject.toml file.
+            dry_run: Whether to run in dry-run mode.
+
+        Returns:
+            PyprojectUpdater instance.
+
+        """
+        rules = self.extract_all_rules()
+        message_generator = self.get_message_generator() if dry_run else None
+
+        return PyprojectUpdater(
+            rules=rules,
+            config_file=config_file,
+            dry_run=dry_run,
+            message_generator=message_generator,
+        )
+
+
 def _setup_logging(*, verbose: bool = False) -> None:
     """Set up logging configuration.
 
@@ -117,24 +240,8 @@ def update_cache_from_github(cache_path: Path) -> None:
         Exception: If cache update fails for any reason.
 
     """
-    logger.info("Updating cache from GitHub...")
-
-    # Create cache manager for updating
-    cache_manager = RulesCacheManager(cache_path)
-
-    # Use DataCollector to get fresh rules (bypassing cache)
-    data_collector = DataCollector(cache_manager=cache_manager)
-
-    # Force fresh collection by directly calling the fresh collection method
-    try:
-        all_rules = data_collector.collect_fresh_rules()
-
-        # Save to the specified cache path using cache manager
-        cache_manager.save_rules(all_rules)
-        logger.info("Cache updated successfully with %d rules", len(all_rules))
-    except Exception:
-        logger.exception("Failed to update cache")
-        raise
+    app = Application(cache_path=cache_path)
+    app.update_cache_from_github()
 
 
 def _extract_all_rules(cache_path: Path | None = None) -> Rules:
@@ -147,18 +254,8 @@ def _extract_all_rules(cache_path: Path | None = None) -> Rules:
         Rules object containing all available pylint rules with ruff data.
 
     """
-    logger.info("Extracting all rule information")
-
-    # Determine cache path
-    if cache_path is None:
-        cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
-
-    # Create cache manager
-    cache_manager = RulesCacheManager(cache_path)
-
-    # Create data collector with cache manager
-    data_collector = DataCollector(cache_manager=cache_manager)
-    return data_collector.collect_rules()
+    app = Application(cache_path=cache_path)
+    return app.extract_all_rules()
 
 
 def main() -> int:
@@ -179,26 +276,18 @@ def main() -> int:
             logger.error("Configuration file not found: %s", args.config_file)
             return 1
 
+        # Create application instance
+        app = Application(cache_path=args.cache_path)
+
         # Handle --update-cache argument
         if args.update_cache:
-            cache_path = (
-                args.cache_path if args.cache_path else Path("ruff_implemented.json")
-            )
-            update_cache_from_github(cache_path)
+            app.update_cache_from_github()
             return 0
 
-        # Extract all rule information using DataCollector with cache manager
-        all_rules = _extract_all_rules(cache_path=args.cache_path)
-
-        # Create MessageGenerator with rules for potential dry-run messages
-        message_generator = MessageGenerator(rules=all_rules) if args.dry_run else None
-
-        # Update the configuration
-        updater = PyprojectUpdater(
-            rules=all_rules,
+        # Create and configure PyprojectUpdater through the application
+        updater = app.create_pyproject_updater(
             config_file=args.config_file,
             dry_run=args.dry_run,
-            message_generator=message_generator,
         )
         updater.update(disable_mypy_overlap=args.disable_mypy_overlap)
 
