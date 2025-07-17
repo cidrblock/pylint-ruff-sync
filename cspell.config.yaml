@@ -1,22 +1,20 @@
-dictionaryDefinitions:
-  - name: words
-    path: .config/dictionary.txt
-    addWords: true
-dictionaries:
-  - bash
-  - networking-terms
-  - python
-  - words
-  - "!aws"
-  - "!backwards-compatibility"
-  - "!cryptocurrencies"
-  - "!cpp"
-ignorePaths:
-  - .config/requirements*
-  - \.*
-  - cspell.config.yaml
-  - pyproject.toml
-
-languageSettings:
-  - languageId: python
-    allowCompoundWords: false
+version: "0.2"
+language: "en"
+words:
+  - pylint
+  - ruff
+  - pyproject
+  - toml
+  - kwargs
+  - dataclass
+  - isinstance
+  - fstring
+  - multifile
+  - booleaness
+  - falsey
+  - getnewargs
+  - simplifiable
+  - evals
+  - vararg
+  - kwarg
+  - preexec

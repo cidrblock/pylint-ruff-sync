@@ -13,7 +13,15 @@ if TYPE_CHECKING:
 
 
 class RuleSource(Enum):
-    """Source of rule information."""
+    """Source of rule information.
+
+    Attributes:
+        PYLINT_LIST: Rule discovered from pylint --list-msgs
+        RUFF_ISSUE: Rule discovered from ruff GitHub issue
+        USER_DISABLE: Rule from user's disable list
+        UNKNOWN: Rule with unknown source
+
+    """
 
     PYLINT_LIST = "pylint_list"
     RUFF_ISSUE = "ruff_issue"
@@ -37,6 +45,7 @@ class Rule:
         source: Source where this rule was discovered
         pylint_category: Category from rule ID (C/E/W/R/I/F)
         user_comment: User comment from disable list
+        CATEGORY_MAP: Map rule category codes to URL categories
 
     """
 
@@ -586,13 +595,28 @@ class Rules:
         )
 
     def __len__(self) -> int:
-        """Return number of rules."""
+        """Return number of rules.
+
+        Returns:
+            Number of rules in the collection.
+
+        """
         return len(self.rules)
 
     def __iter__(self) -> Iterator[Rule]:
-        """Iterate over rules."""
+        """Iterate over rules.
+
+        Returns:
+            Iterator over Rule objects.
+
+        """
         return iter(self.rules)
 
     def __bool__(self) -> bool:
-        """Return True if rules exist."""
+        """Return True if rules exist.
+
+        Returns:
+            True if rules collection is not empty.
+
+        """
         return bool(self.rules)

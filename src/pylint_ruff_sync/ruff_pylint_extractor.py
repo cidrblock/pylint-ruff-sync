@@ -177,7 +177,7 @@ class RuffPylintExtractor:
                         is_in_ruff_issue=True,
                         is_implemented_in_ruff=is_implemented,
                         ruff_rule=ruff_code,
-                        source=RuleSource.RUFF_ISSUE,  # This will be updated in update_rules_with_ruff_data
+                        source=RuleSource.RUFF_ISSUE,  # Updated in update_rules_with_ruff_data
                     )
                     rules.add_rule(rule)
                     logger.debug(
@@ -202,8 +202,8 @@ class RuffPylintExtractor:
         except subprocess.CalledProcessError as e:
             logger.exception("GitHub CLI command failed: %s", e.stderr)
             raise
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.exception("Failed to parse GitHub issue data: %s", e)
+        except (json.JSONDecodeError, KeyError):
+            logger.exception("Failed to parse GitHub issue data")
             raise
         else:
             return rules
@@ -302,7 +302,7 @@ class RuffPylintExtractor:
             for rule_id in sorted(unmatched_ruff_rules):
                 ruff_rule = ruff_map[rule_id]
                 logger.debug(
-                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older pylint version",
+                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older version",
                     rule_id,
                     ruff_rule.pylint_name,
                 )
