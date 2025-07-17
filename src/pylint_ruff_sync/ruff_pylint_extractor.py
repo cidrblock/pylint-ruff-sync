@@ -290,6 +290,13 @@ class RuffPylintExtractor:
                 if not rule.pylint_name and ruff_rule.pylint_name:
                     rule.pylint_name = ruff_rule.pylint_name
 
+            # Special case: useless-suppression should always be enabled
+            # Mark it as not implemented by ruff so it appears in enable list
+            if rule.pylint_id == "I0021" or rule.pylint_name == "useless-suppression":
+                rule.is_implemented_in_ruff = False
+                rule.is_in_ruff_issue = False
+                rule.ruff_rule = ""
+
         # Log warnings for ruff rules that don't exist in current pylint
         unmatched_ruff_rules = set(ruff_map.keys()) - matched_ruff_rules
         if unmatched_ruff_rules:

@@ -154,10 +154,10 @@ class PylintCleaner:
 
         try:
             # Run pylint with user's config on git-tracked Python files
-            # Enable useless-suppression in addition to user's normal config
+            # Note: useless-suppression is now always enabled via RuffPylintExtractor
             cmd = (
-                f"pylint --output-format=parseable --enable=useless-suppression "
-                f"--rcfile {self.config_file} $(git ls-files '*.py')"
+                f"pylint --output-format=parseable --rcfile {self.config_file} "
+                "$(git ls-files '*.py')"
             )
 
             # Run pylint with the user's configuration
@@ -174,8 +174,11 @@ class PylintCleaner:
 
             return self._parse_pylint_output(output=result.stdout)
 
-        except (subprocess.TimeoutExpired, OSError, subprocess.CalledProcessError) as e:
-            logger.warning("Failed to run pylint useless-suppression check: %s", e)
+        except subprocess.TimeoutExpired:
+            logger.error("Pylint command timed out after 120 seconds")
+            return {}
+        except Exception:
+            logger.exception("Error running pylint to detect useless suppressions")
             return {}
 
     def _parse_pylint_output(self, *, output: str) -> dict[Path, list[tuple[int, str]]]:
@@ -322,7 +325,70 @@ class PylintCleaner:
             )
         return f"{code_part}# pylint: disable={remaining_rules_text}"
 
-    def clean_files(self, *, dry_run: bool = False) -> dict[Path, int]:  # noqa: C901, PLR0912, PLR0915
+    def _remove_useless_disables(
+        self,
+        content: str,
+        file_path: Path,
+        useless_suppressions: list[tuple[int, str]],
+    ) -> str:
+        """Removes useless pylint disable comments from a single file's content.
+
+        Args:
+            content: The original content of the file.
+            file_path: The path to the file.
+            useless_suppressions: A list of (line_number, rule_name) tuples for
+                useless suppressions to remove.
+
+        Returns:
+            The modified content of the file.
+
+        """
+        # Group useless suppressions by line number
+        useless_by_line: dict[int, list[str]] = {}
+        for line_num, rule_name in useless_suppressions:
+            if line_num not in useless_by_line:
+                useless_by_line[line_num] = []
+            useless_by_line[line_num].append(rule_name)
+
+        # Read file content
+        try:
+            content_lines = content.splitlines()
+        except (OSError, UnicodeDecodeError) as e:
+            logger.warning("Failed to read file %s: %s", file_path, e)
+            return content
+
+        new_content_lines = []
+
+        # Process each line
+        for line_num, line_content in enumerate(content_lines, 1):
+            if line_num in useless_by_line:
+                # This line has useless suppressions
+                disable_comment = self._parse_disable_comment(
+                    file_path=file_path,
+                    line_content=line_content,
+                    line_number=line_num,
+                )
+
+                if disable_comment:
+                    useless_rules = useless_by_line[line_num]
+                    new_line = self._remove_useless_rules_from_comment(
+                        disable_comment=disable_comment,
+                        useless_rules=useless_rules,
+                    )
+
+                    if new_line is not None:
+                        new_content_lines.append(new_line)
+                    # If new_line is None, skip this line (remove it)
+                else:
+                    # Failed to parse, keep original
+                    new_content_lines.append(line_content)
+            else:
+                # No useless suppressions on this line
+                new_content_lines.append(line_content)
+
+        return "\n".join(new_content_lines)
+
+    def clean_files(self, *, dry_run: bool = False) -> dict[Path, int]:
         """Clean unnecessary pylint disable comments from project files.
 
         Args:
@@ -349,70 +415,27 @@ class PylintCleaner:
                 logger.warning("File not found: %s", file_path)
                 continue
 
-            # Group useless suppressions by line number
-            useless_by_line: dict[int, list[str]] = {}
-            for line_num, rule_name in useless_list:
-                if line_num not in useless_by_line:
-                    useless_by_line[line_num] = []
-                useless_by_line[line_num].append(rule_name)
-
             # Read file content
             try:
-                content_lines = file_path.read_text(encoding="utf-8").splitlines()
+                content = file_path.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError) as e:
                 logger.warning("Failed to read file %s: %s", file_path, e)
                 continue
 
-            modified_lines = 0
-            new_content_lines = []
+            # Remove useless suppressions from the content
+            new_content = self._remove_useless_disables(
+                content=content,
+                file_path=file_path,
+                useless_suppressions=useless_list,
+            )
 
-            # Process each line
-            for line_num, line_content in enumerate(content_lines, 1):
-                if line_num in useless_by_line:
-                    # This line has useless suppressions
-                    disable_comment = self._parse_disable_comment(
-                        file_path=file_path,
-                        line_content=line_content,
-                        line_number=line_num,
-                    )
-
-                    if disable_comment:
-                        useless_rules = useless_by_line[line_num]
-                        new_line = self._remove_useless_rules_from_comment(
-                            disable_comment=disable_comment,
-                            useless_rules=useless_rules,
-                        )
-
-                        if new_line != line_content:
-                            modified_lines += 1
-                            if dry_run:
-                                logger.info(
-                                    "Would modify %s:%d: %s -> %s",
-                                    file_path,
-                                    line_num,
-                                    line_content.strip(),
-                                    new_line.strip() if new_line else "[REMOVED]",
-                                )
-
-                        if new_line is not None:
-                            new_content_lines.append(new_line)
-                        # If new_line is None, skip this line (remove it)
-                    else:
-                        # Failed to parse, keep original
-                        new_content_lines.append(line_content)
-                else:
-                    # No useless suppressions on this line
-                    new_content_lines.append(line_content)
-
-            if modified_lines > 0:
+            if new_content != content:
+                modified_lines = content.count("\n") - new_content.count("\n")
                 modifications[file_path] = modified_lines
 
                 if not dry_run:
                     # Write modified content back to file
                     try:
-                        new_content = "\n".join(new_content_lines)
-                        if content_lines and not content_lines[-1]:
-                            new_content += "\n"  # Preserve trailing newline
                         file_path.write_text(new_content, encoding="utf-8")
                         logger.info("Cleaned %d lines in %s", modified_lines, file_path)
                     except OSError:
