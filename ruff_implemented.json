@@ -54,6 +54,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unneeded-not.html",
+      "pylint_id": "C0113",
+      "pylint_name": "unneeded-not",
+      "ruff_rule": "SIM208",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Missing module docstring",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -155,6 +168,32 @@
       "pylint_name": "typevar-name-mismatch",
       "ruff_rule": "PLC0132",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/bad-docstring-quotes.html",
+      "pylint_id": "C0198",
+      "pylint_name": "bad-docstring-quotes",
+      "ruff_rule": "Q002",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/docstring-first-line-empty.html",
+      "pylint_id": "C0199",
+      "pylint_name": "docstring-first-line-empty",
+      "ruff_rule": "D210",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -522,6 +561,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/consider-using-any-or-all.html",
+      "pylint_id": "C0501",
+      "pylint_name": "consider-using-any-or-all",
+      "ruff_rule": "SIM110`, `SIM111",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Do not use `len(SEQUENCE)` without comparison to determine if a sequence is empty",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -574,6 +626,45 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/compare-to-empty-string.html",
+      "pylint_id": "C1901",
+      "pylint_name": "compare-to-empty-string",
+      "ruff_rule": "PLC1901",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/compare-to-zero.html",
+      "pylint_id": "C2001",
+      "pylint_name": "compare-to-zero",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/misplaced-comparison-constant.html",
+      "pylint_id": "C2201",
+      "pylint_name": "misplaced-comparison-constant",
+      "ruff_rule": "SIM300",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "%s name \"%s\" contains a non-ASCII character, consider renaming it.",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -613,6 +704,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/import-private-name.html",
+      "pylint_id": "C2701",
+      "pylint_name": "import-private-name",
+      "ruff_rule": "PLC2701",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Unnecessarily calls dunder method %s. %s.",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -649,6 +753,32 @@
       "pylint_name": "unnecessary-direct-lambda-call",
       "ruff_rule": "PLC3002",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "C",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/dict-init-mutate.html",
+      "pylint_id": "C3401",
+      "pylint_name": "dict-init-mutate",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "E",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/error/syntax-error.html",
+      "pylint_id": "E0001",
+      "pylint_name": "syntax-error",
+      "ruff_rule": "always enabled",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -1705,6 +1835,32 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "E",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-unary-operand-type.html",
+      "pylint_id": "E1130",
+      "pylint_name": "invalid-unary-operand-type",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "E",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/error/unsupported-binary-operation.html",
+      "pylint_id": "E1131",
+      "pylint_name": "unsupported-binary-operation",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Got multiple values for keyword argument %r in function call",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -2485,6 +2641,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/redefined-variable-type.html",
+      "pylint_id": "R0204",
+      "pylint_name": "redefined-variable-type",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Class %r inherits from object, can be safely removed from bases in python3",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -2690,6 +2859,19 @@
       "pylint_name": "too-many-positional-arguments",
       "ruff_rule": "PLR0917",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-complex.html",
+      "pylint_id": "R1260",
+      "pylint_name": "too-complex",
+      "ruff_rule": "C901",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -3174,6 +3356,149 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/magic-value-comparison.html",
+      "pylint_id": "R2004",
+      "pylint_name": "magic-value-comparison",
+      "ruff_rule": "PLR2004",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/empty-comment.html",
+      "pylint_id": "R2044",
+      "pylint_name": "empty-comment",
+      "ruff_rule": "PLR2044",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/else-if-used.html",
+      "pylint_id": "R5501",
+      "pylint_name": "else-if-used",
+      "ruff_rule": "PLR5501",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-alias.html",
+      "pylint_id": "R6002",
+      "pylint_name": "consider-using-alias",
+      "ruff_rule": "UP006",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-alternative-union-syntax.html",
+      "pylint_id": "R6003",
+      "pylint_name": "consider-alternative-union-syntax",
+      "ruff_rule": "UP007",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-namedtuple-or-dataclass.html",
+      "pylint_id": "R6101",
+      "pylint_name": "consider-using-namedtuple-or-dataclass",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-tuple.html",
+      "pylint_id": "R6102",
+      "pylint_name": "consider-using-tuple",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-assignment-expr.html",
+      "pylint_id": "R6103",
+      "pylint_name": "consider-using-assignment-expr",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-augmented-assign.html",
+      "pylint_id": "R6104",
+      "pylint_name": "consider-using-augmented-assign",
+      "ruff_rule": "PLR6104",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/use-set-for-membership.html",
+      "pylint_id": "R6201",
+      "pylint_name": "use-set-for-membership",
+      "ruff_rule": "PLR6201",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "R",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/no-self-use.html",
+      "pylint_id": "R6301",
+      "pylint_name": "no-self-use",
+      "ruff_rule": "PLR6301",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Unknown option value for '%s', expected a valid pylint message and got '%s'",
       "is_implemented_in_ruff": false,
       "is_in_ruff_issue": false,
@@ -3473,6 +3798,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-builtin.html",
+      "pylint_id": "W0141",
+      "pylint_name": "bad-builtin",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Comparing against a callable, did you omit the parenthesis?",
       "is_implemented_in_ruff": false,
       "is_in_ruff_issue": true,
@@ -3486,6 +3824,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/while-used.html",
+      "pylint_id": "W0149",
+      "pylint_name": "while-used",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "%s statement in finally block may swallow exception",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -3496,6 +3847,19 @@
       "pylint_name": "lost-exception",
       "ruff_rule": "B012",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/consider-ternary-expression.html",
+      "pylint_id": "W0160",
+      "pylint_name": "consider-ternary-expression",
+      "ruff_rule": "SIM108",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -3850,6 +4214,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/fixme.html",
+      "pylint_id": "W0511",
+      "pylint_name": "fixme",
+      "ruff_rule": "FIX001`, `FIX002`, `FIX003`, `FIX004",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Global variable %r undefined at the module level",
       "is_implemented_in_ruff": false,
       "is_in_ruff_issue": true,
@@ -4123,6 +4500,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/overlapping-except.html",
+      "pylint_id": "W0714",
+      "pylint_name": "overlapping-except",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Exception arguments suggest string formatting might be intended",
       "is_implemented_in_ruff": false,
       "is_in_ruff_issue": true,
@@ -4146,6 +4536,19 @@
       "pylint_name": "wrong-exception-operation",
       "ruff_rule": "",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/too-many-try-statements.html",
+      "pylint_id": "W0717",
+      "pylint_name": "too-many-try-statements",
+      "ruff_rule": "",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -4630,6 +5033,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/eq-without-hash.html",
+      "pylint_id": "W1641",
+      "pylint_name": "eq-without-hash",
+      "ruff_rule": "PLW1641",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "'%s()' directly created in 'with' has no effect",
       "is_implemented_in_ruff": true,
       "is_in_ruff_issue": true,
@@ -4747,6 +5163,19 @@
       "user_comment": ""
     },
     {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redefined-loop-name.html",
+      "pylint_id": "W2901",
+      "pylint_name": "redefined-loop-name",
+      "ruff_rule": "PLW2901",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
       "description": "Missing timeout argument for method '%s' can cause your program to hang indefinitely",
       "is_implemented_in_ruff": false,
       "is_in_ruff_issue": true,
@@ -4757,6 +5186,19 @@
       "pylint_name": "missing-timeout",
       "ruff_rule": "",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": true,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-dunder-name.html",
+      "pylint_id": "W3201",
+      "pylint_name": "bad-dunder-name",
+      "ruff_rule": "PLW3201",
+      "source": "ruff_issue",
       "user_comment": ""
     },
     {
@@ -4874,6 +5316,201 @@
       "pylint_name": "deprecated-attribute",
       "ruff_rule": "",
       "source": "pylint_list",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-typing-alias.html",
+      "pylint_id": "W6001",
+      "pylint_name": "deprecated-typing-alias",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/multiple-constructor-doc.html",
+      "pylint_id": "W9005",
+      "pylint_name": "multiple-constructor-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-raises-doc.html",
+      "pylint_id": "W9006",
+      "pylint_name": "missing-raises-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-returns-doc.html",
+      "pylint_id": "W9008",
+      "pylint_name": "redundant-returns-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-yields-doc.html",
+      "pylint_id": "W9010",
+      "pylint_name": "redundant-yields-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-return-type-doc.html",
+      "pylint_id": "W9012",
+      "pylint_name": "missing-return-type-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-yield-doc.html",
+      "pylint_id": "W9013",
+      "pylint_name": "missing-yield-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-yield-type-doc.html",
+      "pylint_id": "W9014",
+      "pylint_name": "missing-yield-type-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-param-doc.html",
+      "pylint_id": "W9015",
+      "pylint_name": "missing-param-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-type-doc.html",
+      "pylint_id": "W9016",
+      "pylint_name": "missing-type-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/differing-param-doc.html",
+      "pylint_id": "W9017",
+      "pylint_name": "differing-param-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/differing-type-doc.html",
+      "pylint_id": "W9018",
+      "pylint_name": "differing-type-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/useless-param-doc.html",
+      "pylint_id": "W9019",
+      "pylint_name": "useless-param-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/useless-type-doc.html",
+      "pylint_id": "W9020",
+      "pylint_name": "useless-type-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
+      "user_comment": ""
+    },
+    {
+      "description": "",
+      "is_implemented_in_ruff": false,
+      "is_in_ruff_issue": true,
+      "is_mypy_overlap": false,
+      "pylint_category": "W",
+      "pylint_docs_url": "https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-any-param-doc.html",
+      "pylint_id": "W9021",
+      "pylint_name": "missing-any-param-doc",
+      "ruff_rule": "",
+      "source": "ruff_issue",
       "user_comment": ""
     }
   ]

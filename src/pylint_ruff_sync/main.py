@@ -105,15 +105,33 @@ Examples:
 def update_cache_from_github(cache_path: Path) -> None:
     """Update the cache from GitHub issue.
 
+    This follows the proper initialization flow:
+    1. Initialize rules from pylint --list-msgs (source=PYLINT_LIST)
+    2. Update those rules with ruff implementation data
+    3. Save to cache
+
     Args:
         cache_path: Path to cache file.
 
     """
     logger.info("Updating cache from GitHub...")
-    extractor = RuffPylintExtractor()
-    rules = extractor.get_all_ruff_rules()
-    rules.save_to_cache(cache_path)
-    logger.info("Cache updated successfully with %d rules", len(rules))
+
+    # Follow the same flow as _extract_all_rules()
+    # Step 1: Extract all pylint rules first
+    pylint_extractor = PylintExtractor()
+    all_rules = pylint_extractor.extract_all_rules()
+    logger.info("Found %d total pylint rules", len(all_rules))
+
+    # Step 2: Update with ruff implementation data
+    ruff_extractor = RuffPylintExtractor()
+    all_rules = ruff_extractor.update_rules_with_ruff_data(all_rules)
+
+    ruff_implemented_count = len(all_rules.filter_implemented_in_ruff())
+    logger.info("Found %d rules implemented in ruff", ruff_implemented_count)
+
+    # Step 3: Save to cache
+    all_rules.save_to_cache(cache_path)
+    logger.info("Cache updated successfully with %d rules", len(all_rules))
 
 
 def _extract_all_rules() -> Rules:

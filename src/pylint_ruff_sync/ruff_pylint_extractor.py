@@ -159,14 +159,15 @@ class RuffPylintExtractor:
             # Extract rules information using regex
             rules = Rules()
 
-            # Pattern to match task list items with pylint codes
-            # Looks for: - [x] `rule-name` / `E0237` (`PLE0237`) or - [ ] ...
-            pattern = r"- \[([x ])\] `([^`]*)`\s*/\s*`([A-Z]\d+)`"
+            # Updated pattern to match task list items with pylint codes and optional ruff codes
+            # Looks for: - [x] `rule-name` / `E0237` (PLE0237) or - [ ] `rule-name` / `E0237`
+            pattern = r"- \[([x ])\] `([^`]*)`\s*/\s*`([A-Z]\d+)`(?:\s*\(([^)]+)\))?"
 
             for match in re.finditer(pattern, issue_body):
                 is_implemented = match.group(1) == "x"
                 rule_name = match.group(2)
                 pylint_code = match.group(3)
+                ruff_code = match.group(4).strip("`") if match.group(4) else ""
 
                 # Validate that it looks like a pylint code (letter followed by digits)
                 if re.match(r"^[A-Z]\d+$", pylint_code):
@@ -175,14 +176,16 @@ class RuffPylintExtractor:
                         pylint_name=rule_name,
                         is_in_ruff_issue=True,
                         is_implemented_in_ruff=is_implemented,
-                        source=RuleSource.RUFF_ISSUE,
+                        ruff_rule=ruff_code,
+                        source=RuleSource.RUFF_ISSUE,  # This will be updated in update_rules_with_ruff_data
                     )
                     rules.add_rule(rule)
                     logger.debug(
-                        "Found rule in issue: %s (%s) - implemented: %s",
+                        "Found rule in issue: %s (%s) - implemented: %s, ruff_rule: %s",
                         pylint_code,
                         rule_name,
                         is_implemented,
+                        ruff_code,
                     )
 
             if not rules:
@@ -199,9 +202,8 @@ class RuffPylintExtractor:
         except subprocess.CalledProcessError as e:
             logger.exception("GitHub CLI command failed: %s", e.stderr)
             raise
-
-        except (json.JSONDecodeError, KeyError):
-            logger.exception("Failed to parse GitHub issue response")
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.exception("Failed to parse GitHub issue data: %s", e)
             raise
         else:
             return rules
@@ -258,6 +260,9 @@ class RuffPylintExtractor:
     def update_rules_with_ruff_data(self, all_rules: Rules) -> Rules:
         """Update existing rules with ruff implementation data.
 
+        Only updates rules that exist in pylint. Rules from ruff issue that don't
+        exist in pylint are logged as warnings but not added.
+
         Args:
             all_rules: Rules object to update with ruff data.
 
@@ -270,20 +275,43 @@ class RuffPylintExtractor:
         # Create a mapping of ruff rules by pylint_id
         ruff_map = {rule.pylint_id: rule for rule in ruff_rules}
 
-        # Update existing rules with ruff data
+        # Track which ruff rules we successfully matched
+        matched_ruff_rules = set()
+
+        # Update existing rules with ruff data, preserving original source
         for rule in all_rules:
             if rule.pylint_id in ruff_map:
                 ruff_rule = ruff_map[rule.pylint_id]
+                matched_ruff_rules.add(rule.pylint_id)
+
+                # Preserve the original source, only update ruff-specific fields
                 rule.is_in_ruff_issue = ruff_rule.is_in_ruff_issue
                 rule.is_implemented_in_ruff = ruff_rule.is_implemented_in_ruff
+                rule.ruff_rule = ruff_rule.ruff_rule
                 # Update name if we have it from ruff but not from pylint
                 if not rule.pylint_name and ruff_rule.pylint_name:
                     rule.pylint_name = ruff_rule.pylint_name
 
-        # Add any rules that are in ruff but not in pylint list
-        for ruff_rule in ruff_rules:
-            if not all_rules.get_by_id(ruff_rule.pylint_id):
-                all_rules.add_rule(ruff_rule)
+        # Log warnings for ruff rules that don't exist in current pylint
+        unmatched_ruff_rules = set(ruff_map.keys()) - matched_ruff_rules
+        if unmatched_ruff_rules:
+            logger.warning(
+                "Found %d rules in ruff issue that don't exist in current pylint installation",
+                len(unmatched_ruff_rules),
+            )
+            for rule_id in sorted(unmatched_ruff_rules):
+                ruff_rule = ruff_map[rule_id]
+                logger.debug(
+                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older pylint version",
+                    rule_id,
+                    ruff_rule.pylint_name,
+                )
+
+        logger.info(
+            "Updated %d pylint rules with ruff data, %d ruff rules had no pylint match",
+            len(matched_ruff_rules),
+            len(unmatched_ruff_rules),
+        )
 
         return all_rules
 

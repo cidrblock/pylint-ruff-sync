@@ -3,7 +3,11 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [dependency-groups]
-dev = ["pytest>=8.3.5", "ruff>=0.12.3"]
+dev = [
+    "pylint>=3.3.7",
+    "pytest>=8.3.5",
+ "ruff>=0.12.3",
+]
 test = ["mypy>=1.16.1", "pydoclint>=0.5.11", "types-requests>=2.32.4.20250611"]
 
 [project]
@@ -96,7 +100,9 @@ enable = [
   "C1803", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison.html
   "C1804", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison-to-string.html
   "C1805", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison-to-zero.html
+  "C2001", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/compare-to-zero.html
   "C2503", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/bad-file-encoding.html
+  "C3401", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/dict-init-mutate.html
   "E0011", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/unrecognized-inline-option.html
   "E0013", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-plugin-value.html
   "E0014", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-configuration-section.html
@@ -131,6 +137,7 @@ enable = [
   "I0022", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/deprecated-pragma.html
   "I1101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/c-extension-no-member.html
   "R0022", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/useless-option-value.html
+  "R0204", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/redefined-variable-type.html
   "R0401", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/cyclic-import.html
   "R0801", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/duplicate-code.html
   "R0901", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-many-ancestors.html
@@ -145,6 +152,9 @@ enable = [
   "R1726", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/simplifiable-condition.html
   "R1727", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/condition-evals-to-constant.html
   "R1736", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/unnecessary-list-index-lookup.html
+  "R6101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-namedtuple-or-dataclass.html
+  "R6102", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-tuple.html
+  "R6103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-assignment-expr.html
   "W0012", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unknown-option-value.html
   "W0101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unreachable.html
   "W0105", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/pointless-string-statement.html
@@ -154,6 +164,8 @@ enable = [
   "W0128", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redeclared-assigned-name.html
   "W0134", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/return-in-finally.html
   "W0135", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/contextmanager-generator-missing-cleanup.html
+  "W0141", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-builtin.html
+  "W0149", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/while-used.html
   "W0201", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/attribute-defined-outside-init.html
   "W0213", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/implicit-flag-alias.html
   "W0223", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/abstract-method.html
@@ -169,7 +181,9 @@ enable = [
   "W0621", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redefined-outer-name.html
   "W0631", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/undefined-loop-variable.html
   "W0641", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/possibly-unused-variable.html
+  "W0714", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/overlapping-except.html
   "W0715", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/raising-format-tuple.html
+  "W0717", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/too-many-try-statements.html
   "W1114", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/arguments-out-of-order.html
   "W1117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/kwarg-superseded-by-positional-arg.html
   "W1300", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-format-string-key.html
@@ -191,7 +205,22 @@ enable = [
   "W4902", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-method.html
   "W4903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-argument.html
   "W4905", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-decorator.html
-  "W4906" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
+  "W4906", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
+  "W6001", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-typing-alias.html
+  "W9005", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/multiple-constructor-doc.html
+  "W9006", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-raises-doc.html
+  "W9008", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-returns-doc.html
+  "W9010", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-yields-doc.html
+  "W9012", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-return-type-doc.html
+  "W9013", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-yield-doc.html
+  "W9014", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-yield-type-doc.html
+  "W9015", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-param-doc.html
+  "W9016", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-type-doc.html
+  "W9017", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/differing-param-doc.html
+  "W9018", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/differing-type-doc.html
+  "W9019", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/useless-param-doc.html
+  "W9020", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/useless-type-doc.html
+  "W9021" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-any-param-doc.html
 ]
 
 [tool.pylint.reports]
