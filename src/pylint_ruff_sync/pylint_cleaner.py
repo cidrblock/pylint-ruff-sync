@@ -153,39 +153,17 @@ class PylintCleaner:
         )
 
         try:
-            # Get Python files tracked by git
-            git_result = subprocess.run(
-                ["/usr/bin/git", "ls-files", "*.py"],
-                capture_output=True,
-                check=True,
-                cwd=self.project_root,
-                text=True,
-                timeout=30,
-            )
-
-            python_files = git_result.stdout.strip().split("\n")
-            python_files = [f for f in python_files if f.strip()]
-
-            if not python_files:
-                logger.info("No Python files found in git repository")
-                return {}
-
-            # Run pylint with user's config, enabling only useless-suppression
-            cmd = [
-                "pylint",
-                "--output-format=parseable",
-                "--disable=all",
-                "--enable=useless-suppression",
-                *python_files,
-            ]
+            # Run pylint with user's config on git-tracked Python files
+            cmd = f"pylint --output-format=parseable --rcfile {self.config_file} $(git ls-files '*.py')"
 
             # Run pylint with the user's configuration
             # Note: Using trusted pylint command from user's environment
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(  # noqa: S602
                 cmd,
                 capture_output=True,
                 check=False,  # Don't raise on non-zero exit (expected)
                 cwd=self.project_root,
+                shell=True,
                 text=True,
                 timeout=120,
             )
