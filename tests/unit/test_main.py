@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from pylint_ruff_sync.constants import RUFF_PYLINT_ISSUE_URL
+
+if TYPE_CHECKING:
+    import pytest
 from pylint_ruff_sync.main import (
     _setup_argument_parser,
     main,
@@ -253,15 +255,58 @@ def test_resolve_rule_identifiers() -> None:
     assert resolved == {"F401", "C0103"}
 
 
-@pytest.mark.skip(reason="Main function flow test currently disabled due to complexity")
-def test_main_function_flow() -> None:
-    """Test main function integration flow.
+def test_main_function_flow(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Test main function integration flow with normal execution.
 
-    Returns:
-        None
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
 
     """
-    # This test is skipped as it requires complex mocking
+    # Setup mocks for all external dependencies
+    setup_mocks(monkeypatch)
+
+    # Create a test pyproject.toml file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = [
+    "invalid-name",
+    "missing-docstring",
+]
+""")
+
+    # Create temporary cache file
+    cache_file = tmp_path / "test_cache.json"
+
+    # Mock sys.argv to simulate normal execution
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(cache_file),
+            "--verbose",
+        ],
+    )
+
+    # Run main function
+    result = main()
+
+    # Should exit successfully (return 0)
+    assert result == 0
+
+    # Check that config file was updated
+    assert config_file.exists()
+    updated_content = config_file.read_text()
+
+    # Should contain some pylint configuration
+    assert "[tool.pylint" in updated_content
+
+    # Should preserve the original disable list but add ruff-implemented rules
+    assert "disable" in updated_content
 
 
 def test_ruff_extractor_initialization() -> None:
