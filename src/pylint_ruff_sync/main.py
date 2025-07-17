@@ -138,9 +138,13 @@ class Application:
         rules = self.extract_all_rules()
         message_generator = self.get_message_generator() if dry_run else None
 
+        # Determine if pylint cleaner should be enabled
+        enable_pylint_cleaner = not getattr(self.args, "disable_pylint_cleaner", False)
+
         return PyprojectUpdater(
             config_file=config_file,
             dry_run=dry_run,
+            enable_pylint_cleaner=enable_pylint_cleaner,
             message_generator=message_generator,
             rules=rules,
         )
@@ -259,6 +263,12 @@ Examples:
         "--cache-path",
         help="Path to cache file (default: package data location)",
         type=Path,
+    )
+
+    parser.add_argument(
+        "--disable-pylint-cleaner",
+        action="store_true",
+        help="Disable the pylint cleaner functionality",
     )
 
     return parser
