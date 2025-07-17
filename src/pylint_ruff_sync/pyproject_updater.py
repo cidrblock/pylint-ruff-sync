@@ -38,8 +38,8 @@ class PyprojectUpdater:
         """Initialize the PyprojectUpdater.
 
         Args:
-            rules: Rules instance containing all rule information.
             config_file: Path to the pyproject.toml file to update.
+            rules: Rules instance containing all rule information.
             dry_run: If True, don't actually modify the file, just log what would
                 be done.
             message_generator: Optional MessageGenerator for dry-run messages.
