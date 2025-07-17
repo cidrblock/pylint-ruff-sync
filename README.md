@@ -30,21 +30,21 @@ The configuration is automatically synchronized based on real-time data from the
 The tool runs pylint with the following command to detect unnecessary disable comments:
 
 ```bash
-pylint --output-format=parseable --enable=useless-suppression --rcfile {config_file} $(git ls-files '*.py')
+pylint --output-format=parseable --rcfile {config_file} $(git ls-files '*.py')
 ```
 
 This command:
 
 - Uses your existing pylint configuration file (`--rcfile`) with all your normal rules
-- Enables useless-suppression detection (`--enable=useless-suppression`) in addition to your config
 - Only checks Python files tracked by git (`git ls-files '*.py'`)
 - Outputs results in parseable format for processing
-
-**Important**: The `useless-suppression` check must run with your normal pylint configuration to properly detect which disable comments are actually unnecessary. If we disabled all other rules, every disable comment would appear useless.
+- The `useless-suppression` rule is automatically enabled via the tool's configuration synchronization
 
 ### Configuration Requirements
 
-**All pylint configuration must be in your config file** (typically `pyproject.toml`). The tool does not modify pylint's behavior beyond updating the `disable` and `enable` lists in your configuration file. Settings like:
+**All pylint configuration must be in your config file** (typically `pyproject.toml`). The tool automatically ensures that `useless-suppression` is enabled in your configuration during the synchronization process, so you don't need to manually enable it.
+
+The tool does not modify pylint's behavior beyond updating the `disable` and `enable` lists in your configuration file. Settings like:
 
 - Line length limits
 - Naming conventions
