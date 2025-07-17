@@ -80,4 +80,4 @@ def test_mypy_overlap_extractor_extract_empty_rules() -> None:
     extractor.extract()  # Should not raise any errors
 
     # Verify no rules were added
-    assert len(rules) == 0
+    assert not rules
