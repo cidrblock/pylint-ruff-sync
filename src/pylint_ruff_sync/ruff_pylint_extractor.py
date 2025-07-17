@@ -159,8 +159,8 @@ class RuffPylintExtractor:
             # Extract rules information using regex
             rules = Rules()
 
-            # Updated pattern to match task list items with pylint codes and optional ruff codes
-            # Looks for: - [x] `rule-name` / `E0237` (PLE0237) or - [ ] `rule-name` / `E0237`
+            # Pattern to match task list items with pylint codes and optional ruff codes
+            # Format: - [x] `rule-name` / `E0237` (PLE0237) or - [ ] `rule-name` / `E0237`
             pattern = r"- \[([x ])\] `([^`]*)`\s*/\s*`([A-Z]\d+)`(?:\s*\(([^)]+)\))?"
 
             for match in re.finditer(pattern, issue_body):
@@ -296,13 +296,13 @@ class RuffPylintExtractor:
         unmatched_ruff_rules = set(ruff_map.keys()) - matched_ruff_rules
         if unmatched_ruff_rules:
             logger.warning(
-                "Found %d rules in ruff issue that don't exist in current pylint installation",
+                "Found %d rules in ruff issue that don't exist in current pylint",
                 len(unmatched_ruff_rules),
             )
             for rule_id in sorted(unmatched_ruff_rules):
                 ruff_rule = ruff_map[rule_id]
                 logger.debug(
-                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older version",
+                    "Ruff rule not in pylint: %s (%s) - possibly from plugin or older",
                     rule_id,
                     ruff_rule.pylint_name,
                 )
