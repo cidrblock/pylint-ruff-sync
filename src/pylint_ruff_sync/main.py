@@ -27,14 +27,17 @@ class Application:
     to eliminate duplication of class instantiation.
     """
 
-    def __init__(self, cache_path: Path | None = None) -> None:
-        """Initialize the application with optional cache path.
+    def __init__(self, args: argparse.Namespace) -> None:
+        """Initialize the application with parsed command line arguments.
 
         Args:
-            cache_path: Optional path to cache file. If None, uses default location.
+            args: Parsed command line arguments from argparse.
 
         """
+        self.args = args
+
         # Determine cache path
+        cache_path = args.cache_path
         if cache_path is None:
             cache_path = Path(__file__).parent / "data" / "ruff_implemented_rules.json"
 
@@ -142,6 +145,40 @@ class Application:
             message_generator=message_generator,
         )
 
+    def run(self) -> int:
+        """Run the application with the provided arguments.
+
+        Returns:
+            Exit code (0 for success, non-zero for failure).
+
+        """
+        try:
+            # Check if config file exists early
+            if not self.args.config_file.exists():
+                logger.error("Configuration file not found: %s", self.args.config_file)
+                return 1
+
+            # Handle --update-cache argument
+            if self.args.update_cache:
+                self.update_cache_from_github()
+                return 0
+
+            # Create and configure PyprojectUpdater through the application
+            updater = self.create_pyproject_updater(
+                config_file=self.args.config_file,
+                dry_run=self.args.dry_run,
+            )
+            updater.update(disable_mypy_overlap=self.args.disable_mypy_overlap)
+
+        except KeyboardInterrupt:
+            logger.info("Operation cancelled by user")
+            return 130
+        except Exception:
+            logger.exception("An unexpected error occurred")
+            return 1
+        else:
+            return 0
+
 
 def _setup_logging(*, verbose: bool = False) -> None:
     """Set up logging configuration.
@@ -239,35 +276,9 @@ def main() -> int:
 
     _setup_logging(verbose=args.verbose)
 
-    try:
-        # Check if config file exists early
-        if not args.config_file.exists():
-            logger.error("Configuration file not found: %s", args.config_file)
-            return 1
-
-        # Create application instance
-        app = Application(cache_path=args.cache_path)
-
-        # Handle --update-cache argument
-        if args.update_cache:
-            app.update_cache_from_github()
-            return 0
-
-        # Create and configure PyprojectUpdater through the application
-        updater = app.create_pyproject_updater(
-            config_file=args.config_file,
-            dry_run=args.dry_run,
-        )
-        updater.update(disable_mypy_overlap=args.disable_mypy_overlap)
-
-    except KeyboardInterrupt:
-        logger.info("Operation cancelled by user")
-        return 130
-    except Exception:
-        logger.exception("An unexpected error occurred")
-        return 1
-    else:
-        return 0
+    # Create application instance and run
+    app = Application(args=args)
+    return app.run()
 
 
 if __name__ == "__main__":
