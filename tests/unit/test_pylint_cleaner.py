@@ -777,26 +777,26 @@ def test_parse_pylint_output_ansible_creator_format(
         pylint_cleaner: PylintCleaner instance.
 
     """
-    # Real pylint output from ansible-creator issue
-    pylint_output = """tests/fixtures/collection/testorg/testcol/plugins/action/sample_action.py:4: [I0021(useless-suppression), ] Useless suppression of 'import-error'
-tests/fixtures/collection/testorg/testcol/plugins/lookup/sample_lookup.py:3: [I0021(useless-suppression), ] Useless suppression of 'import-error'
-tests/fixtures/collection/testorg/testcol/plugins/modules/sample_module.py:2: [I0021(useless-suppression), ] Useless suppression of 'import-error'
+    # Real pylint output from ansible-creator issue  # cspell:disable-next-line
+    base_path = "tests/fixtures/collection/testorg/testcol/plugins"
+    msg = "[I0021(useless-suppression), ] Useless suppression of 'import-error'"
+    pylint_output = f"""{base_path}/action/sample_action.py:4: {msg}
+{base_path}/lookup/sample_lookup.py:3: {msg}
+{base_path}/modules/sample_module.py:2: {msg}
 """
 
     result = pylint_cleaner._parse_pylint_output(output=pylint_output)
 
-    # Should correctly parse all 3 files
-    assert len(result) == 3
+    # Should correctly parse all files
+    expected_file_count = 3
+    assert len(result) == expected_file_count
 
     # Paths will be made absolute relative to project root
     project_root = pylint_cleaner.project_root
     expected_files = [
-        project_root
-        / "tests/fixtures/collection/testorg/testcol/plugins/action/sample_action.py",
-        project_root
-        / "tests/fixtures/collection/testorg/testcol/plugins/lookup/sample_lookup.py",
-        project_root
-        / "tests/fixtures/collection/testorg/testcol/plugins/modules/sample_module.py",
+        project_root / f"{base_path}/action/sample_action.py",
+        project_root / f"{base_path}/lookup/sample_lookup.py",
+        project_root / f"{base_path}/modules/sample_module.py",
     ]
 
     for expected_file in expected_files:
