@@ -74,55 +74,6 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
         raise
 
 
-def apply_toml_sort_library(*, content: str) -> str:
-    """Apply toml-sort using toml-sort library to format TOML content.
-
-    Args:
-        content: TOML content to sort.
-
-    Returns:
-        Sorted TOML content.
-
-    """
-    # Check if toml-sort library is available
-    try:
-        # Import here to avoid import errors if toml-sort not available
-        from toml_sort.tomlsort import (  # noqa: PLC0415
-            FormattingConfiguration,
-            SortConfiguration,
-            TomlSort,
-        )
-
-        # Configure toml-sort with desired settings
-        sort_config = SortConfiguration(
-            inline_arrays=True,
-            inline_tables=True,
-            table_keys=True,
-        )
-        formatting_config = FormattingConfiguration(
-            # Don't add trailing commas
-            trailing_comma_inline_array=False,
-        )
-
-        # Apply sorting
-        sorter = TomlSort(
-            format_config=formatting_config,
-            input_toml=content,
-            sort_config=sort_config,
-        )
-
-        return sorter.sorted()
-
-    except ImportError:
-        # Fall back to subprocess if library not available
-        logger.debug("toml-sort library not available, falling back to subprocess")
-        # Use current working directory as fallback
-        working_dir = Path.cwd()
-        return apply_toml_sort_subprocess(
-            content=content, working_directory=working_dir
-        )
-
-
 @dataclass
 class SimpleArrayWithComments:
     """Represents a simple TOML array with optional comments for each item.
