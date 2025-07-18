@@ -738,7 +738,7 @@ disable = ["rule-b", "rule-a"]
             f"tool.a should come before tool.pylint: a={a_pos}, pylint={pylint_pos}"
         )
 
-    # Only check z ordering if z section exists (z_pos > 0 since sections can't be at position 0)
+    # Only check z ordering if z section exists (z_pos > 0 since sections can't be at pos 0)
     if z_pos > 0 and pylint_pos != -1:
         assert pylint_pos < z_pos, (
             f"tool.pylint should come before tool.z: pylint={pylint_pos}, z={z_pos}"
