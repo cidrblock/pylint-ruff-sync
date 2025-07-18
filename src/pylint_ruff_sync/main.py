@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from .data_collector import DataCollector
 from .message_generator import MessageGenerator
 from .pylint_cleaner import PylintCleaner
-from .pyproject_updater import PyprojectUpdater
+from .pyproject_updater import PyprojectUpdater, RuleFormat
 from .rules_cache_manager import RulesCacheManager
 
 if TYPE_CHECKING:
@@ -126,12 +126,16 @@ class Application:
         config_file: Path,
         *,
         dry_run: bool = False,
+        rule_comment: str = "doc_url",
+        rule_format: str = "code",
     ) -> PyprojectUpdater:
         """Create a PyprojectUpdater with the application's rules.
 
         Args:
             config_file: Path to pyproject.toml file.
             dry_run: Whether to run in dry-run mode.
+            rule_comment: Type of comment to add next to enabled rules.
+            rule_format: Format for rule identifiers in disable/enable lists.
 
         Returns:
             PyprojectUpdater instance.
@@ -140,10 +144,16 @@ class Application:
         rules = self.rules
         message_generator = self.get_message_generator() if dry_run else None
 
+        rule_format_config = RuleFormat(
+            comment_type=rule_comment,
+            identifier_format=rule_format,
+        )
+
         return PyprojectUpdater(
             config_file=config_file,
             dry_run=dry_run,
             message_generator=message_generator,
+            rule_format=rule_format_config,
             rules=rules,
         )
 
@@ -169,6 +179,8 @@ class Application:
             updater = self.create_pyproject_updater(
                 config_file=self.args.config_file,
                 dry_run=self.args.dry_run,
+                rule_comment=self.args.rule_comment,
+                rule_format=self.args.rule_format,
             )
             updater.update(disable_mypy_overlap=self.args.disable_mypy_overlap)
 
@@ -236,6 +248,12 @@ Examples:
 
   # Update cache from GitHub (requires internet and gh CLI)
   pylint-ruff-sync --update-cache
+
+  # Use rule codes with short descriptions in comments
+  pylint-ruff-sync --rule-format=code --rule-comment=short_description
+
+  # Use rule names with no comments
+  pylint-ruff-sync --rule-format=name --rule-comment=none
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -281,6 +299,20 @@ Examples:
         "--disable-pylint-cleaner",
         action="store_true",
         help="Disable the pylint cleaner functionality",
+    )
+
+    parser.add_argument(
+        "--rule-comment",
+        choices=["code", "doc_url", "name", "none", "short_description"],
+        default="doc_url",
+        help="Type of comment to add next to enabled rules (default: %(default)s)",
+    )
+
+    parser.add_argument(
+        "--rule-format",
+        choices=["code", "name"],
+        default="code",
+        help="Rule identifier format: code or name (default: %(default)s)",
     )
 
     return parser

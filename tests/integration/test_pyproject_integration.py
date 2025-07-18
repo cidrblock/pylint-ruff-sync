@@ -144,6 +144,154 @@ def test_dry_run_integration(
 
 
 @pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_format_name_integration(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test rule format name functionality with integration.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest
+
+    """
+    # Copy a before fixture to temp directory
+    config_file = copy_fixture_to_temp(
+        fixture_name="existing_pylint_config_before.toml", temp_dir=tmp_path
+    )
+
+    # Mock sys.argv to use rule names
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "name",
+            "--rule-comment",
+            "none",
+        ],
+    )
+
+    # Run the main function
+    result = main()
+
+    # Should succeed
+    assert not result
+
+    # Check that config file uses rule names
+    content = config_file.read_text()
+    assert "invalid-name" in content  # Should use rule names
+    assert "enable" in content  # Should have enable section
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_none_integration(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test rule comment none functionality with integration.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest
+
+    """
+    # Copy a before fixture to temp directory
+    config_file = copy_fixture_to_temp(
+        fixture_name="existing_pylint_config_before.toml", temp_dir=tmp_path
+    )
+
+    # Mock sys.argv to disable comments
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment",
+            "none",
+        ],
+    )
+
+    # Run the main function
+    result = main()
+
+    # Should succeed
+    assert not result
+
+    # Check that config file has no URL comments in enable section
+    content = config_file.read_text()
+    lines = content.split("\n")
+    in_enable_section = False
+    for line in lines:
+        if "enable" in line and "=" in line:
+            in_enable_section = True
+        elif line.strip().startswith("["):
+            in_enable_section = False
+        elif in_enable_section and line.strip().startswith('"'):
+            # In enable section, should not have URL comments
+            assert "https://pylint.readthedocs.io" not in line
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_short_description_integration(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test rule comment short description functionality with integration.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest
+
+    """
+    # Copy a before fixture to temp directory
+    config_file = copy_fixture_to_temp(
+        fixture_name="existing_pylint_config_before.toml", temp_dir=tmp_path
+    )
+
+    # Mock sys.argv to use short descriptions
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment",
+            "short_description",
+        ],
+    )
+
+    # Run the main function
+    result = main()
+
+    # Should succeed
+    assert not result
+
+    # Check that config file has description comments
+    content = config_file.read_text()
+    # Should have some rule descriptions from the mock data
+    description_found = any(
+        desc in content
+        for desc in ["Invalid name", "Unused import", "Missing docstring"]
+    )
+    assert description_found, (
+        f"Expected to find rule descriptions in content: {content}"
+    )
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
 def test_file_not_found_error(
     *,
     monkeypatch: pytest.MonkeyPatch,

@@ -127,6 +127,39 @@ pylint-ruff-sync --update-cache
 pylint-ruff-sync --cache-path /custom/cache/path.json
 ```
 
+### Rule Format and Comment Options
+
+Control how rules appear in your pyproject.toml:
+
+```bash
+# Use rule codes (C0103, W0613) instead of names - default
+pylint-ruff-sync --rule-format code
+
+# Use rule names (invalid-name, unused-argument) instead of codes
+pylint-ruff-sync --rule-format name
+
+# Add documentation URLs as comments (default)
+pylint-ruff-sync --rule-comment doc_url
+
+# Add rule codes as comments
+pylint-ruff-sync --rule-comment code
+
+# Add rule names as comments
+pylint-ruff-sync --rule-comment name
+
+# Add short descriptions as comments
+pylint-ruff-sync --rule-comment short_description
+
+# No comments at all
+pylint-ruff-sync --rule-comment none
+
+# Combine different formats - use names with code comments
+pylint-ruff-sync --rule-format name --rule-comment code
+
+# Use codes with no comments for minimal output
+pylint-ruff-sync --rule-format code --rule-comment none
+```
+
 ## PylintCleaner: Automated Comment Cleanup
 
 The PylintCleaner component automatically removes unnecessary pylint disable comments after updating your configuration. This feature:
@@ -188,13 +221,45 @@ disable = [
 ]
 ```
 
-### After Synchronization
+### After Synchronization (Default: --rule-format=code --rule-comment=doc_url)
 
 ```toml
 [tool.pylint.messages_control]
 disable = ["all"]
 enable = [
   "C0116",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-function-docstring.html
+]
+```
+
+### Alternative Formats
+
+**Using rule names with short descriptions (--rule-format=name --rule-comment=short_description):**
+
+```toml
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = [
+  "missing-function-docstring",  # Missing function or method docstring
+]
+```
+
+**Using rule codes with no comments (--rule-format=code --rule-comment=none):**
+
+```toml
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = [
+  "C0116"
+]
+```
+
+**Using rule names with code comments (--rule-format=name --rule-comment=code):**
+
+```toml
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = [
+  "missing-function-docstring",  # C0116
 ]
 ```
 

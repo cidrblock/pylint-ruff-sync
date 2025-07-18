@@ -349,6 +349,386 @@ def test_main_with_update_cache(
     assert len(cache_data["rules"]) > 0
 
 
+def test_argument_parser_rule_format_choices() -> None:
+    """Test that argument parser accepts valid rule-format choices."""
+    parser = _setup_argument_parser()
+
+    # Test valid choices
+    args = parser.parse_args(["--rule-format", "code"])
+    assert args.rule_format == "code"
+
+    args = parser.parse_args(["--rule-format", "name"])
+    assert args.rule_format == "name"
+
+    # Test default
+    args = parser.parse_args([])
+    assert args.rule_format == "code"
+
+    # Test invalid choice
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--rule-format", "invalid"])
+
+
+def test_argument_parser_rule_comment_choices() -> None:
+    """Test that argument parser accepts valid rule-comment choices."""
+    parser = _setup_argument_parser()
+
+    # Test all valid choices
+    valid_choices = ["code", "doc_url", "name", "none", "short_description"]
+    for choice in valid_choices:
+        args = parser.parse_args(["--rule-comment", choice])
+        assert args.rule_comment == choice
+
+    # Test default
+    args = parser.parse_args([])
+    assert args.rule_comment == "doc_url"
+
+    # Test invalid choice
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--rule-comment", "invalid"])
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_format_code_in_output(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-format=code produces rule codes in output.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file with some existing rules
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = [
+    "invalid-name",
+    "missing-docstring",
+]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "code",
+            "--rule-comment",
+            "none",  # Disable comments to avoid rule names in URLs
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file was updated
+    content = config_file.read_text()
+    assert "[tool.pylint.messages_control]" in content
+    assert "enable" in content  # Should have an enable section
+
+    # Check that rule codes are used (C0103 is invalid-name)
+    assert "C0103" in content  # Should use rule codes
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_format_name_in_output(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-format=name produces rule names in output.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file with some existing rules
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = [
+    "invalid-name",
+    "missing-docstring",
+]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "name",
+            "--rule-comment",
+            "none",  # Disable comments to avoid codes in comments
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file was updated
+    content = config_file.read_text()
+    assert "[tool.pylint.messages_control]" in content
+    assert "enable" in content  # Should have an enable section
+
+    # Check that rule names are used as identifiers
+    assert "invalid-name" in content  # Should use rule names
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_none(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-comment=none produces no comments.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["locally-disabled"]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment",
+            "none",
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file has no comments
+    content = config_file.read_text()
+    lines = content.split("\n")
+    enable_section_found = False
+    for line in lines:
+        if "enable" in line and "=" in line:
+            enable_section_found = True
+        if (
+            enable_section_found
+            and line.strip()
+            and not line.strip().startswith("[")
+            and line.strip().startswith('"')
+            and "#" in line
+        ):
+            # In enable section, no line should have # comments
+            pytest.fail(f"Found unexpected comment in line: {line}")
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_doc_url(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-comment=doc_url produces documentation URL comments.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["locally-disabled"]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment",
+            "doc_url",
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file contains documentation URLs
+    content = config_file.read_text()
+    assert "https://pylint.readthedocs.io" in content
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_code(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-comment=code produces rule code comments.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["locally-disabled"]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "name",  # Use names for identifiers
+            "--rule-comment",
+            "code",  # Use codes for comments
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file contains rule codes in comments
+    content = config_file.read_text()
+    # Should have rule name as identifier with code as comment
+    assert "invalid-name" in content  # Rule name in identifier
+    assert "# C0103" in content  # Rule code in comment
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_name(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-comment=name produces rule name comments.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["locally-disabled"]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "code",  # Use codes for identifiers
+            "--rule-comment",
+            "name",  # Use names for comments
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file contains rule names in comments
+    content = config_file.read_text()
+    # Should have rule code as identifier with name as comment
+    assert "C0103" in content  # Rule code in identifier
+    assert "# invalid-name" in content  # Rule name in comment
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_short_description(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that --rule-comment=short_description produces description comments.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Pytest temporary directory fixture.
+
+    """
+    # Create test config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["locally-disabled"]
+""")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment",
+            "short_description",
+        ],
+    )
+
+    # Run main function
+    result = main()
+    assert not result
+
+    # Check that config file contains rule descriptions in comments
+    content = config_file.read_text()
+    # Look for actual rule descriptions (these come from the mock data)
+    assert "Invalid name" in content or "Unused import" in content
+
+
 def test_argument_parser_help_text() -> None:
     """Test that argument parser includes expected help information."""
     parser = _setup_argument_parser()

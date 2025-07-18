@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -14,6 +15,21 @@ from .rule import Rule, Rules, RuleSource
 from .toml_file import SimpleArrayWithComments, TomlFile
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RuleFormat:
+    """Configuration for rule formatting in TOML output.
+
+    Attributes:
+        comment_type: Type of comment to add
+            (doc_url, name, short_description, code, none).
+        identifier_format: Format for rule identifiers (code or name).
+
+    """
+
+    comment_type: str = "doc_url"
+    identifier_format: str = "code"
 
 
 class PyprojectUpdater:
@@ -32,6 +48,7 @@ class PyprojectUpdater:
         rules: Rules,
         dry_run: bool = False,
         message_generator: MessageGenerator | None = None,
+        rule_format: RuleFormat | None = None,
     ) -> None:
         """Initialize the PyprojectUpdater.
 
@@ -41,12 +58,14 @@ class PyprojectUpdater:
             dry_run: If True, don't actually modify the file, just log what would
                 be done.
             message_generator: Optional MessageGenerator for dry-run messages.
+            rule_format: Configuration for rule formatting in output.
 
         """
         self.rules = rules
         self.config_file = config_file
         self.dry_run = dry_run
         self.message_generator = message_generator
+        self.rule_format = rule_format or RuleFormat()
         self.toml_file = TomlFile(file_path=config_file)
 
     def update(self, *, disable_mypy_overlap: bool = False) -> None:
@@ -208,9 +227,17 @@ class PyprojectUpdater:
             unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
 
         """
-        # Collect all disable items: "all" + rule IDs + unknown rules
+        # Collect all disable items: "all" + rule identifiers + unknown rules
         disable_set = {"all"}
-        disable_set.update(rule.pylint_id for rule in disable_rules)
+
+        # Add disable rules using the specified format
+        for rule in disable_rules:
+            if self.rule_format.identifier_format == "name":
+                disable_set.add(rule.pylint_name)
+            else:  # "code"
+                disable_set.add(rule.pylint_id)
+
+        # Add unknown disabled rules as-is
         disable_set.update(unknown_disabled_rules)
 
         # Sort for consistent output
@@ -223,7 +250,7 @@ class PyprojectUpdater:
         )
 
     def _update_enable_array(self, *, enable_rules: list[Rule]) -> None:
-        """Update the enable array with rules and URL comments.
+        """Update the enable array with rules and comments based on format settings.
 
         Args:
             enable_rules: List of rules to enable.
@@ -238,11 +265,32 @@ class PyprojectUpdater:
             )
             return
 
-        # Create SimpleArrayWithComments with URL comments from rule data
-        enable_items = [rule.pylint_id for rule in enable_rules]
-        enable_comments = {
-            rule.pylint_id: rule.pylint_docs_url or "" for rule in enable_rules
-        }
+        # Generate rule identifiers based on rule_format
+        enable_items = []
+        enable_comments = {}
+
+        for rule in enable_rules:
+            # Choose identifier format
+            if self.rule_format.identifier_format == "name":
+                identifier = rule.pylint_name
+            else:  # "code"
+                identifier = rule.pylint_id
+
+            enable_items.append(identifier)
+
+            # Generate comment based on rule_comment setting
+            if self.rule_format.comment_type == "none":
+                comment = ""
+            elif self.rule_format.comment_type == "code":
+                comment = rule.pylint_id
+            elif self.rule_format.comment_type == "name":
+                comment = rule.pylint_name
+            elif self.rule_format.comment_type == "short_description":
+                comment = rule.description
+            else:  # "doc_url" (default)
+                comment = rule.pylint_docs_url or ""
+
+            enable_comments[identifier] = comment
 
         enable_array = SimpleArrayWithComments(
             comments=enable_comments,

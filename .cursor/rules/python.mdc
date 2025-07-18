@@ -37,6 +37,7 @@ alwaysApply: true
 - Never use unittest.mock, use pytest with monkeypatch instead
 - Do not add pytest-mock
 - Avoid the use of classes in the tests, with the exception of a dataclass for data if needed.
+- Follow the principals of test-driven-design (TDD) adding tests prior to making code changes
 
 ## Function Argument Standards (STRICTLY ENFORCED)
 
