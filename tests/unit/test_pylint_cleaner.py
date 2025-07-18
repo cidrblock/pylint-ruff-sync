@@ -2,12 +2,41 @@
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
+from typing import Self
 
 import pytest
 
 from pylint_ruff_sync.pylint_cleaner import DisableComment, PylintCleaner
 from pylint_ruff_sync.rule import Rule, Rules, RuleSource
+
+
+class LongStr(str):
+    """Helper class for creating clean multiline strings in tests.
+
+    This class inherits from str and automatically removes leading indentation
+    and newlines from multiline strings to improve test readability.
+
+    Attributes:
+        __slots__: Empty tuple to prevent additional attributes.
+
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, *, content: str) -> Self:
+        """Create a new LongStr string with cleaned content.
+
+        Args:
+            content: The multiline string content to clean.
+
+        Returns:
+            A new LongStr instance with leading indentation and newlines removed.
+
+        """
+        cleaned = textwrap.dedent(content).lstrip("\n")
+        return super().__new__(cls, cleaned)
 
 
 @pytest.fixture
@@ -68,11 +97,14 @@ def pylint_cleaner(tmp_path: Path, mock_rules: Rules) -> PylintCleaner:
 
     """
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text("""
-[tool.pylint.messages_control]
-disable = ["all"]
-enable = ["C0103", "W0613"]
-""")
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["C0103", "W0613"]
+    """
+    )
+    config_file.write_text(config_content)
 
     return PylintCleaner(
         config_file=config_file,
@@ -95,11 +127,14 @@ def pylint_cleaner_dry_run(tmp_path: Path, mock_rules: Rules) -> PylintCleaner:
 
     """
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text("""
-[tool.pylint.messages_control]
-disable = ["all"]
-enable = ["C0103", "W0613"]
-""")
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["C0103", "W0613"]
+    """
+    )
+    config_file.write_text(config_content)
 
     return PylintCleaner(
         config_file=config_file,
@@ -362,10 +397,13 @@ def test_parse_pylint_output(
         pylint_cleaner: PylintCleaner instance.
 
     """
-    output = """test.py:10:0: I0021: Useless suppression of 'eval-used'
-test.py:15:0: I0021: Useless suppression of 'unused-argument'
-other.py:5:0: I0021: Useless suppression of 'missing-docstring'
-"""
+    output = LongStr(
+        content="""
+        test.py:10:0: I0021: Useless suppression of 'eval-used'
+        test.py:15:0: I0021: Useless suppression of 'unused-argument'
+        other.py:5:0: I0021: Useless suppression of 'missing-docstring'
+    """
+    )
 
     result = pylint_cleaner._parse_pylint_output(output=output)
 
@@ -479,29 +517,35 @@ def test_integration_real_pylint_execution(
     """
     # Create pyproject.toml with minimal pylint config
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text("""
-[tool.pylint.messages_control]
-disable = ["all"]
-enable = ["invalid-name", "unused-argument", "useless-suppression"]
-""")
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["invalid-name", "unused-argument", "useless-suppression"]
+    """
+    )
+    config_file.write_text(config_content)
 
     # Create a test Python file with suppressions
     test_file = tmp_path / "test_module.py"
-    test_content = '''"""Test module with pylint suppressions."""
+    test_content = LongStr(
+        content='''
+        """Test module with pylint suppressions."""
 
-def valid_function_name():  # pylint: disable=invalid-name
-    """Function with suppression to be removed."""
-    pass
+        def valid_function_name():  # pylint: disable=invalid-name
+            """Function with suppression to be removed."""
+            pass
 
-def another_function(used_arg):  # pylint: disable=unused-argument
-    """Function with suppression to be removed."""
-    return used_arg
+        def another_function(used_arg):  # pylint: disable=unused-argument
+            """Function with suppression to be removed."""
+            return used_arg
 
-# This should remain - different from useless ones
-def x():  # pylint: disable=missing-function-docstring
-    """Function that keeps its suppression."""
-    pass
-'''
+        # This should remain - different from useless ones
+        def x():  # pylint: disable=missing-function-docstring
+            """Function that keeps its suppression."""
+            pass
+    '''
+    )
     test_file.write_text(test_content)
 
     # Mock the pylint execution to return specific useless suppressions
@@ -572,15 +616,17 @@ def test_real_pylint_output_parsing(
 
     # Real pylint output format (can vary based on configuration)
     # Testing both common formats
-    real_output = (
-        "************* Module test_module\n"
-        "src/test_module.py:10: [I0021(useless-suppression), ] "
-        "Useless suppression of 'invalid-name'\n"
-        "src/test_module.py:15:0: I0021: Useless suppression of 'unused-argument'\n"
-        "src/other_module.py:5:0: I0021: Useless suppression of 'missing-docstring'\n"
-        "\n"
-        "--------------------------------------------------------------------\n"
-        "Your code has been rated at 10.00/10 (previous run: 10.00/10, +0.00)\n"
+    useless_msg = "[I0021(useless-suppression), ] Useless suppression of"
+    real_output = LongStr(
+        content=f"""
+        ************* Module test_module
+        src/test_module.py:10: {useless_msg} 'invalid-name'
+        src/test_module.py:15:0: I0021: Useless suppression of 'unused-argument'
+        src/other_module.py:5:0: I0021: Useless suppression of 'missing-docstring'
+
+        --------------------------------------------------------------------
+        Your code has been rated at 10.00/10 (previous run: 10.00/10, +0.00)
+    """
     )
 
     result = cleaner._parse_pylint_output(output=real_output)
@@ -780,10 +826,13 @@ def test_parse_pylint_output_ansible_creator_format(
     # Real pylint output from ansible-creator issue  # cspell:disable-next-line
     base_path = "tests/fixtures/collection/testorg/testcol/plugins"
     msg = "[I0021(useless-suppression), ] Useless suppression of 'import-error'"
-    pylint_output = f"""{base_path}/action/sample_action.py:4: {msg}
-{base_path}/lookup/sample_lookup.py:3: {msg}
-{base_path}/modules/sample_module.py:2: {msg}
-"""
+    pylint_output = LongStr(
+        content=f"""
+        {base_path}/action/sample_action.py:4: {msg}
+        {base_path}/lookup/sample_lookup.py:3: {msg}
+        {base_path}/modules/sample_module.py:2: {msg}
+    """
+    )
 
     result = pylint_cleaner._parse_pylint_output(output=pylint_output)
 
@@ -829,21 +878,27 @@ def test_full_integration_bidirectional_matching(
     """
     # Create pyproject.toml
     config_file = tmp_path / "pyproject.toml"
-    config_file.write_text("""
-[tool.pylint.messages_control]
-disable = ["all"]
-enable = ["import-error", "useless-suppression"]
-""")
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["import-error", "useless-suppression"]
+    """
+    )
+    config_file.write_text(config_content)
 
     # Create test file with E0401 disable comment (rule code)
     test_file = tmp_path / "sample_action.py"
-    test_content = """# sample_action.py - A custom action plugin for Ansible.
-# Author: Your Name
-# License: GPL-3.0-or-later
-# pylint: disable=E0401
+    test_content = LongStr(
+        content="""
+        # sample_action.py - A custom action plugin for Ansible.
+        # Author: Your Name
+        # License: GPL-3.0-or-later
+        # pylint: disable=E0401
 
-from __future__ import absolute_import, annotations, division, print_function
-"""
+        from __future__ import absolute_import, annotations, division, print_function
+    """
+    )
     test_file.write_text(test_content)
 
     # Create PylintCleaner instance
