@@ -377,7 +377,7 @@ class PylintCleaner:
         content: str,
         file_path: Path,
         useless_suppressions: list[tuple[int, str]],
-    ) -> str:
+    ) -> tuple[str, int]:
         """Remove useless pylint disable comments from a single file's content.
 
         Args:
@@ -387,7 +387,7 @@ class PylintCleaner:
                 useless suppressions to remove.
 
         Returns:
-            The modified content of the file.
+            A tuple of (modified_content, lines_modified_count).
 
         """
         # Group useless suppressions by line number
@@ -397,14 +397,17 @@ class PylintCleaner:
                 useless_by_line[line_num] = []
             useless_by_line[line_num].append(rule_name)
 
-        # Read file content
+        # Read file content and preserve trailing newline behavior
         try:
             content_lines = content.splitlines()
+            # Check if original content ended with a newline
+            original_has_trailing_newline = content.endswith(("\n", "\r\n", "\r"))
         except (OSError, UnicodeDecodeError) as e:
             logger.warning("Failed to read file %s: %s", file_path, e)
-            return content
+            return content, 0
 
         new_content_lines = []
+        lines_modified = 0
 
         # Process each line
         for line_num, line_content in enumerate(content_lines, 1):
@@ -425,6 +428,12 @@ class PylintCleaner:
 
                     if new_line is not None:
                         new_content_lines.append(new_line)
+                        # Count as modified if the line content changed
+                        if new_line != line_content:
+                            lines_modified += 1
+                    else:
+                        # Line was completely removed
+                        lines_modified += 1
                     # If new_line is None, skip this line (remove it)
                 else:
                     # Failed to parse, keep original
@@ -433,7 +442,11 @@ class PylintCleaner:
                 # No useless suppressions on this line
                 new_content_lines.append(line_content)
 
-        return "\n".join(new_content_lines)
+        # Rejoin lines and preserve original trailing newline behavior
+        result = "\n".join(new_content_lines)
+        if original_has_trailing_newline and not result.endswith("\n"):
+            result += "\n"
+        return result, lines_modified
 
     def clean_files(self, *, dry_run: bool = False) -> dict[Path, int]:
         """Clean unnecessary pylint disable comments from project files.
@@ -470,14 +483,13 @@ class PylintCleaner:
                 continue
 
             # Remove useless suppressions from the content
-            new_content = self._remove_useless_disables(
+            new_content, modified_lines = self._remove_useless_disables(
                 content=content,
                 file_path=file_path,
                 useless_suppressions=useless_list,
             )
 
             if new_content != content:
-                modified_lines = content.count("\n") - new_content.count("\n")
                 modifications[file_path] = modified_lines
 
                 if not dry_run:

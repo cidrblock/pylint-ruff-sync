@@ -1,4 +1,4 @@
-"""Unit tests for PylintCleaner class."""  # pylint: disable=redefined-outer-name
+"""Unit tests for PylintCleaner class."""  # pylint: disable=redefined-outer-name,too-many-lines
 
 from __future__ import annotations
 
@@ -960,3 +960,164 @@ def test_reverse_scenario_bidirectional_matching(
 
     # Should remove the entire comment
     assert result is None
+
+
+def test_preserve_trailing_newline_when_removing_suppressions(
+    tmp_path: Path,
+    mock_rules: Rules,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that trailing newlines are preserved when removing useless suppressions.
+
+    This addresses the bug where files lost their trailing newlines after processing.
+
+    Args:
+        tmp_path: Temporary project directory.
+        mock_rules: Mock rules object.
+        monkeypatch: Pytest monkeypatch fixture.
+
+    """
+    # Create config file
+    config_file = tmp_path / "pyproject.toml"
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["import-error", "useless-suppression"]
+    """
+    )
+    config_file.write_text(config_content)
+
+    # Create test file WITH trailing newline
+    test_file = tmp_path / "test_file.py"
+    test_content_with_trailing = (
+        LongStr(
+            content="""
+        # Test file
+        # pylint: disable=E0401
+
+        def main() -> None:
+            pass
+    """
+        )
+        + "\n"
+    )  # Explicitly add trailing newline
+    test_file.write_text(test_content_with_trailing)
+
+    # Verify file has trailing newline before processing
+    original_content = test_file.read_text()
+    assert original_content.endswith("\n"), (
+        "Test setup: file should have trailing newline"
+    )
+
+    # Create PylintCleaner instance
+    cleaner = PylintCleaner(
+        config_file=config_file,
+        dry_run=False,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
+
+    # Mock pylint to report E0401 as useless (by rule name)
+    def mock_detect_useless_suppressions() -> dict[Path, list[tuple[int, str]]]:
+        return {
+            test_file: [(2, "import-error")]  # Line with E0401 disable
+        }
+
+    monkeypatch.setattr(
+        cleaner, "_detect_useless_suppressions", mock_detect_useless_suppressions
+    )
+
+    # Run the cleaner
+    result = cleaner.run()
+
+    # Should successfully clean the file
+    assert test_file in result
+    assert result[test_file] > 0
+
+    # Critical test: verify trailing newline is preserved
+    modified_content = test_file.read_text()
+    assert modified_content.endswith("\n"), (
+        "File should retain trailing newline after processing"
+    )
+
+    # Verify the disable comment was actually removed
+    assert "pylint: disable=E0401" not in modified_content
+
+
+def test_preserve_no_trailing_newline_when_removing_suppressions(
+    tmp_path: Path,
+    mock_rules: Rules,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that files without trailing newlines remain without them.
+
+    Args:
+        tmp_path: Temporary project directory.
+        mock_rules: Mock rules object.
+        monkeypatch: Pytest monkeypatch fixture.
+
+    """
+    # Create config file
+    config_file = tmp_path / "pyproject.toml"
+    config_content = LongStr(
+        content="""
+        [tool.pylint.messages_control]
+        disable = ["all"]
+        enable = ["import-error", "useless-suppression"]
+    """
+    )
+    config_file.write_text(config_content)
+
+    # Create test file WITHOUT trailing newline
+    test_file = tmp_path / "test_file.py"
+    test_content_no_trailing = LongStr(
+        content="""
+        # Test file
+        # pylint: disable=E0401
+
+        def main() -> None:
+            pass
+    """
+    ).rstrip("\n")  # Explicitly remove any trailing newline
+    test_file.write_text(test_content_no_trailing)
+
+    # Verify file has no trailing newline before processing
+    original_content = test_file.read_text()
+    assert not original_content.endswith("\n"), (
+        "Test setup: file should not have trailing newline"
+    )
+
+    # Create PylintCleaner instance
+    cleaner = PylintCleaner(
+        config_file=config_file,
+        dry_run=False,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
+
+    # Mock pylint to report E0401 as useless (by rule name)
+    def mock_detect_useless_suppressions() -> dict[Path, list[tuple[int, str]]]:
+        return {
+            test_file: [(2, "import-error")]  # Line with E0401 disable
+        }
+
+    monkeypatch.setattr(
+        cleaner, "_detect_useless_suppressions", mock_detect_useless_suppressions
+    )
+
+    # Run the cleaner
+    result = cleaner.run()
+
+    # Should successfully clean the file
+    assert test_file in result
+    assert result[test_file] > 0
+
+    # Critical test: verify no trailing newline is still no trailing newline
+    modified_content = test_file.read_text()
+    assert not modified_content.endswith("\n"), (
+        "File should remain without trailing newline"
+    )
+
+    # Verify the disable comment was actually removed
+    assert "pylint: disable=E0401" not in modified_content
