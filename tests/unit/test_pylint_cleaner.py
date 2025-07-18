@@ -355,9 +355,9 @@ def test_parse_pylint_output(
         pylint_cleaner: PylintCleaner instance.
 
     """
-    output = """test.py:10:1: R0903: Useless suppression of 'eval-used'
-test.py:15:1: R0903: Useless suppression of 'unused-argument'
-other.py:5:1: R0903: Useless suppression of 'missing-function-docstring'
+    output = """test.py:10:0: I0021: Useless suppression of 'eval-used'
+test.py:15:0: I0021: Useless suppression of 'unused-argument'
+other.py:5:0: I0021: Useless suppression of 'missing-docstring'
 """
 
     result = pylint_cleaner._parse_pylint_output(output=output)
@@ -373,7 +373,7 @@ other.py:5:1: R0903: Useless suppression of 'missing-function-docstring'
 
     other_py_suppressions = result[Path("other.py")]
     assert len(other_py_suppressions) == 1
-    assert (EXAMPLE_LINE_5, "missing-function-docstring") in other_py_suppressions
+    assert (EXAMPLE_LINE_5, "missing-docstring") in other_py_suppressions
 
 
 def test_clean_files_dry_run(
@@ -451,6 +451,145 @@ def test_clean_files_actual_modification(
     assert "x = eval('1')" in content
 
 
+def test_integration_real_pylint_execution(
+    tmp_path: Path,
+    mock_rules: Rules,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test integration with real pylint execution to detect useless suppressions.
+
+    This test mocks the pylint output to ensure the regex parsing works correctly
+    and the cleaner properly removes suppressions.
+
+    Args:
+        tmp_path: Temporary project directory.
+        mock_rules: Mock rules object.
+        monkeypatch: Pytest monkeypatch fixture.
+
+    """
+    # Create pyproject.toml with minimal pylint config
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text("""
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["invalid-name", "unused-argument", "useless-suppression"]
+""")
+
+    # Create a test Python file with suppressions
+    test_file = tmp_path / "test_module.py"
+    test_content = '''"""Test module with pylint suppressions."""
+
+def valid_function_name():  # pylint: disable=invalid-name
+    """Function with suppression to be removed."""
+    pass
+
+def another_function(used_arg):  # pylint: disable=unused-argument
+    """Function with suppression to be removed."""
+    return used_arg
+
+# This should remain - different from useless ones
+def x():  # pylint: disable=missing-function-docstring
+    """Function that keeps its suppression."""
+    pass
+'''
+    test_file.write_text(test_content)
+
+    # Mock the pylint execution to return specific useless suppressions
+    def mock_detect_useless_suppressions() -> dict[Path, list[tuple[int, str]]]:
+        return {
+            test_file: [
+                (3, "invalid-name"),  # Line with valid_function_name
+                (7, "unused-argument"),  # Line with another_function
+            ]
+        }
+
+    # Create PylintCleaner instance
+    cleaner = PylintCleaner(
+        config_file=config_file,
+        dry_run=False,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
+
+    # Mock the useless suppressions detection
+    monkeypatch.setattr(
+        cleaner, "_detect_useless_suppressions", mock_detect_useless_suppressions
+    )
+
+    # Run the cleaner
+    result = cleaner.run()
+
+    # Read the modified content
+    modified_content = test_file.read_text()
+
+    # Check that useless suppressions were removed
+    lines = modified_content.split("\n")
+
+    # Find the lines that should have been modified
+    function_line = next(line for line in lines if "def valid_function_name" in line)
+    assert "pylint: disable=invalid-name" not in function_line
+
+    used_arg_line = next(line for line in lines if "def another_function" in line)
+    assert "pylint: disable=unused-argument" not in used_arg_line
+
+    # The last suppression should remain (not in the useless list)
+    doc_line = next(line for line in lines if "def x():" in line)
+    assert "pylint: disable=missing-function-docstring" in doc_line
+
+    # Should report modifications
+    assert test_file in result
+    assert result[test_file] >= 1  # At least one line modified
+
+
+def test_real_pylint_output_parsing(
+    tmp_path: Path,
+    mock_rules: Rules,
+) -> None:
+    """Test that _parse_pylint_output correctly handles real pylint output.
+
+    Args:
+        tmp_path: Temporary project directory.
+        mock_rules: Mock rules object.
+
+    """
+    config_file = tmp_path / "pyproject.toml"
+    cleaner = PylintCleaner(
+        config_file=config_file,
+        dry_run=True,
+        project_root=tmp_path,
+        rules=mock_rules,
+    )
+
+    # Real pylint output format (can vary based on configuration)
+    # Testing both common formats
+    real_output = (
+        "************* Module test_module\n"
+        "src/test_module.py:10: [I0021(useless-suppression), ] "
+        "Useless suppression of 'invalid-name'\n"
+        "src/test_module.py:15:0: I0021: Useless suppression of 'unused-argument'\n"
+        "src/other_module.py:5:0: I0021: Useless suppression of 'missing-docstring'\n"
+        "\n"
+        "--------------------------------------------------------------------\n"
+        "Your code has been rated at 10.00/10 (previous run: 10.00/10, +0.00)\n"
+    )
+
+    result = cleaner._parse_pylint_output(output=real_output)
+
+    # Should correctly parse the real format
+    assert len(result) == EXPECTED_FILE_COUNT
+    assert Path("src/test_module.py") in result
+    assert Path("src/other_module.py") in result
+
+    test_module_suppressions = result[Path("src/test_module.py")]
+    assert len(test_module_suppressions) == EXPECTED_TEST_MODULE_SUPPRESSIONS
+    assert (EXAMPLE_LINE_10, "invalid-name") in test_module_suppressions
+    assert (EXAMPLE_LINE_15, "unused-argument") in test_module_suppressions
+
+    other_module_suppressions = result[Path("src/other_module.py")]
+    assert len(other_module_suppressions) == 1
+    assert (5, "missing-docstring") in other_module_suppressions
+
+
 # Constants for test values
 EXAMPLE_LINE_NUMBER = 10
 EXPECTED_RULE_COUNT = 2
@@ -459,3 +598,4 @@ EXPECTED_SUPPRESSION_COUNT = 2
 EXAMPLE_LINE_5 = 5
 EXAMPLE_LINE_10 = 10
 EXAMPLE_LINE_15 = 15
+EXPECTED_TEST_MODULE_SUPPRESSIONS = 2

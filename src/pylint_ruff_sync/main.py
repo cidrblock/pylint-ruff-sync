@@ -299,7 +299,7 @@ def main() -> int:
     _setup_logging(verbose=args.verbose)
 
     # Create application instance and run
-    app = Application(args=args)  # pylint: disable=invalid-name
+    app = Application(args=args)
     return app.run()
 
 

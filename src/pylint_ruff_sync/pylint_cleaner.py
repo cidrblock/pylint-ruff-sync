@@ -156,8 +156,8 @@ class PylintCleaner:
             # Run pylint with user's config on git-tracked Python files
             # Note: useless-suppression is now always enabled via RuffPylintExtractor
             cmd = (
-                f"pylint --output-format=parseable --rcfile {self.config_file} "
-                "$(git ls-files '*.py')"
+                f"python -m pylint --output-format=parseable "
+                f"--rcfile {self.config_file} $(git ls-files '*.py')"
             )
 
             # Run pylint with the user's configuration
@@ -193,25 +193,42 @@ class PylintCleaner:
         """
         useless_suppressions: dict[Path, list[tuple[int, str]]] = {}
 
-        # Parse pylint output format:
-        # path/to/file.py:line_number:column: message_id: message_text
-        pattern = re.compile(
-            r"^([^:]+):(\d+):\d+:\s*[A-Z]\d+:\s*Useless suppression of '([^']+)'"
-        )
+        # Parse pylint output format (can be different based on config):
+        # Format 1: file.py:302: [I0021(useless-suppression), ] Useless suppression
+        # Format 2: file.py:302:0: I0021: Useless suppression of 'X'
+        patterns = [
+            # Format 1: with brackets and parentheses
+            re.compile(
+                r"^([^:]+):(\d+):\s*\[I0021\([^)]+\),\s*\]\s*"
+                r"Useless suppression of '([^']+)'"
+            ),
+            # Format 2: simple format
+            re.compile(
+                r"^([^:]+):(\d+):\d+:\s*I0021:\s*Useless suppression of '([^']+)'"
+            ),
+        ]
 
         for line in output.strip().split("\n"):
             if not line.strip():
                 continue
 
-            match = pattern.match(line)
-            if match:
-                file_path = Path(match.group(1))
-                line_number = int(match.group(2))
-                rule_name = match.group(3)
+            # Try both patterns
+            for pattern in patterns:
+                match = pattern.match(line)
+                if match:
+                    file_path = Path(match.group(1))
+                    line_number = int(match.group(2))
+                    rule_name = match.group(3)
 
-                if file_path not in useless_suppressions:
-                    useless_suppressions[file_path] = []
-                useless_suppressions[file_path].append((line_number, rule_name))
+                    # Make file path absolute relative to project root
+                    # Handles cases where tool runs from different working directory
+                    if not file_path.is_absolute():
+                        file_path = self.project_root / file_path
+
+                    if file_path not in useless_suppressions:
+                        useless_suppressions[file_path] = []
+                    useless_suppressions[file_path].append((line_number, rule_name))
+                    break  # Found a match, no need to try other patterns
 
         logger.info("Found useless suppressions in %d files", len(useless_suppressions))
         return useless_suppressions
