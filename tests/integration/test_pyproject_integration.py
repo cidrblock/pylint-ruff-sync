@@ -342,7 +342,8 @@ disable = ["W0613"]
     content = config_file.read_text()
     assert "disable = [" in content
 
-    # Should have "all" without comment (since default is doc_url, not short_description)
+    # Should have "all" without comment (since default is doc_url, not
+    # short_description)
     assert '"all"' in content
     assert '"all" # All rules' not in content
 
@@ -358,8 +359,8 @@ disable = ["W0613"]
             # Found a doc URL in the disable section
             break
     else:
-        # If we have actual rules in disable array besides "all", they should have doc URLs
-        # But if it's just ["all"], that's fine too
+        # If we have actual rules in disable array besides "all", they should
+        # have doc URLs. But if it's just ["all"], that's fine too
         pass
 
 
@@ -419,7 +420,7 @@ version = "0.1.0"
             in_pylint = False
         elif in_pylint and "#" in line:
             # Should not have comments in pylint section
-            assert False, f"Found unexpected comment in pylint section: {line}"
+            pytest.fail(f"Found unexpected comment in pylint section: {line}")
 
 
 @pytest.mark.usefixtures("mocked_subprocess")

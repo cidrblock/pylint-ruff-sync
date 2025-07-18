@@ -1,4 +1,8 @@
-"""Tests for the TomlFile class."""
+"""Unit tests for TomlFile class and TOML file operations.
+
+These tests cover the TomlFile functionality for reading, updating, and
+managing TOML files with proper section handling and comment preservation.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from pylint_ruff_sync.toml_file import SimpleArrayWithComments, TomlFile
+from pylint_ruff_sync.toml_file import (
+    MAX_LINE_LENGTH,
+    SimpleArrayWithComments,
+    TomlFile,
+)
 from tests.constants import TOML_SORT_MIN_ARGS
 
 if TYPE_CHECKING:
@@ -287,7 +295,7 @@ def test_simple_array_with_comments_format_partial_comments() -> None:
 
 
 def test_simple_array_multiline_due_to_length() -> None:
-    """Test SimpleArrayWithComments formatting goes multiline when exceeding 88 characters."""
+    """Test SimpleArrayWithComments formatting goes multiline when exceeding 88."""
     # Create an array that would exceed 88 characters in single-line format
     long_items = [f"very-long-rule-name-{i:02d}" for i in range(10)]
     array_with_comments = SimpleArrayWithComments(
@@ -317,11 +325,11 @@ def test_simple_array_single_line_within_limit() -> None:
     # Should be single-line since it's short and has no comments
     expected = '["C0103", "C0111", "W0613"]'
     assert result == expected
-    assert len(result) < 88
+    assert len(result) < MAX_LINE_LENGTH
 
 
 def test_simple_array_multiline_with_comments_even_if_short() -> None:
-    """Test SimpleArrayWithComments goes multiline when it has comments, even if short."""
+    """Test SimpleArrayWithComments goes multiline when it has comments."""
     array_with_comments = SimpleArrayWithComments(
         comments={"C0103": "invalid-name"},
         items=["C0103"],

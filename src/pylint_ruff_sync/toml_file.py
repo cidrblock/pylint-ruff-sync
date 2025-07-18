@@ -5,37 +5,39 @@ from __future__ import annotations
 import logging
 import subprocess
 import tempfile
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-import tomllib
 
 from .toml_regex import TOML_REGEX
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_LINE_LENGTH = 88
+
 
 def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
-    """Apply toml-sort formatting to content using subprocess.
-
-    This function uses the toml-sort CLI tool via subprocess, which respects
-    the user's toml-sort configuration in their pyproject.toml file.
+    """Apply toml-sort using subprocess to properly format TOML content.
 
     Args:
         content: TOML content to sort.
-        working_directory: Directory to run toml-sort from (for config lookup).
+        working_directory: Working directory for subprocess.
 
     Returns:
         Sorted TOML content.
+
+    Raises:
+        subprocess.CalledProcessError: If toml-sort command fails.
 
     """
     if not content.strip():
         return content
 
     try:
-        # Create a temporary file with the content
+        # Create a temporary file to avoid stdin issues with in_place config
         with tempfile.NamedTemporaryFile(
             delete=False, encoding="utf-8", mode="w", suffix=".toml"
         ) as temp_file:
@@ -44,14 +46,19 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
 
         try:
             # Run toml-sort on the temporary file
-            # Note: Using trusted toml-sort command from user's environment
-            # Security: toml-sort is a trusted tool from the user's environment
             subprocess.run(
-                ["toml-sort", "--in-place", temp_file_path],
+                [
+                    "toml-sort",
+                    "--all",
+                    "--no-header",
+                    "--trailing-comma-inline-array",
+                    "--in-place",
+                    temp_file_path,
+                ],
                 capture_output=True,
                 check=True,
                 cwd=working_directory,
-                text=True,  # Use project directory for config
+                text=True,
             )
 
             # Read the sorted content back
@@ -61,12 +68,59 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
             # Clean up the temporary file
             Path(temp_file_path).unlink()
 
-    except (subprocess.CalledProcessError, OSError) as e:
-        logger.warning(
-            "Failed to apply toml-sort formatting: %s. Returning original content.",
-            e,
+    except subprocess.CalledProcessError as e:
+        error_msg = f"toml-sort failed: {e.stderr}"
+        logger.exception(error_msg)
+        raise
+
+
+def apply_toml_sort_library(*, content: str) -> str:
+    """Apply toml-sort using toml-sort library to format TOML content.
+
+    Args:
+        content: TOML content to sort.
+
+    Returns:
+        Sorted TOML content.
+
+    """
+    # Check if toml-sort library is available
+    try:
+        # Import here to avoid import errors if toml-sort not available
+        from toml_sort.tomlsort import (  # noqa: PLC0415
+            FormattingConfiguration,
+            SortConfiguration,
+            TomlSort,
         )
-        return content
+
+        # Configure toml-sort with desired settings
+        sort_config = SortConfiguration(
+            inline_arrays=True,
+            inline_tables=True,
+            table_keys=True,
+        )
+        formatting_config = FormattingConfiguration(
+            # Don't add trailing commas
+            trailing_comma_inline_array=False,
+        )
+
+        # Apply sorting
+        sorter = TomlSort(
+            format_config=formatting_config,
+            input_toml=content,
+            sort_config=sort_config,
+        )
+
+        return sorter.sorted()
+
+    except ImportError:
+        # Fall back to subprocess if library not available
+        logger.debug("toml-sort library not available, falling back to subprocess")
+        # Use current working directory as fallback
+        working_dir = Path.cwd()
+        return apply_toml_sort_subprocess(
+            content=content, working_directory=working_dir
+        )
 
 
 @dataclass
@@ -101,9 +155,10 @@ class SimpleArrayWithComments:
             self.comments.get(item, "") for item in self.items
         )
 
-        # Check if single-line format would exceed 88 characters
-        single_line_format = f"[{', '.join(f'"{item}"' for item in self.items)}]"
-        exceeds_line_limit = len(single_line_format) > 88
+        # Check if single-line format would exceed character limit
+        item_strings = [f'"{item}"' for item in self.items]
+        single_line_format = f"[{', '.join(item_strings)}]"
+        exceeds_line_limit = len(single_line_format) > MAX_LINE_LENGTH
 
         # Use multiline format if we have comments OR exceed line limit
         if not has_comments and not exceeds_line_limit:
@@ -118,7 +173,8 @@ class SimpleArrayWithComments:
 
             # Escape newlines and other special characters in comments
             if comment:
-                # Replace newlines with escaped newlines and remove other problematic chars
+                # Replace newlines with escaped newlines and remove other
+                # problematic chars
                 comment = (
                     comment.replace("\n", "\\n")
                     .replace("\r", "\\r")
