@@ -293,6 +293,34 @@ class PylintCleaner:
 
         return None
 
+    def _is_rule_useless(self, *, rule: str, useless_rules: list[str]) -> bool:
+        """Check if a rule should be considered useless.
+
+        Handles matching between rule codes (E0401) and rule names (import-error).
+
+        Args:
+            rule: Rule identifier to check.
+            useless_rules: List of useless rule identifiers.
+
+        Returns:
+            True if the rule is useless and should be removed.
+
+        """
+        for useless_rule in useless_rules:
+            # Check direct match first
+            if rule == useless_rule:
+                return True
+            # Check if they're the same rule (by ID or name)
+            rule_obj = self.rules.get_by_identifier(identifier=rule)
+            useless_rule_obj = self.rules.get_by_identifier(identifier=useless_rule)
+            if (
+                rule_obj
+                and useless_rule_obj
+                and rule_obj.pylint_id == useless_rule_obj.pylint_id
+            ):
+                return True
+        return False
+
     def _remove_useless_rules_from_comment(  # noqa: PLR0911
         self, *, disable_comment: DisableComment, useless_rules: list[str]
     ) -> str | None:
@@ -314,29 +342,11 @@ class PylintCleaner:
             return disable_comment.original_line
 
         # Filter out useless rules, keeping necessary ones
-        # Need to handle the case where useless_rules contains rule names
-        # but disable_comment.pylint_rules contains rule codes (or vice versa)
-        remaining_rules = []
-        for rule in disable_comment.pylint_rules:
-            is_useless = False
-            for useless_rule in useless_rules:
-                # Check direct match first
-                if rule == useless_rule:
-                    is_useless = True
-                    break
-                # Check if they're the same rule (by ID or name)
-                rule_obj = self.rules.get_by_identifier(identifier=rule)
-                useless_rule_obj = self.rules.get_by_identifier(identifier=useless_rule)
-                if (
-                    rule_obj
-                    and useless_rule_obj
-                    and rule_obj.pylint_id == useless_rule_obj.pylint_id
-                ):
-                    is_useless = True
-                    break
-
-            if not is_useless:
-                remaining_rules.append(rule)
+        remaining_rules = [
+            rule
+            for rule in disable_comment.pylint_rules
+            if not self._is_rule_useless(rule=rule, useless_rules=useless_rules)
+        ]
 
         if not remaining_rules:
             # All pylint rules are useless
