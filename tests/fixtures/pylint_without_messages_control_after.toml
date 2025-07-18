@@ -12,14 +12,6 @@ jobs = 0
 persistent = true
 suggestion-mode = true
 
-[tool.pylint.messages_control]
-disable = ["all"]
-enable = [
-  "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
-  "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
-  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
-]
-
 [tool.pylint.refactoring]
 max-nested-blocks = 5
 
@@ -30,3 +22,11 @@ reports = false
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = [
+  "C0103", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-name.html
+  "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
+  "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+]

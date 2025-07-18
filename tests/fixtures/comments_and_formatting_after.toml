@@ -27,7 +27,6 @@ enable = [
   "C0111", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-docstring.html
   "R0903" # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
 ]
-
 [tool.pytest]
 
 [tool.pytest.ini_options]

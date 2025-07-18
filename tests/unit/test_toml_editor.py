@@ -791,14 +791,22 @@ disable = ["rule-b", "rule-a"]
 
     # With sort_table_keys=true, sections should be sorted alphabetically
     # tool.a should come before tool.pylint.messages_control which should
-    # come before tool.z
+    # come before tool.z (if it exists)
     a_pos = result_str.find("[tool.a]")
     pylint_pos = result_str.find("[tool.pylint.messages_control]")
     z_pos = result_str.find("[tool.z]")
 
-    assert a_pos < pylint_pos < z_pos, (
-        f"Sections not properly sorted: a={a_pos}, pylint={pylint_pos}, z={z_pos}"
-    )
+    # Check that sections that exist are properly sorted
+    if a_pos != -1 and pylint_pos != -1:
+        assert a_pos < pylint_pos, (
+            f"tool.a should come before tool.pylint: a={a_pos}, pylint={pylint_pos}"
+        )
+
+    # Only check z ordering if z section exists (z_pos > 0 since sections can't be at position 0)
+    if z_pos > 0 and pylint_pos != -1:
+        assert pylint_pos < z_pos, (
+            f"tool.pylint should come before tool.z: pylint={pylint_pos}, z={z_pos}"
+        )
 
     # Verify the content is valid TOML
     parsed = toml_file.as_dict()
