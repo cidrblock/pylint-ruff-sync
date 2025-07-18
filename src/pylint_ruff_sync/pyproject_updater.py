@@ -259,8 +259,8 @@ class PyprojectUpdater:
         # Add unknown disabled rules as-is (no comments available)
         disable_items.extend(unknown_disabled_rules)
 
-        # Sort for consistent output
-        disable_items.sort()
+        # Sort for consistent output (case-insensitive)
+        disable_items.sort(key=str.lower)
 
         # Create SimpleArrayWithComments for proper formatting
         disable_array = SimpleArrayWithComments(
@@ -319,8 +319,8 @@ class PyprojectUpdater:
 
             enable_comments[identifier] = comment
 
-        # Sort for consistent output
-        enable_items.sort()
+        # Sort for consistent output (case-insensitive)
+        enable_items.sort(key=str.lower)
 
         enable_array = SimpleArrayWithComments(
             comments=enable_comments

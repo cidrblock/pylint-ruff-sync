@@ -491,3 +491,210 @@ def test_invalid_config_file(
 
     # Should return error code (1 for general errors)
     assert result == 1
+
+
+@pytest.mark.parametrize(
+    ("rule_format", "rule_comment"),
+    [
+        ("code", "doc_url"),
+        ("code", "code"),
+        ("code", "name"),
+        ("code", "short_description"),
+        ("code", "none"),
+        ("name", "doc_url"),
+        ("name", "code"),
+        ("name", "name"),
+        ("name", "short_description"),
+        ("name", "none"),
+    ],
+)
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_all_rule_format_comment_combinations(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    rule_comment: str,
+    rule_format: str,
+    tmp_path: Path,
+) -> None:
+    """Test all combinations of rule-format and rule-comment parameters.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        rule_comment: The rule comment type to test.
+        rule_format: The rule format type to test.
+        tmp_path: Temporary directory fixture from pytest.
+
+    """
+    # Copy a before fixture to temp directory
+    config_file = copy_fixture_to_temp(
+        fixture_name="existing_pylint_config_before.toml", temp_dir=tmp_path
+    )
+
+    # Mock sys.argv with the specific combination
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            rule_format,
+            "--rule-comment",
+            rule_comment,
+        ],
+    )
+
+    # Run the main function
+    result = main()
+
+    # Should succeed
+    assert not result
+
+    # Read the generated content
+    content = config_file.read_text()
+
+    # Verify rule format expectations
+    if rule_format == "code":
+        # Should contain rule codes like C0103, C0111, etc.
+        assert "C0103" in content
+        assert "C0111" in content
+        # Should not contain rule names in the arrays (except for comments)
+        lines = content.split("\n")
+        array_lines = [
+            line
+            for line in lines
+            if line.strip().startswith('"')
+            and ("enable" in content or "disable" in content)
+        ]
+        for line in array_lines:
+            if '"invalid-name"' in line and line.strip().startswith('"invalid-name"'):
+                pytest.fail(
+                    f"Found rule name 'invalid-name' as array item with rule_format=code: {line}"
+                )
+    else:  # rule_format == "name"
+        # Should contain rule names like invalid-name, missing-docstring, etc.
+        assert "invalid-name" in content
+        assert "missing-docstring" in content
+        # Should not contain rule codes in the arrays (except for comments)
+        lines = content.split("\n")
+        array_lines = [
+            line
+            for line in lines
+            if line.strip().startswith('"')
+            and ("enable" in content or "disable" in content)
+        ]
+        for line in array_lines:
+            if '"C0103"' in line and line.strip().startswith('"C0103"'):
+                pytest.fail(
+                    f"Found rule code 'C0103' as array item with rule_format=name: {line}"
+                )
+
+    # Verify comment expectations
+    if rule_comment == "none":
+        # Should not have any comments after rule identifiers
+        lines = content.split("\n")
+        for line in lines:
+            if line.strip().startswith('"') and "#" in line:
+                # Allow "all" to have comments in some cases
+                if '"all"' not in line:
+                    pytest.fail(f"Found comment with rule_comment=none: {line}")
+    elif rule_comment == "doc_url":
+        # Should contain doc URLs
+        assert "https://pylint.readthedocs.io" in content
+    elif rule_comment == "code":
+        # Should contain rule codes in comments
+        if rule_format == "name":
+            # When using name format, comments should contain codes
+            assert "# C0103" in content or "# C0111" in content
+    elif rule_comment == "name":
+        # Should contain rule names in comments
+        if rule_format == "code":
+            # When using code format, comments should contain names
+            assert "# invalid-name" in content or "# missing-docstring" in content
+    elif rule_comment == "short_description":
+        # Should contain rule descriptions in comments
+        assert "doesn't conform" in content or "Missing" in content
+        # "all" should get "All rules" comment
+        assert "# All rules" in content
+
+    # Verify basic structure
+    assert "tool.pylint.messages_control" in content
+    assert "disable" in content
+    assert "enable" in content
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_case_insensitive_sorting(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that rule arrays are sorted case-insensitively.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest.
+
+    """
+    # Create a simple config file with just a few mixed-case rule identifiers
+    test_config = """[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
+
+[project]
+description = "Test project"
+name = "test-project"
+version = "0.1.0"
+
+[tool.pylint.messages_control]
+disable = ["zebra-rule", "Apple-rule", "bear-rule", "all"]
+"""
+
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text(test_config)
+
+    # Mock sys.argv
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-format",
+            "code",
+            "--rule-comment",
+            "none",
+        ],
+    )
+
+    # Run the main function
+    result = main()
+
+    # Should succeed
+    assert not result
+
+    # Read the generated content
+    content = config_file.read_text()
+
+    # Extract all quoted items from disable array using regex
+    import re
+
+    disable_section_match = re.search(r"disable\s*=\s*\[(.*?)\]", content, re.DOTALL)
+
+    assert disable_section_match, "Could not find disable array"
+
+    disable_content = disable_section_match.group(1)
+
+    # Extract quoted items
+    quoted_items = re.findall(r'"([^"]*)"', disable_content)
+
+    # Verify case-insensitive sorting
+    # Expected order (case-insensitive): "all", "Apple-rule", "bear-rule", "zebra-rule"
+    sorted_items = sorted(quoted_items, key=str.lower)
+    assert quoted_items == sorted_items, (
+        f"Items not sorted case-insensitively: {quoted_items} vs {sorted_items}"
+    )

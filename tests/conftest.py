@@ -167,8 +167,7 @@ def _mocked_subprocess(
         toml_sort_mock: Function to apply toml-sort mock.
 
     """
-    # Constants for toml-sort mocking
-    toml_sort_min_args = 3
+    from tests.constants import TOML_SORT_MIN_ARGS
 
     mock_pylint_result = MockSubprocessResult(stdout=mock_pylint_output)
     mock_gh_result = MockSubprocessResult(stdout=mock_github_response)
@@ -195,8 +194,8 @@ def _mocked_subprocess(
         ):
             # Handle toml-sort subprocess call
             command_args = args[0]
-            if "--in-place" in command_args and len(command_args) >= toml_sort_min_args:
-                file_path = command_args[2]
+            if "--in-place" in command_args and len(command_args) >= TOML_SORT_MIN_ARGS:
+                file_path = command_args[-1]  # Last argument is the file path
                 toml_sort_mock(file_path=file_path)
                 return MockSubprocessResult(stdout="")
 
