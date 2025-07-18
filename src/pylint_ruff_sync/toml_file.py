@@ -319,42 +319,6 @@ class TomlFile:
             section_path=section_path,
         )
 
-    def ensure_item_in_array(
-        self,
-        item: str,
-        key: str,
-        section_path: str,
-    ) -> None:
-        """Ensure an item exists in an array, adding it if not present.
-
-        Args:
-            item: Item to ensure exists in the array.
-            key: Key within the section.
-            section_path: Dot-separated path to the section.
-
-        """
-        current_dict = self.as_dict()
-
-        # Navigate to the section
-        section_parts = section_path.split(".")
-        current_section = current_dict
-        for part in section_parts:
-            if part not in current_section:
-                current_section[part] = {}
-            current_section = current_section[part]
-
-        # Get current array or create empty one
-        current_array = current_section.get(key, [])
-        if not isinstance(current_array, list):
-            current_array = []
-
-        # Add item if not present
-        if item not in current_array:
-            current_array.append(item)
-            self.update_section_array(
-                array_data=current_array, key=key, section_path=section_path
-            )
-
     def _update_section_key_with_regex(
         self,
         key: str,
