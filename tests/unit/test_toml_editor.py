@@ -286,6 +286,53 @@ def test_simple_array_with_comments_format_partial_comments() -> None:
     assert result == expected
 
 
+def test_simple_array_multiline_due_to_length() -> None:
+    """Test SimpleArrayWithComments formatting goes multiline when exceeding 88 characters."""
+    # Create an array that would exceed 88 characters in single-line format
+    long_items = [f"very-long-rule-name-{i:02d}" for i in range(10)]
+    array_with_comments = SimpleArrayWithComments(
+        comments=None,
+        items=long_items,
+    )
+    result = array_with_comments.format_as_toml()
+
+    # Should be multiline due to length
+    assert result.startswith("[\n")
+    assert result.endswith("\n]")
+
+    # Should contain all items
+    for item in long_items:
+        assert f'"{item}"' in result
+
+
+def test_simple_array_single_line_within_limit() -> None:
+    """Test SimpleArrayWithComments stays single-line when within 88 characters."""
+    short_items = ["C0103", "C0111", "W0613"]
+    array_with_comments = SimpleArrayWithComments(
+        comments=None,
+        items=short_items,
+    )
+    result = array_with_comments.format_as_toml()
+
+    # Should be single-line since it's short and has no comments
+    expected = '["C0103", "C0111", "W0613"]'
+    assert result == expected
+    assert len(result) < 88
+
+
+def test_simple_array_multiline_with_comments_even_if_short() -> None:
+    """Test SimpleArrayWithComments goes multiline when it has comments, even if short."""
+    array_with_comments = SimpleArrayWithComments(
+        comments={"C0103": "invalid-name"},
+        items=["C0103"],
+    )
+    result = array_with_comments.format_as_toml()
+
+    # Should be multiline due to comments, even though it's very short
+    expected = '[\n  "C0103" # invalid-name\n]'
+    assert result == expected
+
+
 def test_apply_toml_sort() -> None:
     """Test that toml-sort is applied automatically when content changes."""
     with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".toml") as f:

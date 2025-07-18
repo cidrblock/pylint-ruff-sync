@@ -84,120 +84,120 @@ min-public-methods = 0
 max-line-length = 100
 
 [tool.pylint.messages_control]
-disable = ["I0011", "I0020", "all"]
+disable = ["all", "locally-disabled", "suppressed-message"]
 enable = [
-  "C0104", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/disallowed-name.html
-  "C0117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unnecessary-negation.html
-  "C0200", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/consider-using-enumerate.html
-  "C0203", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/bad-mcs-method-argument.html
-  "C0204", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/bad-mcs-classmethod-argument.html
-  "C0209", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/consider-using-f-string.html
-  "C0302", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/too-many-lines.html
-  "C0325", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/superfluous-parens.html
-  "C0327", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/mixed-line-endings.html
-  "C0328", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/unexpected-line-ending-format.html
-  "C0401", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/wrong-spelling-in-comment.html
-  "C0402", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/wrong-spelling-in-docstring.html
-  "C0403", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/invalid-characters-in-docstring.html
-  "C1803", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison.html
-  "C1804", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison-to-string.html
-  "C1805", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/use-implicit-booleaness-not-comparison-to-zero.html
-  "C2503", # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/bad-file-encoding.html
-  "E0011", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/unrecognized-inline-option.html
-  "E0013", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-plugin-value.html
-  "E0014", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-configuration-section.html
-  "E0015", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/unrecognized-option.html
-  "E0106", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/return-arg-in-generator.html
-  "E0108", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/duplicate-argument-name.html
-  "E0203", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/access-member-before-definition.html
-  "E0211", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/no-method-argument.html
-  "E0242", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/class-variable-slots-conflict.html
-  "E0245", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/declare-non-slot.html
-  "E0310", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-length-hint-returned.html
-  "E0312", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-getnewargs-returned.html
-  "E0313", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-getnewargs-ex-returned.html
-  "E0606", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/possibly-used-before-assignment.html
-  "E0611", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/no-name-in-module.html
-  "E0701", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/bad-except-order.html
-  "E1144", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-slice-step.html
-  "E1200", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/logging-unsupported-format.html
-  "E1201", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/logging-format-truncated.html
-  "E2511", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-character-carriage-return.html
-  "E3102", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/positional-only-arguments-expected.html
-  "E3701", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/invalid-field-call.html
-  "E4702", # https://pylint.readthedocs.io/en/stable/user_guide/messages/error/modified-iterating-dict.html
-  "F0002", # https://pylint.readthedocs.io/en/stable/user_guide/messages/fatal/astroid-error.html
-  "F0010", # https://pylint.readthedocs.io/en/stable/user_guide/messages/fatal/parse-error.html
-  "F0011", # https://pylint.readthedocs.io/en/stable/user_guide/messages/fatal/config-parse-error.html
-  "F0202", # https://pylint.readthedocs.io/en/stable/user_guide/messages/fatal/method-check-failed.html
-  "I0001", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/raw-checker-failed.html
-  "I0010", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/bad-inline-option.html
-  "I0013", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/file-ignored.html
-  "I0021", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/useless-suppression.html
-  "I0022", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/deprecated-pragma.html
-  "I1101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/info/c-extension-no-member.html
-  "R0022", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/useless-option-value.html
-  "R0401", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/cyclic-import.html
-  "R0801", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/duplicate-code.html
-  "R0901", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-many-ancestors.html
-  "R0902", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-many-instance-attributes.html
-  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
-  "R1706", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-ternary.html
-  "R1708", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/stop-iteration-return.html
-  "R1709", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/simplify-boolean-expression.html
-  "R1712", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-swap-variables.html
-  "R1713", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/consider-using-join.html
-  "R1716", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/chained-comparison.html
-  "R1726", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/simplifiable-condition.html
-  "R1727", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/condition-evals-to-constant.html
-  "R1736", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/unnecessary-list-index-lookup.html
-  "W0012", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unknown-option-value.html
-  "W0101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unreachable.html
-  "W0105", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/pointless-string-statement.html
-  "W0124", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/confusing-with-statement.html
-  "W0125", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-constant-test.html
-  "W0126", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-parentheses-for-call-in-test.html
-  "W0128", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redeclared-assigned-name.html
-  "W0134", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/return-in-finally.html
-  "W0135", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/contextmanager-generator-missing-cleanup.html
-  "W0201", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/attribute-defined-outside-init.html
-  "W0213", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/implicit-flag-alias.html
-  "W0223", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/abstract-method.html
-  "W0231", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/super-init-not-called.html
-  "W0233", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/non-parent-init-called.html
-  "W0237", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/arguments-renamed.html
-  "W0238", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unused-private-member.html
-  "W0244", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redefined-slots-in-subclass.html
-  "W0246", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/useless-parent-delegation.html
-  "W0407", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/preferred-module.html
-  "W0416", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/shadowed-import.html
-  "W0614", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unused-wildcard-import.html
-  "W0621", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redefined-outer-name.html
-  "W0631", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/undefined-loop-variable.html
-  "W0641", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/possibly-unused-variable.html
-  "W0715", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/raising-format-tuple.html
-  "W1114", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/arguments-out-of-order.html
-  "W1117", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/kwarg-superseded-by-positional-arg.html
-  "W1300", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-format-string-key.html
-  "W1307", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/invalid-format-index.html
-  "W1308", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/duplicate-string-formatting-argument.html
-  "W1402", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/anomalous-unicode-escape-in-string.html
-  "W1502", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/boolean-datetime.html
-  "W1503", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/redundant-unittest-assert.html
-  "W1507", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/shallow-copy-environ.html
-  "W2601", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-f-string-in-unsupported-version.html
-  "W2603", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-exception-groups-in-unsupported-version.html
-  "W2604", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-generic-type-syntax-in-unsupported-version.html
-  "W2605", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-assignment-expression-in-unsupported-version.html
-  "W2606", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/using-positional-only-args-in-unsupported-version.html
-  "W3101", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/missing-timeout.html
-  "W3601", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bad-chained-comparison.html
-  "W4701", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/modified-iterating-list.html
-  "W4901", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-module.html
-  "W4902", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-method.html
-  "W4903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-argument.html
-  "W4905", # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-decorator.html
-  "W4906" # https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/deprecated-attribute.html
+  "disallowed-name", # Disallowed name "%s"
+  "unnecessary-negation", # Consider changing "%s" to "%s"
+  "consider-using-enumerate", # Consider using enumerate instead of iterating with range and len
+  "bad-mcs-method-argument", # Metaclass method %s should have %s as first argument
+  "bad-mcs-classmethod-argument", # Metaclass class method %s should have %s as first argument
+  "consider-using-f-string", # Formatting a regular string which could be an f-string
+  "too-many-lines", # Too many lines in module (%s/%s)
+  "superfluous-parens", # Unnecessary parens after %r keyword
+  "mixed-line-endings", # Mixed line endings LF and CRLF
+  "unexpected-line-ending-format", # Unexpected line ending format. There is '%s' while it should be '%s'.
+  "wrong-spelling-in-comment", # Wrong spelling of a word '%s' in a comment:
+  "wrong-spelling-in-docstring", # Wrong spelling of a word '%s' in a docstring:
+  "invalid-characters-in-docstring", # Invalid characters %r in a docstring
+  "use-implicit-booleaness-not-comparison", # "%s" can be simplified to "%s", if it is strictly a sequence, as an empty %s is falsey
+  "use-implicit-booleaness-not-comparison-to-string", # "%s" can be simplified to "%s", if it is strictly a string, as an empty string is falsey
+  "use-implicit-booleaness-not-comparison-to-zero", # "%s" can be simplified to "%s", if it is strictly an int, as 0 is falsey
+  "bad-file-encoding", # PEP8 recommends UTF-8 as encoding for Python files
+  "unrecognized-inline-option", # Unrecognized file option %r
+  "bad-plugin-value", # Plugin '%s' is impossible to load, is it installed ? ('%s')
+  "bad-configuration-section", # Out-of-place setting encountered in top level configuration-section '%s' : '%s'
+  "unrecognized-option", # Unrecognized option found: %s
+  "return-arg-in-generator", # Return with argument inside generator
+  "duplicate-argument-name", # Duplicate argument name %r in function definition
+  "access-member-before-definition", # Access to member %r before its definition line %s
+  "no-method-argument", # Method %r has no argument
+  "class-variable-slots-conflict", # Value %r in slots conflicts with class variable
+  "declare-non-slot", # No such name %r in __slots__
+  "invalid-length-hint-returned", # __length_hint__ does not return non-negative integer
+  "invalid-getnewargs-returned", # __getnewargs__ does not return a tuple
+  "invalid-getnewargs-ex-returned", # __getnewargs_ex__ does not return a tuple containing (tuple, dict)
+  "possibly-used-before-assignment", # Possibly using variable %r before assignment
+  "no-name-in-module", # No name %r in module %r
+  "bad-except-order", # Bad except clauses order (%s)
+  "invalid-slice-step", # Slice step cannot be 0
+  "logging-unsupported-format", # Unsupported logging format character %r (%#02x) at index %d
+  "logging-format-truncated", # Logging format string ends in middle of conversion specifier
+  "invalid-character-carriage-return", # Invalid unescaped character carriage-return, use "\\n" instead.
+  "positional-only-arguments-expected", # `%s()` got some positional-only arguments passed as keyword arguments: %s
+  "invalid-field-call", # Invalid usage of field(), %s
+  "modified-iterating-dict", # Iterated dict '%s' is being modified inside for loop body, iterate through a copy of it instead.
+  "astroid-error", # %s: %s
+  "parse-error", # error while code parsing: %s
+  "config-parse-error", # error while parsing the configuration: %s
+  "method-check-failed", # Unable to check methods signature (%s / %s)
+  "raw-checker-failed", # Unable to run raw checkers on built-in module %s
+  "bad-inline-option", # Unable to consider inline option %r
+  "file-ignored", # Ignoring entire file
+  "useless-suppression", # Useless suppression of %s
+  "deprecated-pragma", # Pragma "%s" is deprecated, use "%s" instead
+  "c-extension-no-member", # %s %r has no %r member%s, but source is unavailable. Consider adding this module to extension-pkg-allow-list if you want to perform analysis based on run-time introspection of living objects.
+  "useless-option-value", # Useless option value for '%s', %s
+  "cyclic-import", # Cyclic import (%s)
+  "duplicate-code", # Similar lines in %s files
+  "too-many-ancestors", # Too many ancestors (%s/%s)
+  "too-many-instance-attributes", # Too many instance attributes (%s/%s)
+  "too-few-public-methods", # Too few public methods (%s/%s)
+  "consider-using-ternary", # Consider using ternary (%s)
+  "stop-iteration-return", # Do not raise StopIteration in generator, use return statement instead
+  "simplify-boolean-expression", # Boolean expression may be simplified to %s
+  "consider-swap-variables", # Consider using tuple unpacking for swapping variables
+  "consider-using-join", # Consider using str.join(sequence) for concatenating strings from an iterable
+  "chained-comparison", # Simplify chained comparison between the operands
+  "simplifiable-condition", # Boolean condition "%s" may be simplified to "%s"
+  "condition-evals-to-constant", # Boolean condition '%s' will always evaluate to '%s'
+  "unnecessary-list-index-lookup", # Unnecessary list index lookup, use '%s' instead
+  "unknown-option-value", # Unknown option value for '%s', expected a valid pylint message and got '%s'
+  "unreachable", # Unreachable code
+  "pointless-string-statement", # String statement has no effect
+  "confusing-with-statement", # Following "as" with another context manager looks like a tuple.
+  "using-constant-test", # Using a conditional statement with a constant value
+  "missing-parentheses-for-call-in-test", # Using a conditional statement with potentially wrong function or method call due to missing parentheses
+  "redeclared-assigned-name", # Redeclared variable %r in assignment
+  "return-in-finally", # 'return' shadowed by the 'finally' clause.
+  "contextmanager-generator-missing-cleanup", # The context used in function %r will not be exited.
+  "attribute-defined-outside-init", # Attribute %r defined outside __init__
+  "implicit-flag-alias", # Flag member %(overlap)s shares bit positions with %(sources)s
+  "abstract-method", # Method %r is abstract in class %r but is not overridden in child class %r
+  "super-init-not-called", # __init__ method from base class %r is not called
+  "non-parent-init-called", # __init__ method from a non direct base class %r is called
+  "arguments-renamed", # %s %s %r method
+  "unused-private-member", # Unused private member `%s.%s`
+  "redefined-slots-in-subclass", # Redefined slots %r in subclass
+  "useless-parent-delegation", # Useless parent or super() delegation in method %r
+  "preferred-module", # Prefer importing %r instead of %r
+  "shadowed-import", # Shadowed %r (imported line %s)
+  "unused-wildcard-import", # Unused import(s) %s from wildcard import of %s
+  "redefined-outer-name", # Redefining name %r from outer scope (line %s)
+  "undefined-loop-variable", # Using possibly undefined loop variable %r
+  "possibly-unused-variable", # Possibly unused variable %r
+  "raising-format-tuple", # Exception arguments suggest string formatting might be intended
+  "arguments-out-of-order", # Positional arguments appear to be out of order
+  "kwarg-superseded-by-positional-arg", # %r will be included in %r since a positional-only parameter with this name already exists
+  "bad-format-string-key", # Format string dictionary key should be a string, not %s
+  "invalid-format-index", # Using invalid lookup key %r in format specifier %r
+  "duplicate-string-formatting-argument", # Duplicate string formatting argument %r, consider passing as named argument
+  "anomalous-unicode-escape-in-string", # Anomalous Unicode escape in byte string: '%s'. String constant might be missing an r or u prefix.
+  "boolean-datetime", # Using datetime.time in a boolean context.
+  "redundant-unittest-assert", # Redundant use of %s with constant value %r
+  "shallow-copy-environ", # Using copy.copy(os.environ). Use os.environ.copy() instead.
+  "using-f-string-in-unsupported-version", # F-strings are not supported by all versions included in the py-version setting
+  "using-exception-groups-in-unsupported-version", # Exception groups are not supported by all versions included in the py-version setting
+  "using-generic-type-syntax-in-unsupported-version", # Generic type syntax (PEP 695) is not supported by all versions included in the py-version setting
+  "using-assignment-expression-in-unsupported-version", # Assignment expression is not supported by all versions included in the py-version setting
+  "using-positional-only-args-in-unsupported-version", # Positional-only arguments are not supported by all versions included in the py-version setting
+  "missing-timeout", # Missing timeout argument for method '%s' can cause your program to hang indefinitely
+  "bad-chained-comparison", # Suspicious %s-part chained comparison using semantically incompatible operators (%s)
+  "modified-iterating-list", # Iterated list '%s' is being modified inside for loop body, consider iterating through a copy of it instead.
+  "deprecated-module", # Deprecated module %r
+  "deprecated-method", # Using deprecated method %s()
+  "deprecated-argument", # Using deprecated argument %s of method %s()
+  "deprecated-decorator", # Using deprecated decorator %s()
+  "deprecated-attribute" # Using deprecated attribute %r
 ]
 
 [tool.pylint.reports]

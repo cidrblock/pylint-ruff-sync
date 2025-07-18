@@ -160,6 +160,33 @@ pylint-ruff-sync --rule-format name --rule-comment code
 pylint-ruff-sync --rule-format code --rule-comment none
 ```
 
+### Array Formatting
+
+Arrays in the pyproject.toml file automatically use multiline format when:
+
+- The array contains comments, OR
+- The single-line format would exceed 88 characters
+
+This ensures readability while keeping short arrays compact:
+
+```toml
+# Short arrays stay single-line
+disable = ["all"]
+
+# Arrays with comments become multiline
+disable = [
+  "all",  # All rules
+  "R0903", # https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-few-public-methods.html
+]
+
+# Long arrays become multiline even without comments
+disable = [
+  "very-long-rule-name-01",
+  "very-long-rule-name-02",
+  "very-long-rule-name-03"
+]
+```
+
 ## PylintCleaner: Automated Comment Cleanup
 
 The PylintCleaner component automatically removes unnecessary pylint disable comments after updating your configuration. This feature:

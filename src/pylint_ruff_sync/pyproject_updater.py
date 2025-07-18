@@ -227,24 +227,51 @@ class PyprojectUpdater:
             unknown_disabled_rules: List of unknown rule identifiers to keep disabled.
 
         """
-        # Collect all disable items: "all" + rule identifiers + unknown rules
-        disable_set = {"all"}
+        # Collect all disable items and their comments
+        disable_items = []
+        disable_comments = {}
+
+        # Add "all" with hardcoded comment only for short_description
+        disable_items.append("all")
+        if self.rule_format.comment_type == "short_description":
+            disable_comments["all"] = "All rules"
 
         # Add disable rules using the specified format
         for rule in disable_rules:
             if self.rule_format.identifier_format == "name":
-                disable_set.add(rule.pylint_name)
+                identifier = rule.pylint_name
             else:  # "code"
-                disable_set.add(rule.pylint_id)
+                identifier = rule.pylint_id
 
-        # Add unknown disabled rules as-is
-        disable_set.update(unknown_disabled_rules)
+            disable_items.append(identifier)
+
+            # Generate comment based on rule_comment setting (except for "none")
+            if self.rule_format.comment_type == "code":
+                disable_comments[identifier] = rule.pylint_id
+            elif self.rule_format.comment_type == "name":
+                disable_comments[identifier] = rule.pylint_name
+            elif self.rule_format.comment_type == "short_description":
+                disable_comments[identifier] = rule.description
+            elif self.rule_format.comment_type == "doc_url":
+                disable_comments[identifier] = rule.pylint_docs_url or ""
+            # For "none", we don't add any comment
+
+        # Add unknown disabled rules as-is (no comments available)
+        disable_items.extend(unknown_disabled_rules)
 
         # Sort for consistent output
-        disable_list = sorted(disable_set)
+        disable_items.sort()
+
+        # Create SimpleArrayWithComments for proper formatting
+        disable_array = SimpleArrayWithComments(
+            comments=disable_comments
+            if self.rule_format.comment_type != "none"
+            else None,
+            items=disable_items,
+        )
 
         self.toml_file.update_section_array(
-            array_data=disable_list,
+            array_data=disable_array,
             key="disable",
             section_path="tool.pylint.messages_control",
         )
@@ -292,8 +319,13 @@ class PyprojectUpdater:
 
             enable_comments[identifier] = comment
 
+        # Sort for consistent output
+        enable_items.sort()
+
         enable_array = SimpleArrayWithComments(
-            comments=enable_comments,
+            comments=enable_comments
+            if self.rule_format.comment_type != "none"
+            else None,
             items=enable_items,
         )
 

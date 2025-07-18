@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import subprocess
 import tempfile
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import tomllib
 
 from .toml_regex import TOML_REGEX
 
@@ -84,6 +85,10 @@ class SimpleArrayWithComments:
     def format_as_toml(self) -> str:
         """Format the array as TOML with proper formatting.
 
+        Uses multiline format when:
+        - Array has comments, OR
+        - Single-line format would exceed 88 characters
+
         Returns:
             Formatted TOML array string.
 
@@ -91,21 +96,34 @@ class SimpleArrayWithComments:
         if not self.items:
             return "[]"
 
-        # Use single-line format if no comments, multi-line if comments exist
+        # Check if we have comments
         has_comments = self.comments and any(
             self.comments.get(item, "") for item in self.items
         )
 
-        if not has_comments:
-            # Single-line format for arrays without comments
-            items_str = ", ".join(f'"{item}"' for item in self.items)
-            return f"[{items_str}]"
+        # Check if single-line format would exceed 88 characters
+        single_line_format = f"[{', '.join(f'"{item}"' for item in self.items)}]"
+        exceeds_line_limit = len(single_line_format) > 88
 
-        # Multi-line format for arrays with comments
+        # Use multiline format if we have comments OR exceed line limit
+        if not has_comments and not exceeds_line_limit:
+            # Single-line format for arrays without comments and within limit
+            return single_line_format
+
+        # Multi-line format for arrays with comments or long lines
         lines = ["["]
         for i, item in enumerate(self.items):
             comment = self.comments.get(item, "") if self.comments else ""
             is_last = i == len(self.items) - 1
+
+            # Escape newlines and other special characters in comments
+            if comment:
+                # Replace newlines with escaped newlines and remove other problematic chars
+                comment = (
+                    comment.replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t")
+                )
 
             if comment:
                 if is_last:

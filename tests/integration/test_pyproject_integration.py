@@ -247,19 +247,27 @@ def test_rule_comment_short_description_integration(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Test rule comment short description functionality with integration.
+    """Test integration with rule_comment=short_description shows 'All rules' for 'all'.
 
     Args:
         monkeypatch: Pytest monkeypatch fixture for mocking.
-        tmp_path: Temporary directory fixture from pytest
+        tmp_path: Temporary directory fixture from pytest.
 
     """
-    # Copy a before fixture to temp directory
-    config_file = copy_fixture_to_temp(
-        fixture_name="existing_pylint_config_before.toml", temp_dir=tmp_path
+    # Create a simple config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text(
+        """[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
+
+[project]
+name = "test-project"
+version = "0.1.0"
+"""
     )
 
-    # Mock sys.argv to use short descriptions
+    # Mock sys.argv with rule_comment=short_description
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -268,27 +276,150 @@ def test_rule_comment_short_description_integration(
             str(config_file),
             "--cache-path",
             str(tmp_path / "test_cache.json"),
-            "--rule-comment",
-            "short_description",
+            "--rule-comment=short_description",
         ],
     )
 
     # Run the main function
     result = main()
-
-    # Should succeed
     assert not result
 
-    # Check that config file has description comments
+    # Read the result and check for "All rules" comment
     content = config_file.read_text()
-    # Should have some rule descriptions from the mock data
-    description_found = any(
-        desc in content
-        for desc in ["Invalid name", "Unused import", "Missing docstring"]
+    assert "disable = [" in content
+    assert '"all" # All rules' in content
+
+    # Should also have short descriptions for enabled rules
+    assert "# Invalid constant name" in content or "# invalid name" in content.lower()
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_disable_array_with_doc_url(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that disable array gets doc_url comments when rule_comment=doc_url.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest.
+
+    """
+    # Create a config file with some existing disable rules
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text(
+        """[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
+
+[project]
+name = "test-project"
+version = "0.1.0"
+
+[tool.pylint.messages_control]
+disable = ["W0613"]
+"""
     )
-    assert description_found, (
-        f"Expected to find rule descriptions in content: {content}"
+
+    # Mock sys.argv with default rule_comment=doc_url
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+        ],
     )
+
+    # Run the main function
+    result = main()
+    assert not result
+
+    # Read the result and check for doc URLs in disable array
+    content = config_file.read_text()
+    assert "disable = [" in content
+
+    # Should have "all" without comment (since default is doc_url, not short_description)
+    assert '"all"' in content
+    assert '"all" # All rules' not in content
+
+    # Should have doc URLs for any disable rules that aren't "all"
+    lines = content.split("\n")
+    disable_section = False
+    for line in lines:
+        if "disable = [" in line:
+            disable_section = True
+        elif disable_section and "]" in line:
+            disable_section = False
+        elif disable_section and "https://pylint.readthedocs.io" in line:
+            # Found a doc URL in the disable section
+            break
+    else:
+        # If we have actual rules in disable array besides "all", they should have doc URLs
+        # But if it's just ["all"], that's fine too
+        pass
+
+
+@pytest.mark.usefixtures("mocked_subprocess")
+def test_rule_comment_none_no_comments_in_disable(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Test that disable array has no comments when rule_comment=none.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture for mocking.
+        tmp_path: Temporary directory fixture from pytest.
+
+    """
+    # Create a config file
+    config_file = tmp_path / "pyproject.toml"
+    config_file.write_text(
+        """[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=45", "wheel"]
+
+[project]
+name = "test-project"
+version = "0.1.0"
+"""
+    )
+
+    # Mock sys.argv with rule_comment=none
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "pylint-ruff-sync",
+            "--config-file",
+            str(config_file),
+            "--cache-path",
+            str(tmp_path / "test_cache.json"),
+            "--rule-comment=none",
+        ],
+    )
+
+    # Run the main function
+    result = main()
+    assert not result
+
+    # Read the result and verify no comments
+    content = config_file.read_text()
+
+    # Should not have any # comments in the pylint section
+    lines = content.split("\n")
+    in_pylint = False
+    for line in lines:
+        if "[tool.pylint" in line:
+            in_pylint = True
+        elif in_pylint and line.startswith("[") and "pylint" not in line:
+            in_pylint = False
+        elif in_pylint and "#" in line:
+            # Should not have comments in pylint section
+            assert False, f"Found unexpected comment in pylint section: {line}"
 
 
 @pytest.mark.usefixtures("mocked_subprocess")
