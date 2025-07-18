@@ -314,9 +314,29 @@ class PylintCleaner:
             return disable_comment.original_line
 
         # Filter out useless rules, keeping necessary ones
-        remaining_rules = [
-            rule for rule in disable_comment.pylint_rules if rule not in useless_rules
-        ]
+        # Need to handle the case where useless_rules contains rule names
+        # but disable_comment.pylint_rules contains rule codes (or vice versa)
+        remaining_rules = []
+        for rule in disable_comment.pylint_rules:
+            is_useless = False
+            for useless_rule in useless_rules:
+                # Check direct match first
+                if rule == useless_rule:
+                    is_useless = True
+                    break
+                # Check if they're the same rule (by ID or name)
+                rule_obj = self.rules.get_by_identifier(identifier=rule)
+                useless_rule_obj = self.rules.get_by_identifier(identifier=useless_rule)
+                if (
+                    rule_obj
+                    and useless_rule_obj
+                    and rule_obj.pylint_id == useless_rule_obj.pylint_id
+                ):
+                    is_useless = True
+                    break
+
+            if not is_useless:
+                remaining_rules.append(rule)
 
         if not remaining_rules:
             # All pylint rules are useless
