@@ -231,6 +231,119 @@ pylint-ruff-sync --disable-pylint-cleaner
 pylint-ruff-sync --dry-run  # Shows both config and cleaner changes
 ```
 
+## Configuration Optimization: Removing Unnecessary Disable Rules
+
+This tool employs an **"enable-only strategy"** that automatically removes unnecessary disable rules from your `pyproject.toml` configuration, creating cleaner and more maintainable pylint setups.
+
+### How the Enable-Only Strategy Works
+
+Instead of maintaining long lists of individually disabled rules, the tool:
+
+1. **Sets `disable = ["all"]`** - Disables all pylint rules by default
+2. **Populates `enable = [...]`** - Only enables rules that pylint should check (those not implemented in ruff)
+3. **Removes redundant disable entries** - Eliminates the need to explicitly disable rules that ruff handles
+
+### Example Transformation
+
+**Before optimization:**
+
+```toml
+[tool.pylint.messages_control]
+disable = [
+  "C0103",  # invalid-name (implemented in ruff)
+  "W0613",  # unused-argument (implemented in ruff)
+  "C0116",  # missing-function-docstring (not in ruff)
+  "E1101",  # no-member (overlaps with mypy)
+  "locally-disabled",
+  "suppressed-message"
+]
+```
+
+**After optimization:**
+
+```toml
+[tool.pylint.messages_control]
+disable = [
+  "all",
+  "locally-disabled",   # I0011 - Preserved user preference
+  "suppressed-message"  # I0020 - Preserved user preference
+]
+enable = [
+  "C0116",  # https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/missing-function-docstring.html
+]
+```
+
+### Why Rules Are Removed
+
+The tool removes disable entries for three categories of rules:
+
+#### 1. **Ruff-Implemented Rules** ✅
+
+- **Removed because**: Ruff already checks these rules more efficiently
+- **Examples**: `invalid-name` (C0103), `unused-argument` (W0613)
+- **Result**: No need to explicitly disable them since ruff handles the functionality
+
+#### 2. **Mypy Overlap Rules** 🔄 _(when `--disable-mypy-overlap` not used)_
+
+- **Removed because**: Mypy provides superior type checking for these issues
+- **Examples**: `no-member` (E1101), `assignment-from-none` (E1128)
+- **Result**: Avoids duplicate checking between pylint and mypy
+
+#### 3. **Redundant Disable Entries** 🧹
+
+- **Removed because**: `disable = ["all"]` already covers them
+- **Examples**: Any rule that would be disabled anyway
+- **Result**: Cleaner configuration without redundant entries
+
+### Benefits of This Approach
+
+#### **Shorter Configuration Files**
+
+- Rule lists shrink over time as ruff implements more pylint rules
+- Less configuration maintenance required
+- Easier to understand what pylint is actually checking
+
+#### **Automatic Optimization**
+
+- No manual rule list management needed
+- Configuration stays current with ruff development
+- Prevents configuration drift and bloat
+
+#### **Preserved Customizations**
+
+- Unknown/custom disabled rules are preserved
+- User preferences like `locally-disabled` remain intact
+- Tool-specific rules are handled intelligently
+
+### What Gets Preserved
+
+The tool carefully preserves certain disable entries:
+
+- **Unknown rules**: Custom or plugin-specific rules not in the standard pylint set
+- **User preferences**: Rules like `locally-disabled`, `suppressed-message`
+- **Explicitly enabled rules**: Rules in your enable list take precedence
+
+### Viewing the Optimization Process
+
+Use verbose logging to see exactly what optimizations are performed:
+
+```bash
+pylint-ruff-sync --verbose
+```
+
+**Example output:**
+
+```
+INFO: Total pylint rules: 425
+INFO: Rules implemented in ruff: 187
+INFO: Rules to enable (not implemented in ruff): 238
+INFO: Rules to keep disabled: 12
+INFO: Unknown disabled rules preserved: 2
+INFO: Disabled rules removed (optimization): 45
+```
+
+This shows 45 unnecessary disable entries were removed, streamlining your configuration while maintaining functionality.
+
 ## Configuration Examples
 
 ### Before Synchronization
