@@ -46,7 +46,7 @@ def apply_toml_sort_subprocess(*, content: str, working_directory: Path) -> str:
 
         try:
             # Run toml-sort on the temporary file using user's configuration
-            # The --in-place and --ignore-case flags ensure consistent case-insensitive sorting
+            # The --in-place and --ignore-case flags ensure consistent sorting
             subprocess.run(
                 ["toml-sort", "--in-place", "--ignore-case", temp_file_path],
                 capture_output=True,

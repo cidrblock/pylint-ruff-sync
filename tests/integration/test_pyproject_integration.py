@@ -2,12 +2,87 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
 import pytest
 
 from pylint_ruff_sync.main import main
+
+
+def _verify_rule_format(*, content: str, rule_format: str) -> None:
+    """Verify rule format expectations in the content.
+
+    Args:
+        content: The file content to verify.
+        rule_format: The expected rule format (code or name).
+
+    """
+    lines = content.split("\n")
+    array_lines = [
+        line
+        for line in lines
+        if line.strip().startswith('"')
+        and ("enable" in content or "disable" in content)
+    ]
+
+    if rule_format == "code":
+        # Should contain rule codes like C0103, C0111, etc.
+        assert "C0103" in content
+        assert "C0111" in content
+        # Should not contain rule names in the arrays (except for comments)
+        for line in array_lines:
+            if '"invalid-name"' in line and line.strip().startswith('"invalid-name"'):
+                pytest.fail(
+                    f"Found rule name 'invalid-name' as array item with "
+                    f"rule_format=code: {line}"
+                )
+    else:  # rule_format == "name"
+        # Should contain rule names like invalid-name, missing-docstring, etc.
+        assert "invalid-name" in content
+        assert "missing-docstring" in content
+        # Should not contain rule codes in the arrays (except for comments)
+        for line in array_lines:
+            if '"C0103"' in line and line.strip().startswith('"C0103"'):
+                pytest.fail(
+                    f"Found rule code 'C0103' as array item with "
+                    f"rule_format=name: {line}"
+                )
+
+
+def _verify_rule_comment(*, content: str, rule_comment: str, rule_format: str) -> None:
+    """Verify rule comment expectations in the content.
+
+    Args:
+        content: The file content to verify.
+        rule_comment: The expected rule comment type.
+        rule_format: The rule format being used.
+
+    """
+    if rule_comment == "none":
+        # Should not have any comments after rule identifiers
+        lines = content.split("\n")
+        for line in lines:
+            if line.strip().startswith('"') and "#" in line and '"all"' not in line:
+                # Allow "all" to have comments in some cases
+                pytest.fail(f"Found comment with rule_comment=none: {line}")
+    elif rule_comment == "doc_url":
+        # Should contain doc URLs
+        assert "https://pylint.readthedocs.io" in content
+    elif rule_comment == "code":
+        # Should contain rule codes in comments
+        if rule_format == "name":
+            # When using name format, comments should contain codes
+            assert "# C0103" in content or "# C0111" in content
+    elif rule_comment == "name":
+        # Should contain rule names in comments
+        if rule_format == "code":
+            # When using code format, comments should contain names
+            assert "# invalid-name" in content or "# missing-docstring" in content
+    elif rule_comment == "short_description":
+        # Should contain rule descriptions in comments
+        assert "doesn't conform" in content or "Missing" in content
 
 
 def copy_fixture_to_temp(*, fixture_name: str, temp_dir: Path) -> Path:
@@ -555,67 +630,14 @@ def test_all_rule_format_comment_combinations(
     # Read the generated content
     content = config_file.read_text()
 
-    # Verify rule format expectations
-    if rule_format == "code":
-        # Should contain rule codes like C0103, C0111, etc.
-        assert "C0103" in content
-        assert "C0111" in content
-        # Should not contain rule names in the arrays (except for comments)
-        lines = content.split("\n")
-        array_lines = [
-            line
-            for line in lines
-            if line.strip().startswith('"')
-            and ("enable" in content or "disable" in content)
-        ]
-        for line in array_lines:
-            if '"invalid-name"' in line and line.strip().startswith('"invalid-name"'):
-                pytest.fail(
-                    f"Found rule name 'invalid-name' as array item with rule_format=code: {line}"
-                )
-    else:  # rule_format == "name"
-        # Should contain rule names like invalid-name, missing-docstring, etc.
-        assert "invalid-name" in content
-        assert "missing-docstring" in content
-        # Should not contain rule codes in the arrays (except for comments)
-        lines = content.split("\n")
-        array_lines = [
-            line
-            for line in lines
-            if line.strip().startswith('"')
-            and ("enable" in content or "disable" in content)
-        ]
-        for line in array_lines:
-            if '"C0103"' in line and line.strip().startswith('"C0103"'):
-                pytest.fail(
-                    f"Found rule code 'C0103' as array item with rule_format=name: {line}"
-                )
+    # Verify rule format and comment expectations
+    _verify_rule_format(content=content, rule_format=rule_format)
+    _verify_rule_comment(
+        content=content, rule_comment=rule_comment, rule_format=rule_format
+    )
 
-    # Verify comment expectations
-    if rule_comment == "none":
-        # Should not have any comments after rule identifiers
-        lines = content.split("\n")
-        for line in lines:
-            if line.strip().startswith('"') and "#" in line:
-                # Allow "all" to have comments in some cases
-                if '"all"' not in line:
-                    pytest.fail(f"Found comment with rule_comment=none: {line}")
-    elif rule_comment == "doc_url":
-        # Should contain doc URLs
-        assert "https://pylint.readthedocs.io" in content
-    elif rule_comment == "code":
-        # Should contain rule codes in comments
-        if rule_format == "name":
-            # When using name format, comments should contain codes
-            assert "# C0103" in content or "# C0111" in content
-    elif rule_comment == "name":
-        # Should contain rule names in comments
-        if rule_format == "code":
-            # When using code format, comments should contain names
-            assert "# invalid-name" in content or "# missing-docstring" in content
-    elif rule_comment == "short_description":
-        # Should contain rule descriptions in comments
-        assert "doesn't conform" in content or "Missing" in content
+    # Special case for short_description comment type with "all"
+    if rule_comment == "short_description":
         # "all" should get "All rules" comment
         assert "# All rules" in content
 
@@ -681,7 +703,6 @@ disable = ["zebra-rule", "Apple-rule", "bear-rule", "all"]
     content = config_file.read_text()
 
     # Extract all quoted items from disable array using regex
-    import re
 
     disable_section_match = re.search(r"disable\s*=\s*\[(.*?)\]", content, re.DOTALL)
 

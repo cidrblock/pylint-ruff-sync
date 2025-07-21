@@ -8,6 +8,8 @@ from typing import Protocol
 
 import pytest
 
+from tests.constants import TOML_SORT_MIN_ARGS
+
 
 class TomlSortMockProtocol(Protocol):
     """Protocol for toml sort mock function."""
@@ -167,8 +169,6 @@ def _mocked_subprocess(
         toml_sort_mock: Function to apply toml-sort mock.
 
     """
-    from tests.constants import TOML_SORT_MIN_ARGS
-
     mock_pylint_result = MockSubprocessResult(stdout=mock_pylint_output)
     mock_gh_result = MockSubprocessResult(stdout=mock_github_response)
 
