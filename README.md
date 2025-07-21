@@ -79,15 +79,11 @@ Should all be configured in your `[tool.pylint]` sections in `pyproject.toml`.
 
 ## Installation
 
-```bash
-pip install pylint-ruff-sync
-```
-
-Or add to your precommit configuration:
+Add to your precommit configuration:
 
 ```yaml
 repos:
-  - repo: https://github.com/your-org/pylint-ruff-sync
+  - repo: https://github.com/cidrblock/pylint-ruff-sync
     rev: v1.0.0
     hooks:
       - id: pylint-ruff-sync
@@ -414,7 +410,7 @@ pylint-ruff-sync --verbose
 
 ```yaml
 repos:
-  - repo: https://github.com/your-org/pylint-ruff-sync
+  - repo: https://github.com/cidrblock/pylint-ruff-sync
     rev: v1.0.0
     hooks:
       - id: pylint-ruff-sync
